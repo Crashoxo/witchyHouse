@@ -31,12 +31,104 @@
         ".json"
       ],
       "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "dc4a820e-aa12-4d62-97aa-8a35ff46dd8e@f9941",
+      "displayName": "leaf-pile",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 0,
+        "offsetY": 0,
+        "trimX": 0,
+        "trimY": 0,
+        "width": 211,
+        "height": 114,
+        "rawWidth": 211,
+        "rawHeight": 114,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -105.5,
+            -57,
+            0,
+            105.5,
+            -57,
+            0,
+            -105.5,
+            57,
+            0,
+            105.5,
+            57,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            0,
+            114,
+            211,
+            114,
+            0,
+            0,
+            211,
+            0
+          ],
+          "nuv": [
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            1
+          ],
+          "minPos": [
+            -105.5,
+            -57,
+            0
+          ],
+          "maxPos": [
+            105.5,
+            57,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "dc4a820e-aa12-4d62-97aa-8a35ff46dd8e@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
     }
   },
   "userData": {
-    "type": "texture",
-    "fixAlphaTransparencyArtifacts": false,
+    "type": "sprite-frame",
     "hasAlpha": true,
+    "fixAlphaTransparencyArtifacts": false,
     "redirect": "dc4a820e-aa12-4d62-97aa-8a35ff46dd8e@6c48a"
   }
 }

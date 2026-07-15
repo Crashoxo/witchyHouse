@@ -31,12 +31,104 @@
         ".json"
       ],
       "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "a1fd3031-fd2f-4357-bb20-1bb5de996618@f9941",
+      "displayName": "tree-apple-sapling",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 0,
+        "offsetY": 0,
+        "trimX": 0,
+        "trimY": 0,
+        "width": 122,
+        "height": 171,
+        "rawWidth": 122,
+        "rawHeight": 171,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -61,
+            -85.5,
+            0,
+            61,
+            -85.5,
+            0,
+            -61,
+            85.5,
+            0,
+            61,
+            85.5,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            0,
+            171,
+            122,
+            171,
+            0,
+            0,
+            122,
+            0
+          ],
+          "nuv": [
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            1
+          ],
+          "minPos": [
+            -61,
+            -85.5,
+            0
+          ],
+          "maxPos": [
+            61,
+            85.5,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "a1fd3031-fd2f-4357-bb20-1bb5de996618@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
     }
   },
   "userData": {
-    "type": "texture",
-    "fixAlphaTransparencyArtifacts": false,
+    "type": "sprite-frame",
     "hasAlpha": true,
+    "fixAlphaTransparencyArtifacts": false,
     "redirect": "a1fd3031-fd2f-4357-bb20-1bb5de996618@6c48a"
   }
 }

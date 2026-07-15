@@ -31,12 +31,104 @@
         ".json"
       ],
       "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "59b66480-2e63-4ac1-b295-7e9a982e1185@f9941",
+      "displayName": "tree-apple-blossom",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 0,
+        "offsetY": 0,
+        "trimX": 0,
+        "trimY": 0,
+        "width": 217,
+        "height": 224,
+        "rawWidth": 217,
+        "rawHeight": 224,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -108.5,
+            -112,
+            0,
+            108.5,
+            -112,
+            0,
+            -108.5,
+            112,
+            0,
+            108.5,
+            112,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            0,
+            224,
+            217,
+            224,
+            0,
+            0,
+            217,
+            0
+          ],
+          "nuv": [
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            1
+          ],
+          "minPos": [
+            -108.5,
+            -112,
+            0
+          ],
+          "maxPos": [
+            108.5,
+            112,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "59b66480-2e63-4ac1-b295-7e9a982e1185@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
     }
   },
   "userData": {
-    "type": "texture",
-    "fixAlphaTransparencyArtifacts": false,
+    "type": "sprite-frame",
     "hasAlpha": true,
+    "fixAlphaTransparencyArtifacts": false,
     "redirect": "59b66480-2e63-4ac1-b295-7e9a982e1185@6c48a"
   }
 }
