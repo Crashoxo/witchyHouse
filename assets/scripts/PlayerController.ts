@@ -1,6 +1,9 @@
 import { _decorator, Component, Node, Vec2, input, Input, EventKeyboard, KeyCode,
          instantiate, Prefab, UITransform, director } from 'cc';
 import { SpellProjectile } from './SpellProjectile';
+import { UIState } from './UIState';
+import { Inventory } from './Inventory';
+import { Hud } from './Hud';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -46,6 +49,9 @@ export class PlayerController extends Component {
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
         this.computeBounds();
+        // 每個場景都有 Player → 在這裡叫出背包和金幣 HUD，讓它們永遠顯示
+        Inventory.ensure();
+        Hud.ensure();
     }
 
     onDestroy() {
@@ -55,11 +61,13 @@ export class PlayerController extends Component {
 
     private onKeyDown(e: EventKeyboard) {
         this.keys.add(e.keyCode);
+        if (UIState.modalOpen) return;                       // 開著視窗時不施法
         if (e.keyCode === KeyCode.KEY_J || e.keyCode === KeyCode.SPACE) this.cast();
     }
     private onKeyUp(e: EventKeyboard) { this.keys.delete(e.keyCode); }
 
     update(dt: number) {
+        if (UIState.modalOpen) return;                       // 開著視窗時角色不動
         const k = this.keys;
         const x = (k.has(KeyCode.KEY_D) || k.has(KeyCode.ARROW_RIGHT) ? 1 : 0)
                 - (k.has(KeyCode.KEY_A) || k.has(KeyCode.ARROW_LEFT)  ? 1 : 0);

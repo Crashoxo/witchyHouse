@@ -1,6 +1,7 @@
 import { _decorator, Component, Node, Sprite, Color, input, Input,
          EventKeyboard, KeyCode, Vec3 } from 'cc';
 import { Inventory } from './Inventory';
+import { UIState } from './UIState';
 const { ccclass, property } = _decorator;
 
 /**
@@ -38,6 +39,7 @@ export class GatherTree extends Component {
 
     private onKeyDown(e: EventKeyboard) {
         if (e.keyCode !== KeyCode.KEY_E) return;
+        if (UIState.modalOpen) return;                  // 開著視窗時不採集
         if (!this.ready || !this.player) return;
         // 兩者都是 World 的子節點 → 比 local position 的距離即可（不受相機捲動影響）
         if (Vec3.distance(this.player.position, this.node.position) > this.gatherRange) return;
