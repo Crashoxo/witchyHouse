@@ -2,10 +2,16 @@ import { _decorator, Component, Node, UITransform, Widget, Sprite, SpriteFrame,
          Label, Color, Graphics, CCString, find } from 'cc';
 const { ccclass, property } = _decorator;
 
-/** 背包裡的一格。 */
-interface Slot {
-    name: string;          // 這格裝什麼（空字串＝空格）
-    count: number;         // 數量
+/**
+ * 背包「資料」放在 module 層，`director.loadScene` 換場景時會保留（JS 模組不重跑），
+ * 所以在森林採到的東西走到城鎮還在。每個場景的背包 UI 只是把這份資料畫出來。
+ * 只存非空的堆疊、依取得順序排列。
+ */
+interface Stack { name: string; count: number; }
+const stock: Stack[] = [];
+
+/** 一格背包的畫面元件（純顯示，資料在 stock）。 */
+interface Cell {
     icon: Sprite;          // 物品圖示（沒設圖示時隱藏）
     nameLabel: Label;      // 沒有圖示時，改用文字顯示物品名
     countLabel: Label;     // 右下角數量（>1 才顯示）
@@ -50,43 +56,46 @@ export class Inventory extends Component {
     @property({ type: [SpriteFrame], tooltip: '物品圖示，與 iconNames 一一對應' })
     icons: SpriteFrame[] = [];
 
-    private slots: Slot[] = [];
+    private cells: Cell[] = [];
 
     onLoad() {
         Inventory.instance = this;
         this.build();
+        this.renderAll();          // 把 module 層既有的資料畫出來（跨場景帶過來的東西）
     }
 
     onDestroy() {
         if (Inventory.instance === this) Inventory.instance = null;
     }
 
-    // ---- 對外 API ----
+    // ---- 對外 API（都是操作 module 層的 stock，換場景保留）----
 
-    /** 加入物品：先找同名的格子疊加，沒有就找第一個空格；背包滿了回傳 false。 */
+    /** 加入物品：先找同名的堆疊疊加，沒有就新增一堆；格子滿了回傳 false。 */
     add(name: string, qty = 1): boolean {
-        let slot = this.slots.find(s => s.count > 0 && s.name === name)
-                ?? this.slots.find(s => s.count === 0);
-        if (!slot) { console.warn(`[Inventory] 背包滿了，${name} 放不下`); return false; }
-        slot.name = name;
-        slot.count += qty;
-        this.refresh(slot);
+        const s = stock.find(s => s.name === name);
+        if (s) {
+            s.count += qty;
+        } else {
+            if (stock.length >= this.slotCount) { console.warn(`[Inventory] 背包滿了，${name} 放不下`); return false; }
+            stock.push({ name, count: qty });
+        }
+        this.renderAll();
         return true;
     }
 
-    /** 取出物品（之後接商店賣東西用）：數量不足回傳 false。 */
+    /** 取出物品（商店賣東西用）：數量不足回傳 false。 */
     remove(name: string, qty = 1): boolean {
-        const slot = this.slots.find(s => s.count > 0 && s.name === name);
-        if (!slot || slot.count < qty) return false;
-        slot.count -= qty;
-        if (slot.count === 0) slot.name = '';
-        this.refresh(slot);
+        const i = stock.findIndex(s => s.name === name);
+        if (i < 0 || stock[i].count < qty) return false;
+        stock[i].count -= qty;
+        if (stock[i].count === 0) stock.splice(i, 1);
+        this.renderAll();
         return true;
     }
 
     /** 背包裡某物品的總數量。 */
     countOf(name: string): number {
-        return this.slots.reduce((n, s) => n + (s.name === name ? s.count : 0), 0);
+        return stock.find(s => s.name === name)?.count ?? 0;
     }
 
     // ---- 建 UI ----
@@ -109,11 +118,11 @@ export class Inventory extends Component {
 
         const startX = -(totalW - this.slotSize) / 2;   // 第一格中心的 x
         for (let i = 0; i < this.slotCount; i++) {
-            this.slots.push(this.buildSlot(i, startX + i * (this.slotSize + this.gap)));
+            this.cells.push(this.buildCell(i, startX + i * (this.slotSize + this.gap)));
         }
     }
 
-    private buildSlot(index: number, x: number): Slot {
+    private buildCell(index: number, x: number): Cell {
         const s = this.slotSize;
         const layer = this.node.layer;
 
@@ -174,21 +183,28 @@ export class Inventory extends Component {
         countLabel.verticalAlign = Label.VerticalAlign.BOTTOM;
         countLabel.string = '';
 
-        return { name: '', count: 0, icon, nameLabel, countLabel };
+        return { icon, nameLabel, countLabel };
     }
 
-    /** 依目前狀態更新一格的顯示。 */
-    private refresh(slot: Slot) {
-        const frame = this.iconFor(slot.name);
-        if (frame && slot.count > 0) {
-            slot.icon.spriteFrame = frame;
-            slot.icon.node.active = true;
-            slot.nameLabel.string = '';
-        } else {
-            slot.icon.node.active = false;
-            slot.nameLabel.string = slot.count > 0 ? slot.name : '';
+    /** 依 module 層的 stock 重畫所有格子。 */
+    private renderAll() {
+        for (let i = 0; i < this.cells.length; i++) {
+            this.renderCell(this.cells[i], stock[i] ?? null);
         }
-        slot.countLabel.string = slot.count > 1 ? 'x' + slot.count : '';
+    }
+
+    /** 依一筆堆疊（或 null＝空格）更新一格的顯示。 */
+    private renderCell(cell: Cell, s: Stack | null) {
+        const frame = s ? this.iconFor(s.name) : null;
+        if (s && frame) {
+            cell.icon.spriteFrame = frame;
+            cell.icon.node.active = true;
+            cell.nameLabel.string = '';
+        } else {
+            cell.icon.node.active = false;
+            cell.nameLabel.string = s ? s.name : '';
+        }
+        cell.countLabel.string = s && s.count > 1 ? 'x' + s.count : '';
     }
 
     private iconFor(name: string): SpriteFrame | null {
