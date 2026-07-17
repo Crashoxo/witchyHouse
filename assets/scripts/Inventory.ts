@@ -1,14 +1,32 @@
 import { _decorator, Component, Node, UITransform, Widget, Sprite, SpriteFrame,
-         Label, Color, Graphics, CCString, find } from 'cc';
+         Label, Color, Graphics, CCString, find, sys } from 'cc';
 const { ccclass, property } = _decorator;
 
 /**
  * 背包「資料」放在 module 層，`director.loadScene` 換場景時會保留（JS 模組不重跑），
- * 所以在森林採到的東西走到城鎮還在。每個場景的背包 UI 只是把這份資料畫出來。
- * 只存非空的堆疊、依取得順序排列。
+ * 所以在森林採到的東西走到城鎮還在；並用 `sys.localStorage` 存檔（關遊戲再開還在）。
+ * 每個場景的背包 UI 只是把這份資料畫出來。只存非空的堆疊、依取得順序排列。
  */
 interface Stack { name: string; count: number; }
-const stock: Stack[] = [];
+
+const STOCK_KEY = 'witch.stock';
+
+function loadStock(): Stack[] {
+    try {
+        const v = sys.localStorage.getItem(STOCK_KEY);
+        const arr = v ? JSON.parse(v) : [];
+        // 只收合法的堆疊，避免壞存檔炸掉
+        return Array.isArray(arr)
+            ? arr.filter(s => s && typeof s.name === 'string' && typeof s.count === 'number' && s.count > 0)
+            : [];
+    } catch { return []; }
+}
+
+const stock: Stack[] = loadStock();
+
+function saveStock() {
+    sys.localStorage.setItem(STOCK_KEY, JSON.stringify(stock));
+}
 
 /** 一格背包的畫面元件（純顯示，資料在 stock）。 */
 interface Cell {
@@ -79,6 +97,7 @@ export class Inventory extends Component {
             if (stock.length >= this.slotCount) { console.warn(`[Inventory] 背包滿了，${name} 放不下`); return false; }
             stock.push({ name, count: qty });
         }
+        saveStock();
         this.renderAll();
         return true;
     }
@@ -89,6 +108,7 @@ export class Inventory extends Component {
         if (i < 0 || stock[i].count < qty) return false;
         stock[i].count -= qty;
         if (stock[i].count === 0) stock.splice(i, 1);
+        saveStock();
         this.renderAll();
         return true;
     }

@@ -1,12 +1,26 @@
+import { sys } from 'cc';
+
 /**
- * 玩家錢包（金幣）。金額存在 module 變數，`director.loadScene` 換場景時會保留
- * （JS 模組不重跑）。ShopPanel 賣東西時 add()，Hud 常駐顯示讀 gold。
- * 尚無存檔（關掉遊戲會歸零）。
+ * 玩家錢包（金幣）。金額存在 module 變數（換場景 `director.loadScene` 保留），
+ * 並用 `sys.localStorage` 存檔 —— 關掉遊戲再開，金幣還在。
+ * ShopPanel 賣東西時 add()，Hud 常駐顯示讀 gold。
  */
-let gold = 0;
+const KEY = 'witch.gold';
+
+function load(): number {
+    const v = sys.localStorage.getItem(KEY);
+    const n = v ? parseInt(v, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
+}
+
+let gold = load();
+
+function save() {
+    sys.localStorage.setItem(KEY, String(gold));
+}
 
 export const Wallet = {
     get gold(): number { return gold; },
-    add(amount: number): void { gold += amount; },
-    set(amount: number): void { gold = amount; },
+    add(amount: number): void { gold += amount; save(); },
+    set(amount: number): void { gold = amount; save(); },
 };
