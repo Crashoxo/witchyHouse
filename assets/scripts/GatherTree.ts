@@ -18,6 +18,10 @@ export class GatherTree extends Component {
     @property gatherRange = 120;    // 玩家離多近才採得到（像素）
     @property cooldown = 5;         // 採完幾秒後長回來
     @property itemName = '木材';     // 這棵樹產出什麼材料
+    @property({ tooltip: '每次最少採到幾個' }) minYield = 1;
+    @property({ tooltip: '每次最多採到幾個' }) maxYield = 3;
+    @property({ tooltip: '額外稀有掉落的物品名（空＝沒有）' }) rareItem = '';
+    @property({ tooltip: '掉到稀有物的機率（0~1）' }) rareChance = 0.15;
 
     private player: Node | null = null;
     private sprite: Sprite | null = null;
@@ -47,9 +51,18 @@ export class GatherTree extends Component {
     }
 
     private gather() {
-        // 放進背包（沒有背包 UI 時會自動在 Canvas 底下生一個）
-        Inventory.ensure()?.add(this.itemName);
-        console.log(`採集到 ${this.itemName} x1`);
+        const inv = Inventory.ensure();   // 沒有背包 UI 時會自動在 Canvas 底下生一個
+        // 隨機數量（min~max）
+        const lo = Math.min(this.minYield, this.maxYield);
+        const hi = Math.max(this.minYield, this.maxYield);
+        const qty = lo + Math.floor(Math.random() * (hi - lo + 1));
+        inv?.add(this.itemName, qty);
+        console.log(`採集到 ${this.itemName} x${qty}`);
+        // 機率額外掉稀有物
+        if (this.rareItem && Math.random() < this.rareChance) {
+            inv?.add(this.rareItem, 1);
+            console.log(`✨ 額外採到 ${this.rareItem} x1`);
+        }
         this.ready = false;
         this.timer = 0;
         if (this.sprite) this.sprite.color = new Color(80, 80, 80, 255); // 變暗＝採光了
