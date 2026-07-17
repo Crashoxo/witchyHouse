@@ -1,5 +1,6 @@
 import { _decorator, Component, Node, Sprite, Color, input, Input,
          EventKeyboard, KeyCode, Vec3 } from 'cc';
+import { Inventory } from './Inventory';
 const { ccclass, property } = _decorator;
 
 /**
@@ -44,6 +45,8 @@ export class GatherTree extends Component {
     }
 
     private gather() {
+        // 放進背包（沒有背包 UI 時會自動在 Canvas 底下生一個）
+        Inventory.ensure()?.add(this.itemName);
         console.log(`採集到 ${this.itemName} x1`);
         this.ready = false;
         this.timer = 0;
