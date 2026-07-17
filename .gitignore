@@ -6,3 +6,5 @@
 /native/
 /.creator/
 node_modules/
+
+/.claude/
