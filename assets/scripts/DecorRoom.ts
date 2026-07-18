@@ -31,6 +31,10 @@ export class DecorRoom extends Component {
     private dragging: Node | null = null;
 
     private readonly trayH = 150;   // 底部托盤高度；拖到這區以下＝收回
+    // 裝飾顯示縮放：原圖是「概念圖」解析度（跟女巫立繪同級），要縮到跟世界比例一致。
+    // 玩家 scale 0.35、顯示約 68×87px；裝飾用 0.4 讓傢俱比玩家略有存在感。原圖相對
+    // 大小已正確（多肉小、花櫃大），統一乘同一係數即可。想整體改大小就調這個。
+    private readonly decorScale = 0.4;
 
     onLoad() {
         this.canvas = find('Canvas');
@@ -57,8 +61,8 @@ export class DecorRoom extends Component {
         sp.sizeMode = Sprite.SizeMode.CUSTOM;
         sp.trim = false;
         const f = GameArt.decor(id);
-        if (f) { sp.spriteFrame = f; ut.setContentSize(f.rect.width, f.rect.height); }
-        else ut.setContentSize(64, 64);
+        if (f) { sp.spriteFrame = f; ut.setContentSize(f.rect.width * this.decorScale, f.rect.height * this.decorScale); }
+        else ut.setContentSize(48, 48);
         n.addComponent(UIOpacity);   // 拖曳時調透明度用
         n.setPosition(x, y, 0);
         const entry: Entry = { node: n, id };
