@@ -1651,6 +1651,7 @@
       "想賺得多，記得升級招牌招攬更多客人，貨架也要夠大才擺得下。",
       "祝你生意興隆，哈哈！"
     ],
+    "portrait": "gnome",
     "interactRange": 220,
     "_id": "talkNpcPotionShop0001"
   }

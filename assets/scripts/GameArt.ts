@@ -22,9 +22,16 @@ const EMOTE_INFO: Record<string, [number, number, number]> = {
     emo32: [57, 48, 28], emo51: [29, 55, 28],
 };
 
+/** NPC / 對話頭像檔名（resources/portraits 底下）。動物那組也可當顧客立繪。 */
+const PORTRAIT_FILES = ['gnome', 'witch', 'elf', 'forestboy',
+                        'badger', 'fox', 'hedgehog', 'rabbit',
+                        'bear', 'squirrel', 'wolf', 'mouse'];
+
 const items = new Map<string, SpriteFrame>();       // 材料名 → 圖
 const customers = new Map<string, SpriteFrame>();   // 動物名 → 圖
 const emotes = new Map<string, SpriteFrame[]>();    // 表情名 → 動畫幀陣列
+const portraits = new Map<string, SpriteFrame>();   // 頭像名 → 圖
+let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 
 let loaded = false;
 let loading = false;
@@ -43,9 +50,10 @@ export const GameArt = {
         const singleJobs: Array<[Map<string, SpriteFrame>, string, string]> = [];
         for (const name of Object.keys(ITEM_FILES)) singleJobs.push([items, name, `items/${ITEM_FILES[name]}`]);
         for (const file of CUSTOMER_FILES) singleJobs.push([customers, file, `customers/${file}`]);
+        for (const file of PORTRAIT_FILES) singleJobs.push([portraits, file, `portraits/${file}`]);
         const emoteNames = Object.keys(EMOTE_INFO);
 
-        const total = singleJobs.length + emoteNames.length;
+        const total = singleJobs.length + emoteNames.length + 1;   // +1 = 對話框外框
         let done = 0;
         const finish = () => {
             if (++done >= total) {
@@ -79,6 +87,12 @@ export const GameArt = {
                 finish();
             });
         }
+        // 對話框外框（單張）
+        resources.load('ui/dialogue-box', ImageAsset, (err, img) => {
+            if (!err && img) dialogueBoxFrame = SpriteFrame.createWithImage(img);
+            else console.warn('[GameArt] 載入失敗 ui/dialogue-box', err);
+            finish();
+        });
     },
 
     /** 註冊「載入完成」回呼；已完成則立即呼叫。 */
@@ -100,4 +114,10 @@ export const GameArt = {
 
     /** 所有已載入的表情名（給隨機挑選用）。 */
     emoteNames(): string[] { return [...emotes.keys()]; },
+
+    /** NPC / 對話頭像（未載入回 null）。 */
+    portrait(name: string): SpriteFrame | null { return portraits.get(name) ?? null; },
+
+    /** 對話框外框（未載入回 null）。 */
+    dialogueBox(): SpriteFrame | null { return dialogueBoxFrame; },
 };

@@ -17,6 +17,8 @@ export class TalkNpc extends Component {
     npcName = '村民';
     @property({ type: [CCString], tooltip: '對話內容，一句一格，走近按 E 依序顯示（留空＝用預設台詞）' })
     lines: string[] = [];
+    @property({ tooltip: '頭像名（GameArt portraits：gnome/witch/elf/forestboy/動物名…；留空＝不顯示頭像）' })
+    portrait = '';
     @property({ tooltip: '玩家離多近才能交談（像素）' })
     interactRange = 200;
 
@@ -44,7 +46,7 @@ export class TalkNpc extends Component {
         if (e.keyCode !== KeyCode.KEY_E) return;
         if (!this.inRange || UIState.modalOpen) return;   // 已開著別重複觸發
         const lines = this.lines.length ? this.lines : TalkNpc.DEFAULT_LINES;
-        Dialogue.ensure()?.open(this.npcName, lines);
+        Dialogue.ensure()?.open(this.npcName, lines, this.portrait);
     }
 
     update() {
