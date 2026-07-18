@@ -744,6 +744,9 @@
       },
       {
         "__id__": 20
+      },
+      {
+        "__id__": 51
       }
     ],
     "_prefab": null,
@@ -1630,5 +1633,25 @@
     "hintText": "按 E 進入店裡",
     "interactRange": 200,
     "_id": "cottageDoorAAAAAAAAAA1"
+  },
+  {
+    "__type__": "5c0abHeAA9MAIoAXAqx3gAP",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 18
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "npcName": "地精老闆",
+    "lines": [
+      "喲，是新來的女巫吧？我是這間藥水鋪的地精，鎮上的老面孔了。",
+      "你在森林採的材料，拿回自己的店裡上架，動物客人就會上門買。",
+      "想賺得多，記得升級招牌招攬更多客人，貨架也要夠大才擺得下。",
+      "祝你生意興隆，哈哈！"
+    ],
+    "interactRange": 220,
+    "_id": "talkNpcPotionShop0001"
   }
 ]
