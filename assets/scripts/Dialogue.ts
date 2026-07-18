@@ -115,15 +115,17 @@ export class Dialogue extends Component {
     private build() {
         const layer = this.node.layer;
 
-        // 透明背板：擋住後面世界的點擊，點它就推進到下一句
+        // 透明背板：填滿整個畫面，擋住後面世界的點擊，點它就推進到下一句。
+        // 用 Widget 四邊對齊撐滿 Canvas —— 這樣底下的對話框「靠底部對齊」才會對到
+        // 真正的畫面底（不能給 root 一個比畫面大的固定尺寸，否則框會被排到畫面外）。
         const root = new Node('Root');
         root.layer = layer;
         this.node.addChild(root);
-        root.addComponent(UITransform).setContentSize(3000, 2000);
+        root.addComponent(UITransform);
         root.addComponent(BlockInputEvents);
         const rw = root.addComponent(Widget);
-        rw.isAlignHorizontalCenter = rw.isAlignVerticalCenter = true;
-        rw.horizontalCenter = rw.verticalCenter = 0;
+        rw.isAlignLeft = rw.isAlignRight = rw.isAlignTop = rw.isAlignBottom = true;
+        rw.left = rw.right = rw.top = rw.bottom = 0;
         rw.updateAlignment();
         root.on(Node.EventType.TOUCH_END, this.advance, this);
         this.root = root;
