@@ -33,12 +33,25 @@ const DECOR_FILES = ['succulent', 'daisypot', 'violetpot', 'birdcage_small', 'bo
                      'potted_fern', 'window_box', 'birdcage_large', 'blue_urn',
                      'wildflower_basket', 'flower_case'];
 
+/** 藥水成品：中文名 → resources/potions 底下的檔名。載進 items map，圖示查找同材料。 */
+const POTION_ITEMS: Record<string, string> = {
+    清涼藥水: 'potion_blue', 戀愛藥水: 'potion_pink', 暗影藥水: 'potion_dark',
+    烈焰藥水: 'potion_red', 溫暖熱可可: 'cocoa_mug', 蜂蜜藥劑: 'amber_jug',
+    黃金藥劑: 'gold_bottle', 夜影掃帚: 'broom_purple', 星光掃帚: 'broom_blue',
+    羽翼掃帚: 'broom_white',
+};
+
+/** 鍋爐熬煮動畫幀數（resources/cauldron/f0..f5）。 */
+const CAULDRON_FRAMES = 6;
+
 const items = new Map<string, SpriteFrame>();       // 材料名 → 圖
 const customers = new Map<string, SpriteFrame>();   // 動物名 → 圖
 const emotes = new Map<string, SpriteFrame[]>();    // 表情名 → 動畫幀陣列
 const portraits = new Map<string, SpriteFrame>();   // 頭像名 → 圖
 const decor = new Map<string, SpriteFrame>();       // 裝飾品 id → 圖
+const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
+let brewRoomFrame: SpriteFrame | null = null;       // 藥水室背景
 
 let loaded = false;
 let loading = false;
@@ -59,9 +72,12 @@ export const GameArt = {
         for (const file of CUSTOMER_FILES) singleJobs.push([customers, file, `customers/${file}`]);
         for (const file of PORTRAIT_FILES) singleJobs.push([portraits, file, `portraits/${file}`]);
         for (const file of DECOR_FILES) singleJobs.push([decor, file, `decor/${file}`]);
+        // 藥水成品：載進 items map（key 用中文名），圖示查找就跟材料同一套
+        for (const name of Object.keys(POTION_ITEMS)) singleJobs.push([items, name, `potions/${POTION_ITEMS[name]}`]);
         const emoteNames = Object.keys(EMOTE_INFO);
 
-        const total = singleJobs.length + emoteNames.length + 1;   // +1 = 對話框外框
+        // +1 對話框外框、+1 藥水室背景、+CAULDRON_FRAMES 鍋爐幀
+        const total = singleJobs.length + emoteNames.length + 2 + CAULDRON_FRAMES;
         let done = 0;
         const finish = () => {
             if (++done >= total) {
@@ -101,6 +117,22 @@ export const GameArt = {
             else console.warn('[GameArt] 載入失敗 ui/dialogue-box', err);
             finish();
         });
+        // 藥水室背景（單張）
+        resources.load('rooms/brew-room', ImageAsset, (err, img) => {
+            if (!err && img) brewRoomFrame = SpriteFrame.createWithImage(img);
+            else console.warn('[GameArt] 載入失敗 rooms/brew-room', err);
+            finish();
+        });
+        // 鍋爐熬煮動畫幀（f0..f5，各一張，保持順序）
+        cauldron.length = CAULDRON_FRAMES;
+        for (let i = 0; i < CAULDRON_FRAMES; i++) {
+            const idx = i;
+            resources.load(`cauldron/f${idx}`, ImageAsset, (err, img) => {
+                if (!err && img) cauldron[idx] = SpriteFrame.createWithImage(img);
+                else console.warn(`[GameArt] 載入失敗 cauldron/f${idx}`, err);
+                finish();
+            });
+        }
     },
 
     /** 註冊「載入完成」回呼；已完成則立即呼叫。 */
@@ -131,4 +163,10 @@ export const GameArt = {
 
     /** 裝飾品圖（未載入回 null）。 */
     decor(id: string): SpriteFrame | null { return decor.get(id) ?? null; },
+
+    /** 鍋爐熬煮動畫幀（0..5；未載入回空陣列）。 */
+    cauldronFrames(): SpriteFrame[] { return cauldron.filter(Boolean); },
+
+    /** 藥水室背景（未載入回 null）。 */
+    brewRoom(): SpriteFrame | null { return brewRoomFrame; },
 };
