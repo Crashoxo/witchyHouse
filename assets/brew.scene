@@ -1050,8 +1050,8 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 70,
-      "y": -150,
+      "x": 140,
+      "y": -175,
       "z": 0
     },
     "_lrot": {
@@ -1063,8 +1063,8 @@
     },
     "_lscale": {
       "__type__": "cc.Vec3",
-      "x": 0.35,
-      "y": 0.35,
+      "x": 1,
+      "y": 1,
       "z": 1
     },
     "_mobility": 0,
@@ -1146,7 +1146,7 @@
     "_enabled": true,
     "__prefab": null,
     "interactRange": 200,
-    "displayScale": 0.55,
+    "displayScale": 0.62,
     "_id": "brewCauldronComp0001"
   }
 ]
