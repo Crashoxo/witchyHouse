@@ -89,7 +89,7 @@ export class DecorRoom extends Component {
     private enterEdit() {
         this.editing = true;
         UIState.modalOpen = true;
-        if (this.toggleLabel) this.toggleLabel.string = '✓ 完成';
+        if (this.toggleLabel) this.toggleLabel.string = '完成';
         this.placedNodes.forEach(e => this.makeDraggable(e));
         this.buildTray();
         this.buildHint();
@@ -100,7 +100,7 @@ export class DecorRoom extends Component {
         this.dragging = null;
         this.placedNodes.forEach(e => this.removeDraggable(e));
         this.syncPlaced();
-        if (this.toggleLabel) this.toggleLabel.string = '🌸 佈置';
+        if (this.toggleLabel) this.toggleLabel.string = '佈置房間';
         if (this.tray) { this.tray.destroy(); this.tray = null; }
         if (this.hintNode) { this.hintNode.destroy(); this.hintNode = null; }
         UIState.modalOpen = false;
@@ -179,7 +179,7 @@ export class DecorRoom extends Component {
         const t = new Node('t'); t.layer = this.canvas.layer; n.addChild(t);
         t.addComponent(UITransform).setContentSize(128, 48);
         const lb = t.addComponent(Label);
-        lb.string = '🌸 佈置'; lb.fontSize = 22; lb.color = new Color(250, 244, 255, 255);
+        lb.string = '佈置房間'; lb.fontSize = 22; lb.color = new Color(250, 244, 255, 255);
         lb.horizontalAlign = Label.HorizontalAlign.CENTER;
         lb.verticalAlign = Label.VerticalAlign.CENTER;
         this.toggleLabel = lb;
@@ -200,7 +200,7 @@ export class DecorRoom extends Component {
         w.isAlignTop = true; w.top = 16; w.isAlignHorizontalCenter = true; w.horizontalCenter = 0;
         w.updateAlignment();
         const lb = n.addComponent(Label);
-        lb.string = '點托盤的裝飾擺出來 · 拖曳移動 · 拖到底部托盤收回 · ✓ 完成';
+        lb.string = '點托盤的裝飾擺出來 · 拖曳移動 · 拖到底部托盤收回 · 按「完成」結束';
         lb.fontSize = 20; lb.color = new Color(255, 250, 235, 255);
         lb.horizontalAlign = Label.HorizontalAlign.CENTER;
         lb.verticalAlign = Label.VerticalAlign.CENTER;
