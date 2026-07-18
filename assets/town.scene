@@ -968,6 +968,9 @@
       },
       {
         "__id__": 26
+      },
+      {
+        "__id__": 52
       }
     ],
     "_prefab": null,
@@ -1654,5 +1657,18 @@
     "portrait": "gnome",
     "interactRange": 220,
     "_id": "talkNpcPotionShop0001"
+  },
+  {
+    "__type__": "5c0abHeABJMAIoAXAqx3gAS",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 24
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "interactRange": 230,
+    "_id": "decorShopFlower00001"
   }
 ]
