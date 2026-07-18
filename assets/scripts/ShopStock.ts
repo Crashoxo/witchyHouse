@@ -1,4 +1,5 @@
 import { sys } from 'cc';
+import { Upgrades } from './Upgrades';
 
 /**
  * 玩家商店的「貨架」資料：把背包材料上架、定價，等顧客上門買（顧客在 Phase 2）。
@@ -39,12 +40,22 @@ export const ShopStock = {
     /** 某材料的建議售價。 */
     suggestedPrice(name: string): number { return BASE_PRICE[name] ?? 10; },
 
-    /** 上架一個：同名疊加、否則新增（新增時用建議售價）。 */
-    add(name: string): void {
+    /** 能不能再上架這個？（同名可疊加；新種類受貨架上限限制） */
+    canAdd(name: string): boolean {
+        if (listings.some(l => l.name === name)) return true;
+        return listings.length < Upgrades.shelfCap();
+    },
+
+    /** 上架一個：同名疊加、否則新增（新增時用建議售價）。超過貨架上限回 false。 */
+    add(name: string): boolean {
         const l = listings.find(l => l.name === name);
-        if (l) l.count += 1;
-        else listings.push({ name, price: this.suggestedPrice(name), count: 1 });
+        if (l) { l.count += 1; }
+        else {
+            if (listings.length >= Upgrades.shelfCap()) return false;
+            listings.push({ name, price: this.suggestedPrice(name), count: 1 });
+        }
         save();
+        return true;
     },
 
     /** 撤下一個：數量歸零就移除。回傳是否成功。 */

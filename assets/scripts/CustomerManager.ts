@@ -3,6 +3,7 @@ import { _decorator, Component, Node, UITransform, Sprite, Label, Color, Graphic
 import { ShopStock } from './ShopStock';
 import { Wallet } from './Wallet';
 import { GameArt } from './GameArt';
+import { Upgrades } from './Upgrades';
 const { ccclass, property } = _decorator;
 
 /** 顧客的行為狀態。 */
@@ -50,11 +51,11 @@ export class CustomerManager extends Component {
     }
 
     update(dt: number) {
-        // 生成
+        // 生成（來客速度/人數由「招牌」升級決定）
         this.spawnTimer += dt;
-        if (this.spawnTimer >= this.spawnInterval) {
+        if (this.spawnTimer >= Upgrades.customerInterval()) {
             this.spawnTimer = 0;
-            if (GameArt.ready && ShopStock.listings.length > 0 && this.customers.length < this.maxConcurrent) {
+            if (GameArt.ready && ShopStock.listings.length > 0 && this.customers.length < Upgrades.customerMax()) {
                 this.spawn();
             }
         }

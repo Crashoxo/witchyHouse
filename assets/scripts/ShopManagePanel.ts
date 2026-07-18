@@ -5,14 +5,19 @@ import { Inventory } from './Inventory';
 import { ShopStock } from './ShopStock';
 import { UIState } from './UIState';
 import { Wallet } from './Wallet';
+import { Upgrades, Track } from './Upgrades';
 const { ccclass } = _decorator;
 
 /** 可上架管理的材料清單（固定順序，跟 ShopStock 的建議售價一致）。 */
 const MATERIALS = ['木材', '樹枝', '漿果', '落葉', '藥草', '黑莓', '金蘋果'];
 
+type Mode = 'stock' | 'upgrade';
+
 /**
- * 店內「經營商店」管理面板（modal）：一列一種材料，可從背包上架、撤下、調售價。
- * 顧客上門購買在 Phase 2；這裡先把貨架備好。仿 ShopPanel 的 ensure() 自動生 UI。
+ * 店內「經營商店」管理面板（modal），兩個分頁：
+ *   上架定價 —— 一列一種材料，從背包上架 / 撤下 / 調售價（受貨架上限）。
+ *   升級 —— 花金幣升級招牌（來客）、背包、貨架。
+ * 仿 ShopPanel 的 ensure() 自動生 UI。
  */
 @ccclass('ShopManagePanel')
 export class ShopManagePanel extends Component {
@@ -29,13 +34,16 @@ export class ShopManagePanel extends Component {
     }
 
     private root: Node | null = null;
+    private tabBox: Node | null = null;
     private rowsBox: Node | null = null;
     private goldLabel: Label | null = null;
+    private mode: Mode = 'stock';
 
     private readonly panelW = 720;
-    private readonly headerH = 104;
+    private readonly headerH = 132;
     private readonly rowH = 54;
     private readonly footerH = 40;
+    private readonly bodyRows = MATERIALS.length;   // 面板高度以較多列的上架頁為準
 
     onLoad() {
         ShopManagePanel.instance = this;
@@ -68,7 +76,7 @@ export class ShopManagePanel extends Component {
 
     private build() {
         const layer = this.node.layer;
-        const panelH = this.headerH + MATERIALS.length * this.rowH + this.footerH;
+        const panelH = this.headerH + this.bodyRows * this.rowH + this.footerH;
 
         const root = new Node('Root');
         root.layer = layer;
@@ -99,23 +107,23 @@ export class ShopManagePanel extends Component {
         const topY = panelH / 2;
         const leftX = -this.panelW / 2 + 28;
 
-        this.makeLabel(panel, '經營商店 · 上架定價', 26, new Color(250, 236, 214, 255),
-            topY - 34, this.panelW - 160, Label.HorizontalAlign.LEFT, leftX);
+        this.makeLabel(panel, '經營商店', 26, new Color(250, 236, 214, 255),
+            topY - 34, 200, Label.HorizontalAlign.LEFT, leftX);
         this.goldLabel = this.makeLabel(panel, '', 24, new Color(255, 224, 130, 255),
             topY - 34, 200, Label.HorizontalAlign.RIGHT, this.panelW / 2 - 74);
         this.makeButton(panel, '✕', 40, 40, this.panelW / 2 - 34, topY - 34,
             new Color(120, 60, 70, 255), () => this.close());
 
-        // 欄位標題
-        const hy = topY - 76;
-        this.makeLabel(panel, '材料', 18, new Color(200, 190, 178, 255), hy, 90, Label.HorizontalAlign.LEFT, leftX);
-        this.makeLabel(panel, '背包', 18, new Color(200, 190, 178, 255), hy, 60, Label.HorizontalAlign.CENTER, -210, true);
-        this.makeLabel(panel, '貨架', 18, new Color(200, 190, 178, 255), hy, 60, Label.HorizontalAlign.CENTER, -120, true);
-        this.makeLabel(panel, '售價', 18, new Color(200, 190, 178, 255), hy, 90, Label.HorizontalAlign.CENTER, 20, true);
-        this.makeLabel(panel, '操作', 18, new Color(200, 190, 178, 255), hy, 170, Label.HorizontalAlign.CENTER, 210, true);
+        // 分頁按鈕列
+        const tabBox = new Node('Tabs');
+        tabBox.layer = layer;
+        panel.addChild(tabBox);
+        tabBox.addComponent(UITransform);
+        tabBox.setPosition(0, topY - 82, 0);
+        this.tabBox = tabBox;
 
-        this.makeLabel(panel, 'Esc 關閉 · 上架的貨等顧客上門購買', 15, new Color(190, 180, 170, 255),
-            -panelH / 2 + 18, this.panelW - 60, Label.HorizontalAlign.CENTER, 0, true);
+        this.makeLabel(panel, 'Esc 關閉', 15, new Color(190, 180, 170, 255),
+            -panelH / 2 + 18, 200, Label.HorizontalAlign.CENTER, 0, true);
 
         const rowsBox = new Node('Rows');
         rowsBox.layer = layer;
@@ -125,16 +133,46 @@ export class ShopManagePanel extends Component {
         this.rowsBox = rowsBox;
     }
 
+    private setMode(m: Mode) { this.mode = m; this.refresh(); }
+
     private refresh() {
         if (this.goldLabel) this.goldLabel.string = `金幣 ${Wallet.gold}`;
+        this.buildTabs();
         const box = this.rowsBox;
         if (!box) return;
         box.removeAllChildren();
-        MATERIALS.forEach((name, i) => this.buildRow(box, name, -i * this.rowH - this.rowH / 2 + 4));
+        if (this.mode === 'stock') this.renderStock(box);
+        else this.renderUpgrades(box);
     }
 
-    private buildRow(parent: Node, name: string, y: number) {
-        const layer = this.node.layer;
+    private buildTabs() {
+        const box = this.tabBox;
+        if (!box) return;
+        box.removeAllChildren();
+        const active = new Color(120, 92, 60, 255);
+        const idle = new Color(66, 54, 48, 255);
+        this.makeButton(box, '上架定價', 150, 40, -84, 0,
+            this.mode === 'stock' ? active : idle, () => this.setMode('stock'));
+        this.makeButton(box, '升級', 150, 40, 84, 0,
+            this.mode === 'upgrade' ? active : idle, () => this.setMode('upgrade'));
+    }
+
+    // ---- 上架分頁 ----
+
+    private renderStock(box: Node) {
+        const leftX = -this.panelW / 2 + 28;
+        const hy = -6;
+        this.makeLabel(box, '材料', 18, new Color(200, 190, 178, 255), hy, 90, Label.HorizontalAlign.LEFT, leftX);
+        this.makeLabel(box, '背包', 18, new Color(200, 190, 178, 255), hy, 60, Label.HorizontalAlign.CENTER, -210, true);
+        this.makeLabel(box, '貨架', 18, new Color(200, 190, 178, 255), hy, 60, Label.HorizontalAlign.CENTER, -120, true);
+        this.makeLabel(box, '售價', 18, new Color(200, 190, 178, 255), hy, 90, Label.HorizontalAlign.CENTER, 20, true);
+        this.makeLabel(box, `操作（貨架 ${ShopStock.listings.length}/${Upgrades.shelfCap()} 種）`, 16,
+            new Color(200, 190, 178, 255), hy, 240, Label.HorizontalAlign.CENTER, 210, true);
+
+        MATERIALS.forEach((name, i) => this.stockRow(box, name, -40 - i * this.rowH));
+    }
+
+    private stockRow(parent: Node, name: string, y: number) {
         const leftX = -this.panelW / 2 + 28;
         const inv = Inventory.instance;
         const bag = inv?.countOf(name) ?? 0;
@@ -143,7 +181,7 @@ export class ShopManagePanel extends Component {
         const price = listing?.price ?? ShopStock.suggestedPrice(name);
 
         const row = new Node('row-' + name);
-        row.layer = layer;
+        row.layer = this.node.layer;
         parent.addChild(row);
         row.addComponent(UITransform);
         row.setPosition(0, y, 0);
@@ -152,7 +190,6 @@ export class ShopManagePanel extends Component {
         this.makeLabel(row, `${bag}`, 20, new Color(220, 230, 210, 255), 0, 60, Label.HorizontalAlign.CENTER, -210, true);
         this.makeLabel(row, `${shelf}`, 20, new Color(255, 224, 160, 255), 0, 60, Label.HorizontalAlign.CENTER, -120, true);
 
-        // 售價：[－] price [＋]
         this.makeButton(row, '－', 30, 34, -32, 0, new Color(80, 66, 60, 255), () => {
             ShopStock.setPrice(name, price - 1); this.refresh();
         });
@@ -161,10 +198,10 @@ export class ShopManagePanel extends Component {
             ShopStock.setPrice(name, price + 1); this.refresh();
         });
 
-        // 操作：[上架] [撤下]
+        const canList = bag > 0 && ShopStock.canAdd(name);
         this.makeButton(row, '上架', 78, 36, 168, 0,
-            bag > 0 ? new Color(78, 118, 92, 255) : new Color(70, 66, 62, 255), () => {
-                if (inv?.remove(name, 1)) { ShopStock.add(name); this.refresh(); }
+            canList ? new Color(78, 118, 92, 255) : new Color(70, 66, 62, 255), () => {
+                if (canList && inv?.remove(name, 1)) { ShopStock.add(name); this.refresh(); }
             });
         this.makeButton(row, '撤下', 78, 36, 256, 0,
             shelf > 0 ? new Color(120, 90, 70, 255) : new Color(70, 66, 62, 255), () => {
@@ -172,9 +209,53 @@ export class ShopManagePanel extends Component {
             });
     }
 
+    // ---- 升級分頁 ----
+
+    private renderUpgrades(box: Node) {
+        const leftX = -this.panelW / 2 + 28;
+        Upgrades.tracks().forEach((t, i) => this.upgradeRow(box, t, leftX, -30 - i * 76));
+    }
+
+    private upgradeRow(parent: Node, t: Track, leftX: number, y: number) {
+        const def = Upgrades.def(t);
+        const isMax = Upgrades.isMax(t);
+        const cost = Upgrades.cost(t);
+        const afford = cost !== null && Wallet.gold >= cost;
+
+        const row = new Node('up-' + t);
+        row.layer = this.node.layer;
+        parent.addChild(row);
+        row.addComponent(UITransform);
+        row.setPosition(0, y, 0);
+
+        this.makeLabel(row, def.name, 24, new Color(250, 238, 218, 255), 12, 120, Label.HorizontalAlign.LEFT, leftX);
+        this.makeLabel(row, def.desc, 15, new Color(196, 186, 174, 255), -14, 300, Label.HorizontalAlign.LEFT, leftX);
+
+        const effTxt = isMax ? `已滿級（${Upgrades.effectNow(t)}）`
+                             : `${Upgrades.effectNow(t)}  →  ${Upgrades.effectNext(t)}`;
+        this.makeLabel(row, effTxt, 17, new Color(255, 224, 160, 255), 12, 300, Label.HorizontalAlign.LEFT, leftX + 150);
+
+        // Lv 顯示
+        this.makeLabel(row, `Lv ${Upgrades.level(t)}/${Upgrades.maxLevel(t)}`, 15,
+            new Color(190, 200, 180, 255), -14, 160, Label.HorizontalAlign.LEFT, leftX + 150);
+
+        if (isMax) {
+            this.makeLabel(row, 'MAX', 20, new Color(180, 200, 160, 255), 0, 150, Label.HorizontalAlign.CENTER, this.panelW / 2 - 110, true);
+        } else {
+            this.makeLabel(row, `${cost} 金`, 18, afford ? new Color(255, 224, 130, 255) : new Color(150, 130, 110, 255),
+                20, 110, Label.HorizontalAlign.RIGHT, this.panelW / 2 - 132);
+            this.makeButton(row, '升級', 92, 40, this.panelW / 2 - 70, 0,
+                afford ? new Color(78, 118, 92, 255) : new Color(70, 66, 62, 255), () => {
+                    if (Upgrades.buy(t)) {
+                        if (t === 'bag') Inventory.instance?.applyCapacity();
+                        this.refresh();
+                    }
+                });
+        }
+    }
+
     // ---- 小工具 ----
 
-    /** centered 為 true 時 anchorX 當作「中心 x」，否則當作左緣/右緣 x。 */
     private makeLabel(parent: Node, text: string, size: number, color: Color,
                       y: number, width: number, align: number, anchorX: number,
                       centered = false): Label {

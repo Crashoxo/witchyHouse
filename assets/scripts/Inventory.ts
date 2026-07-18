@@ -1,6 +1,7 @@
 import { _decorator, Component, Node, UITransform, Widget, Sprite, SpriteFrame,
          Label, Color, Graphics, CCString, find, sys } from 'cc';
 import { GameArt } from './GameArt';
+import { Upgrades } from './Upgrades';
 const { ccclass, property } = _decorator;
 
 /**
@@ -77,12 +78,18 @@ export class Inventory extends Component {
 
     private cells: Cell[] = [];
 
+    private curCap = 0;   // 目前畫出來的格數（偵測背包升級後重建）
+
     onLoad() {
         Inventory.instance = this;
-        this.build();
-        this.renderAll();          // 把 module 層既有的資料畫出來（跨場景帶過來的東西）
+        this.build();              // 建外框 + 依目前容量排格子（內含 renderAll）
         GameArt.preload();
         GameArt.onReady(() => this.renderAll());   // 圖示載好後重畫，換成真圖示
+    }
+
+    /** 背包升級後叫這個：格數變了就重排格子。 */
+    applyCapacity() {
+        if (Upgrades.bagSlots() !== this.curCap) this.layoutSlots();
     }
 
     onDestroy() {
@@ -97,7 +104,7 @@ export class Inventory extends Component {
         if (s) {
             s.count += qty;
         } else {
-            if (stock.length >= this.slotCount) { console.warn(`[Inventory] 背包滿了，${name} 放不下`); return false; }
+            if (stock.length >= Upgrades.bagSlots()) { console.warn(`[Inventory] 背包滿了，${name} 放不下`); return false; }
             stock.push({ name, count: qty });
         }
         saveStock();
@@ -124,25 +131,35 @@ export class Inventory extends Component {
     // ---- 建 UI ----
 
     private build() {
-        const totalW = this.slotCount * this.slotSize + (this.slotCount - 1) * this.gap;
-
-        const ut = this.getComponent(UITransform) ?? this.addComponent(UITransform)!;
-        ut.setAnchorPoint(0.5, 0.5);
-        ut.setContentSize(totalW, this.slotSize);
-
-        // 靠畫面底部、水平置中
+        // 靠畫面底部、水平置中（只設一次；寬度在 layoutSlots 裡依容量調）
         const widget = this.getComponent(Widget) ?? this.addComponent(Widget)!;
         widget.isAlignBottom = true;
         widget.isAlignHorizontalCenter = true;
         widget.bottom = this.bottomMargin;
         widget.horizontalCenter = 0;
         widget.alignMode = Widget.AlignMode.ON_WINDOW_RESIZE;
-        widget.updateAlignment();
+
+        this.layoutSlots();
+    }
+
+    /** 依目前背包容量（Upgrades.bagSlots）重排格子。 */
+    private layoutSlots() {
+        const n = Upgrades.bagSlots();
+        this.curCap = n;
+        this.node.removeAllChildren();
+        this.cells = [];
+
+        const totalW = n * this.slotSize + (n - 1) * this.gap;
+        const ut = this.getComponent(UITransform) ?? this.addComponent(UITransform)!;
+        ut.setAnchorPoint(0.5, 0.5);
+        ut.setContentSize(totalW, this.slotSize);
+        this.getComponent(Widget)?.updateAlignment();
 
         const startX = -(totalW - this.slotSize) / 2;   // 第一格中心的 x
-        for (let i = 0; i < this.slotCount; i++) {
+        for (let i = 0; i < n; i++) {
             this.cells.push(this.buildCell(i, startX + i * (this.slotSize + this.gap)));
         }
+        this.renderAll();
     }
 
     private buildCell(index: number, x: number): Cell {
