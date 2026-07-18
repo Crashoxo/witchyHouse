@@ -25,6 +25,7 @@ export class DecorRoom extends Component {
     private canvas: Node | null = null;
     private toggleBtn: Node | null = null;
     private toggleLabel: Label | null = null;
+    private toggleWidget: Widget | null = null;
     private tray: Node | null = null;
     private hintNode: Node | null = null;
     private dragging: Node | null = null;
@@ -93,6 +94,9 @@ export class DecorRoom extends Component {
         this.placedNodes.forEach(e => this.makeDraggable(e));
         this.buildTray();
         this.buildHint();
+        // 把「完成」鈕移到托盤上方、並提到最上層，別被托盤蓋住（不然關不掉）
+        if (this.toggleWidget) { this.toggleWidget.bottom = this.trayH + 16; this.toggleWidget.updateAlignment(); }
+        if (this.toggleBtn && this.canvas) this.toggleBtn.setSiblingIndex(this.canvas.children.length - 1);
     }
 
     private exitEdit() {
@@ -101,6 +105,7 @@ export class DecorRoom extends Component {
         this.placedNodes.forEach(e => this.removeDraggable(e));
         this.syncPlaced();
         if (this.toggleLabel) this.toggleLabel.string = '佈置房間';
+        if (this.toggleWidget) { this.toggleWidget.bottom = 20; this.toggleWidget.updateAlignment(); }
         if (this.tray) { this.tray.destroy(); this.tray = null; }
         if (this.hintNode) { this.hintNode.destroy(); this.hintNode = null; }
         UIState.modalOpen = false;
@@ -172,6 +177,7 @@ export class DecorRoom extends Component {
         w.isAlignRight = true; w.right = 20;
         w.isAlignBottom = true; w.bottom = 20;
         w.updateAlignment();
+        this.toggleWidget = w;
         const g = n.addComponent(Graphics);
         g.lineWidth = 3; g.fillColor = new Color(120, 78, 150, 255);
         g.strokeColor = new Color(230, 210, 245, 235);
