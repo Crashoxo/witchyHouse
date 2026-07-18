@@ -1,6 +1,6 @@
 import { _decorator, Component, Node, UITransform, Widget, Label, Color,
          Graphics, Sprite, SpriteFrame, BlockInputEvents, find, input, Input,
-         EventKeyboard, KeyCode } from 'cc';
+         EventKeyboard, KeyCode, view } from 'cc';
 import { UIState } from './UIState';
 import { GameArt } from './GameArt';
 const { ccclass } = _decorator;
@@ -152,28 +152,27 @@ export class Dialogue extends Component {
     private build() {
         const layer = this.node.layer;
 
-        // 透明背板：撐滿整個畫面，擋世界點擊，點它推進到下一句。
+        // 透明背板：固定大尺寸並置中（同 ShopPanel，父節點 DialogueUI 沒有 UITransform，
+        // 不能用「四邊撐滿」——會塌掉。置中對齊是靠 Canvas 算的，穩）。擋世界點擊、點它推進。
         const root = new Node('Root');
         root.layer = layer;
         this.node.addChild(root);
-        root.addComponent(UITransform);
+        root.addComponent(UITransform).setContentSize(4000, 3000);
         root.addComponent(BlockInputEvents);
         const rw = root.addComponent(Widget);
-        rw.isAlignLeft = rw.isAlignRight = rw.isAlignTop = rw.isAlignBottom = true;
-        rw.left = rw.right = rw.top = rw.bottom = 0;
+        rw.isAlignHorizontalCenter = rw.isAlignVerticalCenter = true;
+        rw.horizontalCenter = rw.verticalCenter = 0;
         rw.updateAlignment();
         root.on(Node.EventType.TOUCH_END, this.advance, this);
         this.root = root;
 
-        // 對話框容器，靠畫面底部置中
+        // 對話框容器：root 置中＝畫面中心，用可見畫面高度把它手動擺到底部中央。
+        const vis = view.getVisibleSize();
         const box = new Node('Box');
         box.layer = layer;
         root.addChild(box);
         box.addComponent(UITransform).setContentSize(this.boxW, this.boxH);
-        const bw = box.addComponent(Widget);
-        bw.isAlignHorizontalCenter = true; bw.horizontalCenter = 0;
-        bw.isAlignBottom = true; bw.bottom = this.bottomGap;
-        bw.updateAlignment();
+        box.setPosition(0, -vis.height / 2 + this.boxH / 2 + this.bottomGap, 0);
 
         // 背景：fallback 米色框（美術沒載到時才顯示）
         const fb = new Node('Fallback');
