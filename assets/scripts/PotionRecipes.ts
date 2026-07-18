@@ -36,13 +36,24 @@ export const PotionRecipes = {
         return Object.keys(r.inputs).every(mat => inv.countOf(mat) >= r.inputs[mat]);
     },
 
-    /** 製作：扣掉材料、把成品加進背包。材料不足回 false。 */
-    craft(r: Recipe): boolean {
+    /** 只扣材料（開始熬煮時呼叫）。材料不足回 false、不扣。 */
+    consume(r: Recipe): boolean {
         const inv = Inventory.ensure();
         if (!inv) return false;
         if (!Object.keys(r.inputs).every(mat => inv.countOf(mat) >= r.inputs[mat])) return false;
         Object.keys(r.inputs).forEach(mat => inv.remove(mat, r.inputs[mat]));
-        inv.add(r.name);
+        return true;
+    },
+
+    /** 只把成品加進背包（熬煮動畫結束時呼叫）。 */
+    produce(r: Recipe): void {
+        Inventory.ensure()?.add(r.name);
+    },
+
+    /** 一次做完：扣料＋產出（consume 成功才 produce）。 */
+    craft(r: Recipe): boolean {
+        if (!this.consume(r)) return false;
+        this.produce(r);
         return true;
     },
 };
