@@ -91,6 +91,12 @@ export const DecorCatalog = {
     /** 目前擺出來的清單（複製，外部別直接改）。 */
     placedList(): Placed[] { return placed.map(p => ({ ...p })); },
 
+    /** 整批覆寫已擺清單並存檔（佈置模式結束時，用場上實際的裝飾節點寫回）。 */
+    setPlaced(list: Placed[]): void {
+        placed = list.map(p => ({ id: p.id, x: p.x, y: p.y }));
+        savePlaced();
+    },
+
     /** 擺一個到房間（需托盤還有存貨）；回傳新實例的 index，失敗回 -1。 */
     place(id: string, x: number, y: number): number {
         if (this.unplacedCount(id) <= 0) return -1;
