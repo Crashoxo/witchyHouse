@@ -27,10 +27,17 @@ const PORTRAIT_FILES = ['gnome', 'witch', 'elf', 'forestboy',
                         'badger', 'fox', 'hedgehog', 'rabbit',
                         'bear', 'squirrel', 'wolf', 'mouse'];
 
+/** 裝飾品圖檔名（resources/decor 底下）。 */
+const DECOR_FILES = ['succulent', 'daisypot', 'violetpot', 'birdcage_small', 'bonsai',
+                     'ivy_hanging', 'roses_vase', 'lily_vase', 'sunflower_vase', 'autumn_vase',
+                     'potted_fern', 'window_box', 'birdcage_large', 'blue_urn',
+                     'wildflower_basket', 'flower_case'];
+
 const items = new Map<string, SpriteFrame>();       // 材料名 → 圖
 const customers = new Map<string, SpriteFrame>();   // 動物名 → 圖
 const emotes = new Map<string, SpriteFrame[]>();    // 表情名 → 動畫幀陣列
 const portraits = new Map<string, SpriteFrame>();   // 頭像名 → 圖
+const decor = new Map<string, SpriteFrame>();       // 裝飾品 id → 圖
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 
 let loaded = false;
@@ -51,6 +58,7 @@ export const GameArt = {
         for (const name of Object.keys(ITEM_FILES)) singleJobs.push([items, name, `items/${ITEM_FILES[name]}`]);
         for (const file of CUSTOMER_FILES) singleJobs.push([customers, file, `customers/${file}`]);
         for (const file of PORTRAIT_FILES) singleJobs.push([portraits, file, `portraits/${file}`]);
+        for (const file of DECOR_FILES) singleJobs.push([decor, file, `decor/${file}`]);
         const emoteNames = Object.keys(EMOTE_INFO);
 
         const total = singleJobs.length + emoteNames.length + 1;   // +1 = 對話框外框
@@ -120,4 +128,7 @@ export const GameArt = {
 
     /** 對話框外框（未載入回 null）。 */
     dialogueBox(): SpriteFrame | null { return dialogueBoxFrame; },
+
+    /** 裝飾品圖（未載入回 null）。 */
+    decor(id: string): SpriteFrame | null { return decor.get(id) ?? null; },
 };
