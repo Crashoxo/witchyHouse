@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "385077e6-c67e-4380-86f9-ba74e23f3d22",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "385077e6-c67e-4380-86f9-ba74e23f3d22@f9941",
+      "displayName": "blackberry",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 0,
+        "offsetY": 0,
+        "trimX": 6,
+        "trimY": 6,
+        "width": 223,
+        "height": 207,
+        "rawWidth": 235,
+        "rawHeight": 219,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -111.5,
+            -103.5,
+            0,
+            111.5,
+            -103.5,
+            0,
+            -111.5,
+            103.5,
+            0,
+            111.5,
+            103.5,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            6,
+            213,
+            229,
+            213,
+            6,
+            6,
+            229,
+            6
+          ],
+          "nuv": [
+            0.02553191489361702,
+            0.0273972602739726,
+            0.9744680851063829,
+            0.0273972602739726,
+            0.02553191489361702,
+            0.9726027397260274,
+            0.9744680851063829,
+            0.9726027397260274
+          ],
+          "minPos": [
+            -111.5,
+            -103.5,
+            0
+          ],
+          "maxPos": [
+            111.5,
+            103.5,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "385077e6-c67e-4380-86f9-ba74e23f3d22@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "385077e6-c67e-4380-86f9-ba74e23f3d22@6c48a",
+      "displayName": "blackberry",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "minfilter": "nearest",
+        "magfilter": "nearest",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "385077e6-c67e-4380-86f9-ba74e23f3d22",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "hasAlpha": true,
+    "fixAlphaTransparencyArtifacts": false,
+    "redirect": "385077e6-c67e-4380-86f9-ba74e23f3d22@6c48a"
+  }
+}

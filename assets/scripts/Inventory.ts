@@ -1,5 +1,6 @@
 import { _decorator, Component, Node, UITransform, Widget, Sprite, SpriteFrame,
          Label, Color, Graphics, CCString, find, sys } from 'cc';
+import { GameArt } from './GameArt';
 const { ccclass, property } = _decorator;
 
 /**
@@ -80,6 +81,8 @@ export class Inventory extends Component {
         Inventory.instance = this;
         this.build();
         this.renderAll();          // 把 module 層既有的資料畫出來（跨場景帶過來的東西）
+        GameArt.preload();
+        GameArt.onReady(() => this.renderAll());   // 圖示載好後重畫，換成真圖示
     }
 
     onDestroy() {
@@ -219,6 +222,10 @@ export class Inventory extends Component {
         if (s && frame) {
             cell.icon.spriteFrame = frame;
             cell.icon.node.active = true;
+            // 保持原圖比例塞進方框，不變形
+            const box = this.slotSize * 0.72;
+            const k = box / Math.max(frame.rect.width, frame.rect.height);
+            cell.icon.getComponent(UITransform)!.setContentSize(frame.rect.width * k, frame.rect.height * k);
             cell.nameLabel.string = '';
         } else {
             cell.icon.node.active = false;
@@ -228,8 +235,9 @@ export class Inventory extends Component {
     }
 
     private iconFor(name: string): SpriteFrame | null {
-        const i = this.iconNames.indexOf(name);
-        return (i >= 0 && i < this.icons.length) ? this.icons[i] : null;
+        const i = this.iconNames.indexOf(name);                       // inspector 指定的優先（覆寫）
+        if (i >= 0 && i < this.icons.length) return this.icons[i];
+        return GameArt.item(name);                                    // 否則用 resources 載入的預設圖示
     }
 
     /** 用線段＋圓弧畫一個圓角方框（Graphics 沒有現成的跨版本 roundRect）。 */
