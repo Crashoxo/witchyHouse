@@ -6,10 +6,15 @@ import { ShopStock } from './ShopStock';
 import { UIState } from './UIState';
 import { Wallet } from './Wallet';
 import { Upgrades, Track } from './Upgrades';
+import { PotionRecipes } from './PotionRecipes';
 const { ccclass } = _decorator;
 
-/** 可上架管理的材料清單（固定順序，跟 ShopStock 的建議售價一致）。 */
-const MATERIALS = ['木材', '樹枝', '漿果', '落葉', '藥草', '黑莓', '金蘋果'];
+/** 材料的固定顯示順序。實際上架清單是「背包有的或已上架的」動態產生（含做好的藥水）。 */
+const MATERIALS = ['木材', '樹枝', '漿果', '落葉', '藥草', '黑莓', '金蘋果', '藍莓'];
+/** 藥水成品的顯示順序（接在材料後面）。 */
+const POTIONS = PotionRecipes.all.map(r => r.name);
+/** 上架頁最多顯示幾列（面板高度以此為準，超過的截掉——一般不會有這麼多種）。 */
+const MAX_STOCK_ROWS = 9;
 
 type Mode = 'stock' | 'upgrade';
 
@@ -43,7 +48,7 @@ export class ShopManagePanel extends Component {
     private readonly headerH = 132;
     private readonly rowH = 54;
     private readonly footerH = 40;
-    private readonly bodyRows = MATERIALS.length;   // 面板高度以較多列的上架頁為準
+    private readonly bodyRows = MAX_STOCK_ROWS;   // 面板高度以上架頁最多列數為準
 
     onLoad() {
         ShopManagePanel.instance = this;
@@ -169,7 +174,21 @@ export class ShopManagePanel extends Component {
         this.makeLabel(box, `操作（貨架 ${ShopStock.listings.length}/${Upgrades.shelfCap()} 種）`, 16,
             new Color(200, 190, 178, 255), hy, 240, Label.HorizontalAlign.CENTER, 210, true);
 
-        MATERIALS.forEach((name, i) => this.stockRow(box, name, -40 - i * this.rowH));
+        const items = this.stockItems();
+        if (items.length === 0) {
+            this.makeLabel(box, '背包裡沒有可上架的東西——去採集或到藥水室調配吧', 20,
+                new Color(210, 200, 190, 255), -70, this.panelW - 120, Label.HorizontalAlign.CENTER, 0);
+            return;
+        }
+        items.forEach((name, i) => this.stockRow(box, name, -40 - i * this.rowH));
+    }
+
+    /** 目前可管理的品項：材料在前、藥水在後，只列「背包有的或已上架的」。 */
+    private stockItems(): string[] {
+        const inv = Inventory.instance;
+        const relevant = (name: string) =>
+            (inv?.countOf(name) ?? 0) > 0 || ShopStock.listings.some(l => l.name === name);
+        return [...MATERIALS, ...POTIONS].filter(relevant).slice(0, MAX_STOCK_ROWS);
     }
 
     private stockRow(parent: Node, name: string, y: number) {
