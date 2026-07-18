@@ -57,14 +57,15 @@ export class Dialogue extends Component {
     private nameLabel: Label | null = null;
     private textLabel: Label | null = null;
 
-    // 對話框外框美術原圖 584x234；用同比例放大，米色內裡的內縮比例也是量出來的。
-    private readonly boxW = 880;
-    private readonly boxH = Math.round(880 * 234 / 584);   // ≈ 353
+    // 對話框外框美術原圖 584x234（比例 2.49）；這裡刻意拉寬壓扁成 980x268（比例 3.66）
+    // 讓對話框更扁。米色內裡的內縮比例是從原圖量出來的（縮放後仍成立）。
+    private readonly boxW = 980;
+    private readonly boxH = 268;
     private readonly insetL = 0.070;
     private readonly insetR = 0.067;
     private readonly insetT = 0.175;
     private readonly insetB = 0.137;
-    private readonly bottomGap = 28;
+    private readonly bottomGap = 10;
 
     onLoad() {
         Dialogue.instance = this;
