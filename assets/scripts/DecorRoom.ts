@@ -232,6 +232,21 @@ export class DecorRoom extends Component {
         g.fillColor = new Color(32, 26, 44, 235);
         g.rect(-2000, -this.trayH / 2, 4000, this.trayH); g.fill();
         this.tray = tray;
+
+        // 常駐提示：托盤＝收回區（不叫 'slot'，refreshTray 不會清掉它）
+        const tip = new Node('trayhint');
+        tip.layer = tray.layer;
+        tray.addChild(tip);
+        tip.addComponent(UITransform).setContentSize(150, this.trayH - 20);
+        const tw = tip.addComponent(Widget);
+        tw.isAlignLeft = true; tw.left = 14; tw.isAlignVerticalCenter = true; tw.verticalCenter = 0;
+        tw.updateAlignment();
+        const tlb = tip.addComponent(Label);
+        tlb.string = '把擺出來的裝飾\n拖回這裡＝收回';
+        tlb.fontSize = 16; tlb.lineHeight = 22; tlb.color = new Color(200, 190, 214, 255);
+        tlb.horizontalAlign = Label.HorizontalAlign.LEFT;
+        tlb.verticalAlign = Label.VerticalAlign.CENTER;
+
         this.refreshTray();
     }
 
