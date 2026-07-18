@@ -4,6 +4,7 @@ import { SpellProjectile } from './SpellProjectile';
 import { UIState } from './UIState';
 import { Inventory } from './Inventory';
 import { Hud } from './Hud';
+import { SceneFade } from './SceneFade';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -121,7 +122,7 @@ export class PlayerController extends Component {
         // 只有設定了 nextMapScene、而且撞的是指定那一側時，才切換到下一張地圖。
         if (this.switching || !this.nextMapScene || side !== this.nextMapEdge) return;
         this.switching = true;
-        director.loadScene(this.nextMapScene);
+        SceneFade.go(this.nextMapScene);   // 淡出→切場景→淡入
     }
 
     private cast() {

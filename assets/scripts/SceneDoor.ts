@@ -1,6 +1,7 @@
-import { _decorator, Component, Node, UITransform, Color, Graphics, director,
+import { _decorator, Component, Node, UITransform, Color, Graphics,
          input, Input, EventKeyboard, KeyCode, Vec3, Label } from 'cc';
 import { UIState } from './UIState';
+import { SceneFade } from './SceneFade';
 const { ccclass, property } = _decorator;
 
 /**
@@ -34,7 +35,7 @@ export class SceneDoor extends Component {
         if (e.keyCode !== KeyCode.KEY_E) return;
         if (!this.inRange || UIState.modalOpen || this.switching || !this.targetScene) return;
         this.switching = true;
-        director.loadScene(this.targetScene);
+        SceneFade.go(this.targetScene);   // 淡出→切場景→淡入
     }
 
     update() {
