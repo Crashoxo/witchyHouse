@@ -52,6 +52,7 @@ const decor = new Map<string, SpriteFrame>();       // 裝飾品 id → 圖
 const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 let brewRoomFrame: SpriteFrame | null = null;       // 藥水室背景
+let questScrollFrame: SpriteFrame | null = null;    // 任務簿捲軸底板
 
 let loaded = false;
 let loading = false;
@@ -76,8 +77,8 @@ export const GameArt = {
         for (const name of Object.keys(POTION_ITEMS)) singleJobs.push([items, name, `potions/${POTION_ITEMS[name]}`]);
         const emoteNames = Object.keys(EMOTE_INFO);
 
-        // +1 對話框外框、+1 藥水室背景、+CAULDRON_FRAMES 鍋爐幀
-        const total = singleJobs.length + emoteNames.length + 2 + CAULDRON_FRAMES;
+        // +1 對話框外框、+1 藥水室背景、+1 任務簿捲軸、+CAULDRON_FRAMES 鍋爐幀
+        const total = singleJobs.length + emoteNames.length + 3 + CAULDRON_FRAMES;
         let done = 0;
         const finish = () => {
             if (++done >= total) {
@@ -121,6 +122,12 @@ export const GameArt = {
         resources.load('rooms/brew-room', ImageAsset, (err, img) => {
             if (!err && img) brewRoomFrame = SpriteFrame.createWithImage(img);
             else console.warn('[GameArt] 載入失敗 rooms/brew-room', err);
+            finish();
+        });
+        // 任務簿捲軸底板（單張）
+        resources.load('ui/quest-scroll', ImageAsset, (err, img) => {
+            if (!err && img) questScrollFrame = SpriteFrame.createWithImage(img);
+            else console.warn('[GameArt] 載入失敗 ui/quest-scroll', err);
             finish();
         });
         // 鍋爐熬煮動畫幀（f0..f5，各一張，保持順序）
@@ -169,4 +176,7 @@ export const GameArt = {
 
     /** 藥水室背景（未載入回 null）。 */
     brewRoom(): SpriteFrame | null { return brewRoomFrame; },
+
+    /** 任務簿捲軸底板（未載入回 null）。 */
+    questScroll(): SpriteFrame | null { return questScrollFrame; },
 };

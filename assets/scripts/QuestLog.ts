@@ -1,8 +1,9 @@
-import { _decorator, Component, Node, UITransform, Widget, Label, Color,
+import { _decorator, Component, Node, UITransform, Widget, Label, Color, Sprite,
          Graphics, BlockInputEvents, UIOpacity, find, input, Input,
          EventKeyboard, KeyCode, view } from 'cc';
 import { UIState } from './UIState';
 import { Quests } from './Quests';
+import { GameArt } from './GameArt';
 const { ccclass } = _decorator;
 
 /**
@@ -29,16 +30,22 @@ export class QuestLog extends Component {
     }
 
     private root: Node | null = null;      // 背板（含背景），關閉時隱藏
-    private panel: Node | null = null;      // 面板本體（每次 open 依任務數重建）
+    private panel: Node | null = null;      // 捲軸面板本體（每次 open 依任務數重建）
 
-    private readonly panelW = 660;
-    private readonly headerH = 84;
-    private readonly rowH = 84;
-    private readonly footerH = 40;
-    private readonly rightMargin = 30;   // 面板離畫面右緣的距離（靠右彈出）
+    // 捲軸底板是細長直式（原圖 141×325）；面板等比擺到畫面右側。
+    private readonly scrollAspect = 141 / 325;   // 寬 / 高
+    private readonly rightMargin = 24;           // 離畫面右緣的距離
+    // 羊皮紙可寫字的內裡內縮比例（避開捲邊與藤蔓花邊；目視估）
+    private readonly insetL = 0.13;
+    private readonly insetR = 0.13;
+    private readonly insetT = 0.15;
+    private readonly insetB = 0.14;
 
     onLoad() {
         QuestLog.instance = this;
+        GameArt.preload();
+        // 捲軸美術載好後，若正開著就重畫換上底板
+        GameArt.onReady(() => { if (this.isOpen()) this.rebuild(); });
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     }
     onDestroy() {
@@ -85,89 +92,119 @@ export class QuestLog extends Component {
         this.root = root;
     }
 
-    // ---- 面板本體（每次 open 重建，反映最新進度）----
+    // ---- 捲軸面板（每次 open 重建，反映最新進度）----
 
     private rebuild() {
         if (this.panel) { this.panel.destroy(); this.panel = null; }
         const layer = this.node.layer;
         const ids = Quests.acceptedIds();
-        const rows = Math.max(1, ids.length);
-        const panelH = this.headerH + rows * this.rowH + this.footerH;
+
+        // 面板等比：高度盡量吃滿畫面（留邊），寬度依捲軸比例
+        const vis = view.getVisibleSize();
+        const panelH = Math.min(vis.height - 24, 600);
+        const panelW = panelH * this.scrollAspect;
 
         const panel = new Node('Panel');
         panel.layer = layer;
         this.root!.addChild(panel);
-        panel.addComponent(UITransform).setContentSize(this.panelW, panelH);
-        // root 置中＝畫面中心；用可見畫面寬把面板推到右側（垂直仍置中）
-        const vis = view.getVisibleSize();
-        panel.setPosition(vis.width / 2 - this.panelW / 2 - this.rightMargin, 0, 0);
-        const pg = panel.addComponent(Graphics);
-        pg.lineWidth = 4;
-        pg.fillColor = new Color(38, 30, 52, 245);
-        pg.strokeColor = new Color(210, 190, 230, 235);
-        this.roundRect(pg, -this.panelW / 2, -panelH / 2, this.panelW, panelH, 18);
-        pg.fill(); pg.stroke();
+        panel.addComponent(UITransform).setContentSize(panelW, panelH);
+        // root 置中＝畫面中心；用可見畫面寬把捲軸推到右側（垂直置中）
+        panel.setPosition(vis.width / 2 - panelW / 2 - this.rightMargin, 0, 0);
         this.panel = panel;
 
-        const topY = panelH / 2;
+        // 底板：有捲軸美術就用，否則畫一張米色羊皮紙 fallback
+        const frame = GameArt.questScroll();
+        if (frame) {
+            const sp = panel.addComponent(Sprite);
+            sp.sizeMode = Sprite.SizeMode.CUSTOM;
+            sp.type = Sprite.Type.SIMPLE;
+            sp.trim = false;
+            sp.spriteFrame = frame;
+        } else {
+            const pg = panel.addComponent(Graphics);
+            pg.lineWidth = 4;
+            pg.fillColor = new Color(226, 210, 170, 250);
+            pg.strokeColor = new Color(120, 90, 60, 235);
+            this.roundRect(pg, -panelW / 2, -panelH / 2, panelW, panelH, 16);
+            pg.fill(); pg.stroke();
+        }
 
-        // 標題
-        this.makeLabel(panel, '任務簿', 28, new Color(245, 235, 255, 255),
-            -this.panelW / 2 + 28, topY - 36, this.panelW - 140, Label.HorizontalAlign.LEFT);
-        // 關閉 ✕
-        this.makeButton(panel, '✕', 40, 40, this.panelW / 2 - 34, topY - 34,
-            new Color(120, 60, 70, 255), () => this.close());
-        // 底部提示
-        this.makeCenterLabel(panel, 'Q / Esc 關閉', 16, new Color(180, 174, 190, 255),
-            0, -panelH / 2 + 18);
+        // 羊皮紙可寫字的內裡矩形（panel 本地座標）
+        const iL = -panelW / 2 + this.insetL * panelW;
+        const iR = panelW / 2 - this.insetR * panelW;
+        const iT = panelH / 2 - this.insetT * panelH;
+        const iB = -panelH / 2 + this.insetB * panelH;
+        const iW = iR - iL;
+
+        // 深墨色系（寫在羊皮紙上，不能用原本淺色）
+        const inkTitle = new Color(88, 52, 32, 255);
+        const inkText = new Color(96, 70, 48, 255);
+        const inkSub = new Color(130, 104, 74, 255);
+
+        // 標題（內裡頂端置中）
+        this.makeCenterLabel(panel, '任務簿', 26, inkTitle, (iL + iR) / 2, iT - 18, iW);
+        // 關閉 ✕（內裡右上角）
+        this.makeButton(panel, '✕', 30, 30, iR - 12, iT - 14,
+            new Color(150, 80, 70, 255), () => this.close());
+        // 標題底線
+        const titleLineY = iT - 40;
+        const div = panel.addComponent(Graphics);
+        div.strokeColor = new Color(120, 90, 60, 130);
+        div.lineWidth = 2;
+        div.moveTo(iL + 4, titleLineY); div.lineTo(iR - 4, titleLineY); div.stroke();
+        // 底部提示（內裡底端置中）
+        this.makeCenterLabel(panel, 'Q / Esc 關閉', 14, inkSub, (iL + iR) / 2, iB + 12, iW);
+
+        // 任務條目區：標題底線之下 ~ 底部提示之上
+        const areaTop = titleLineY - 8;
+        const areaBottom = iB + 30;
+        const areaH = areaTop - areaBottom;
 
         if (ids.length === 0) {
-            this.makeCenterLabel(panel, '目前沒有進行中的任務。\n去城鎮找頭頂有「！」的 NPC 聊聊吧！',
-                22, new Color(210, 205, 220, 255), 0, topY - this.headerH - this.rowH / 2);
+            this.makeCenterLabelWrap(panel, '目前沒有\n進行中的任務。\n\n去城鎮找頭頂\n有「！」的\nNPC 聊聊吧！',
+                18, inkText, (iL + iR) / 2, (areaTop + areaBottom) / 2, iW, areaH);
             return;
         }
 
+        const entryH = Math.min(84, areaH / ids.length);
         ids.forEach((id, i) => {
-            const y = topY - this.headerH - i * this.rowH - this.rowH / 2;
-            this.buildRow(panel, id, y);
+            const cy = areaTop - i * entryH - entryH / 2;
+            this.buildEntry(panel, id, iL, iR, cy, entryH);
         });
     }
 
-    private buildRow(parent: Node, id: string, y: number) {
+    /** 一個任務條目（3 行：名稱／目標+進度／狀態+獎勵），排在內裡寬度內。 */
+    private buildEntry(parent: Node, id: string, iL: number, iR: number, cy: number, h: number) {
         const d = Quests.def(id);
         if (!d) return;
         const layer = this.node.layer;
-        const leftX = -this.panelW / 2 + 30;
+        const w = iR - iL;
         const ready = Quests.statusOf(id) === 'ready';
 
-        const row = new Node('row-' + id);
+        const row = new Node('entry-' + id);
         row.layer = layer;
         parent.addChild(row);
         row.addComponent(UITransform);
-        row.setPosition(0, y, 0);
+        row.setPosition(0, cy, 0);
 
-        // 分隔線
+        // 條目間細分隔線（第一條之外）
         const line = row.addComponent(Graphics);
-        line.strokeColor = new Color(255, 255, 255, 28);
+        line.strokeColor = new Color(120, 90, 60, 90);
         line.lineWidth = 1;
-        line.moveTo(leftX, this.rowH / 2 - 2);
-        line.lineTo(this.panelW / 2 - 30, this.rowH / 2 - 2);
-        line.stroke();
+        line.moveTo(iL + 2, h / 2); line.lineTo(iR - 2, h / 2); line.stroke();
 
-        // 任務名（上排左）
-        this.makeLabel(row, d.title, 23, new Color(245, 240, 250, 255),
-            leftX, 20, 320, Label.HorizontalAlign.LEFT);
-        // 狀態標籤（上排右）
-        this.makeRightLabel(row, ready ? `可回報 · 找${d.giver}` : '進行中', 18,
-            ready ? new Color(140, 240, 150, 255) : new Color(170, 165, 185, 255),
-            this.panelW / 2 - 30, 20, 320);
-
-        // 目標 + 進度（下排左）
-        this.makeLabel(row, `${Quests.objectiveText(d)}   ${Quests.progressText(id)}`, 19,
-            new Color(210, 220, 235, 255), leftX, -14, 360, Label.HorizontalAlign.LEFT);
-        // 獎勵（下排右）
-        this.makeRightLabel(row, `獎勵 ${Quests.rewardText(d)}`, 18,
-            new Color(255, 224, 130, 255), this.panelW / 2 - 30, -14, 300);
+        // 名稱（上）
+        this.makeLabel(row, d.title, 19, new Color(80, 48, 30, 255),
+            iL, h / 2 - 20, w, Label.HorizontalAlign.LEFT);
+        // 目標 + 進度（中）
+        this.makeLabel(row, `${Quests.objectiveText(d)}  ${Quests.progressText(id)}`, 15,
+            new Color(104, 78, 54, 255), iL, h / 2 - 44, w, Label.HorizontalAlign.LEFT);
+        // 狀態（下左）＋獎勵（下右）——用顏色區分（綠＝可回報、灰＝進行中）
+        this.makeLabel(row, ready ? '可回報！' : '進行中', 14,
+            ready ? new Color(60, 130, 70, 255) : new Color(140, 110, 80, 255),
+            iL, h / 2 - 66, w * 0.5, Label.HorizontalAlign.LEFT);
+        this.makeRightLabel(row, `賞 ${Quests.rewardText(d)}`, 14,
+            new Color(150, 96, 40, 255), iR, h / 2 - 66, w * 0.62);
     }
 
     // ---- 小工具（比照 ShopPanel）----
@@ -205,16 +242,33 @@ export class QuestLog extends Component {
     }
 
     private makeCenterLabel(parent: Node, text: string, size: number, color: Color,
-                            x: number, y: number): Label {
+                            x: number, y: number, width: number): Label {
         const n = new Node('label');
         n.layer = this.node.layer;
         parent.addChild(n);
         const ut = n.addComponent(UITransform);
-        ut.setContentSize(this.panelW - 80, (size + 8) * 2);
+        ut.setContentSize(width, size + 8);
         ut.setAnchorPoint(0.5, 0.5);
         n.setPosition(x, y, 0);
         const lb = n.addComponent(Label);
         lb.string = text; lb.fontSize = size; lb.lineHeight = size + 6; lb.color = color;
+        lb.horizontalAlign = Label.HorizontalAlign.CENTER; lb.verticalAlign = Label.VerticalAlign.CENTER;
+        lb.overflow = Label.Overflow.SHRINK;
+        return lb;
+    }
+
+    /** 多行置中（給空清單提示用），指定可用寬高。 */
+    private makeCenterLabelWrap(parent: Node, text: string, size: number, color: Color,
+                                x: number, y: number, width: number, height: number): Label {
+        const n = new Node('label');
+        n.layer = this.node.layer;
+        parent.addChild(n);
+        const ut = n.addComponent(UITransform);
+        ut.setContentSize(width, height);
+        ut.setAnchorPoint(0.5, 0.5);
+        n.setPosition(x, y, 0);
+        const lb = n.addComponent(Label);
+        lb.string = text; lb.fontSize = size; lb.lineHeight = size + 8; lb.color = color;
         lb.horizontalAlign = Label.HorizontalAlign.CENTER; lb.verticalAlign = Label.VerticalAlign.CENTER;
         lb.overflow = Label.Overflow.SHRINK; lb.enableWrapText = true;
         return lb;
