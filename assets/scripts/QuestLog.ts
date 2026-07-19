@@ -31,6 +31,8 @@ export class QuestLog extends Component {
 
     private root: Node | null = null;      // 背板（含背景），關閉時隱藏
     private panel: Node | null = null;      // 捲軸面板本體（每次 open 依任務數重建）
+    private page = 0;                        // 目前頁（任務多於一頁時分頁）
+    private readonly perPage = 3;            // 每頁顯示幾個任務
 
     // 捲軸底板是細長直式（原圖 141×325）；面板等比擺到畫面右側。
     private readonly scrollAspect = 141 / 325;   // 寬 / 高
@@ -60,6 +62,7 @@ export class QuestLog extends Component {
 
     open() {
         if (!this.root) this.buildRoot();
+        this.page = 0;                // 每次打開回第一頁
         this.rebuild();               // 依目前任務重建面板
         this.root!.active = true;
         UIState.modalOpen = true;
@@ -155,9 +158,15 @@ export class QuestLog extends Component {
         // 底部提示（內裡底端置中）
         this.makeCenterLabel(panel, 'Q / Esc 關閉', 14, inkSub, (iL + iR) / 2, iB + 12, iW);
 
-        // 任務條目區：標題底線之下 ~ 底部提示之上
+        // 分頁：每頁 perPage 個任務；超過一頁時底部留出翻頁列的高度
+        const totalPages = Math.max(1, Math.ceil(ids.length / this.perPage));
+        this.page = Math.max(0, Math.min(this.page, totalPages - 1));
+        const multi = totalPages > 1;
+        const navH = multi ? 34 : 0;
+
+        // 任務條目區：標題底線之下 ~（翻頁列＋底部提示）之上
         const areaTop = titleLineY - 8;
-        const areaBottom = iB + 30;
+        const areaBottom = iB + 30 + navH;
         const areaH = areaTop - areaBottom;
 
         if (ids.length === 0) {
@@ -166,11 +175,26 @@ export class QuestLog extends Component {
             return;
         }
 
-        const entryH = Math.min(84, areaH / ids.length);
-        ids.forEach((id, i) => {
+        // 固定用 perPage 算條目高度，讓每一頁的排版一致
+        const entryH = Math.min(88, areaH / this.perPage);
+        const pageIds = ids.slice(this.page * this.perPage, this.page * this.perPage + this.perPage);
+        pageIds.forEach((id, i) => {
             const cy = areaTop - i * entryH - entryH / 2;
             this.buildEntry(panel, id, iL, iR, cy, entryH);
         });
+
+        // 翻頁列（上一頁 ‹ 頁碼 › 下一頁）
+        if (multi) {
+            const navY = iB + 30 + navH / 2;
+            if (this.page > 0)
+                this.makeButton(panel, '<', 30, 26, iL + 18, navY,
+                    new Color(120, 90, 60, 255), () => { this.page--; this.rebuild(); });
+            this.makeCenterLabel(panel, `${this.page + 1} / ${totalPages}`, 15,
+                new Color(96, 70, 48, 255), (iL + iR) / 2, navY, iW * 0.5);
+            if (this.page < totalPages - 1)
+                this.makeButton(panel, '>', 30, 26, iR - 18, navY,
+                    new Color(120, 90, 60, 255), () => { this.page++; this.rebuild(); });
+        }
     }
 
     /** 一個任務條目（3 行：名稱／目標+進度／狀態+獎勵），排在內裡寬度內。 */
