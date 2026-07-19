@@ -2,6 +2,7 @@ import { _decorator, Component, Node, Sprite, Color, input, Input,
          EventKeyboard, KeyCode, Vec3 } from 'cc';
 import { Inventory } from './Inventory';
 import { UIState } from './UIState';
+import { Quests } from './Quests';
 const { ccclass, property } = _decorator;
 
 /**
@@ -57,10 +58,12 @@ export class GatherTree extends Component {
         const hi = Math.max(this.minYield, this.maxYield);
         const qty = lo + Math.floor(Math.random() * (hi - lo + 1));
         inv?.add(this.itemName, qty);
+        Quests.record('gather', this.itemName, qty);   // 累積「採集」任務進度
         console.log(`採集到 ${this.itemName} x${qty}`);
         // 機率額外掉稀有物
         if (this.rareItem && Math.random() < this.rareChance) {
             inv?.add(this.rareItem, 1);
+            Quests.record('gather', this.rareItem, 1);
             console.log(`✨ 額外採到 ${this.rareItem} x1`);
         }
         this.ready = false;

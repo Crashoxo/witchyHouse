@@ -4,6 +4,7 @@ import { GameArt } from './GameArt';
 import { UIState } from './UIState';
 import { BrewPanel } from './BrewPanel';
 import { PotionRecipes, Recipe } from './PotionRecipes';
+import { Quests } from './Quests';
 const { ccclass, property } = _decorator;
 
 /**
@@ -79,7 +80,7 @@ export class BrewCauldron extends Component {
             if (this.timer >= this.brewDur) {
                 this.brewing = false;
                 const r = this.pending; this.pending = null;
-                if (r) { PotionRecipes.produce(r); this.popup(`＋${r.name}`); }
+                if (r) { PotionRecipes.produce(r); Quests.record('brew', r.name, 1); this.popup(`＋${r.name}`); }
                 this.showFrame(0);
             }
         }

@@ -4,6 +4,7 @@ import { ShopStock } from './ShopStock';
 import { Wallet } from './Wallet';
 import { GameArt } from './GameArt';
 import { Upgrades } from './Upgrades';
+import { Quests } from './Quests';
 const { ccclass, property } = _decorator;
 
 /** 顧客的行為狀態。 */
@@ -124,6 +125,7 @@ export class CustomerManager extends Component {
                     const price = ShopStock.sellOne(c.want);
                     if (price > 0) {
                         Wallet.add(price);
+                        Quests.record('sell', c.want, 1);   // 累積「賣出」任務進度
                         this.showEmote(c, price);   // 成交冒隨機表情泡泡
                     } else {
                         this.showBubble(c, null, '沒貨…下次吧', new Color(150, 120, 120, 235));

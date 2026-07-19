@@ -1,7 +1,8 @@
 import { _decorator, Component, Node, UITransform, Color, Graphics, CCString,
          input, Input, EventKeyboard, KeyCode, Vec3, Label } from 'cc';
-import { Dialogue } from './Dialogue';
+import { Dialogue, DialogueInput } from './Dialogue';
 import { UIState } from './UIState';
+import { Quests } from './Quests';
 const { ccclass, property } = _decorator;
 
 /**
@@ -31,11 +32,14 @@ export class TalkNpc extends Component {
 
     private player: Node | null = null;
     private hint: Node | null = null;   // 「按 E 交談」浮動提示
+    private marker: Node | null = null; // 頭頂任務標記（！可接／可回報）
+    private markerLabel: Label | null = null;
     private inRange = false;
 
     onLoad() {
         this.player = this.node.parent?.getChildByName('Player') ?? null;
         this.buildHint();
+        this.buildMarker();
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     }
     onDestroy() {
@@ -45,8 +49,58 @@ export class TalkNpc extends Component {
     private onKeyDown(e: EventKeyboard) {
         if (e.keyCode !== KeyCode.KEY_E) return;
         if (!this.inRange || UIState.modalOpen) return;   // 已開著別重複觸發
+        // npcName 對得上任務 giver、而且此刻有任務可談 → 走任務對話；否則一般閒聊
+        const qid = Quests.currentFor(this.npcName);
+        if (qid) { this.openQuest(qid); return; }
         const lines = this.lines.length ? this.lines : TalkNpc.DEFAULT_LINES;
         Dialogue.ensure()?.open(this.npcName, lines, this.portrait);
+    }
+
+    /** 依任務狀態開對應對話：可接→提供＋接受/拒絕；進行中→提醒；可回報→領獎。 */
+    private openQuest(qid: string) {
+        const dlg = Dialogue.ensure();
+        if (!dlg) return;
+        const d = Quests.def(qid)!;
+        const st = Quests.statusOf(qid);
+        const name = this.npcName, portrait = this.portrait;
+
+        if (st === 'available') {
+            const lines: DialogueInput[] = d.offerLines.slice();
+            lines.push({
+                text: `任務：${d.title}（${Quests.objectiveText(d)}）\n獎勵：${Quests.rewardText(d)}`,
+            });
+            lines.push({
+                text: '要接下這個任務嗎？',
+                choices: [
+                    { label: '接受', onPick: () => {
+                        Quests.accept(qid);
+                        Dialogue.ensure()?.open(name, ['好，就交給你了！（按 Q 可隨時查看任務）'], portrait);
+                    } },
+                    { label: '再想想' },
+                ],
+            });
+            dlg.open(name, lines, portrait);
+        } else if (st === 'active') {
+            const lines: DialogueInput[] = d.activeLines.slice();
+            lines.push({ text: `目前進度：${Quests.progressText(qid)}` });
+            dlg.open(name, lines, portrait);
+        } else if (st === 'ready') {
+            const lines: DialogueInput[] = d.readyLines.slice();
+            lines.push({
+                text: '要現在回報領取獎勵嗎？',
+                choices: [
+                    { label: '回報', onPick: () => {
+                        if (Quests.claim(qid)) {
+                            const done: DialogueInput[] = d.doneLines.slice();
+                            done.push({ text: `獲得：${Quests.rewardText(d)}` });
+                            Dialogue.ensure()?.open(name, done, portrait);
+                        }
+                    } },
+                    { label: '等一下' },
+                ],
+            });
+            dlg.open(name, lines, portrait);
+        }
     }
 
     update() {
@@ -54,6 +108,20 @@ export class TalkNpc extends Component {
         this.inRange = Vec3.distance(this.player.position, this.node.position) <= this.interactRange;
         // 只有在範圍內、且沒有開著視窗時才顯示提示
         if (this.hint) this.hint.active = this.inRange && !UIState.modalOpen;
+        this.updateMarker();
+    }
+
+    /** 依此 NPC 是否有任務可談，更新頭頂標記（可回報＝綠，可接＝黃，其餘隱藏）。 */
+    private updateMarker() {
+        if (!this.marker) return;
+        if (UIState.modalOpen) { this.marker.active = false; return; }
+        const qid = Quests.currentFor(this.npcName);
+        if (!qid) { this.marker.active = false; return; }
+        const ready = Quests.statusOf(qid) === 'ready';
+        this.marker.active = true;
+        if (this.markerLabel) this.markerLabel.color = ready
+            ? new Color(140, 240, 150, 255)   // 可回報
+            : new Color(255, 224, 110, 255);  // 可接／進行中
     }
 
     /** 在 NPC 上方建一個「按 E 交談」文字提示（預設隱藏）。 */
@@ -87,6 +155,32 @@ export class TalkNpc extends Component {
 
         n.active = false;
         this.hint = n;
+    }
+
+    /** 在 NPC 頭頂建一個任務標記「！」（可接／可回報時才顯示，顏色在 updateMarker 換）。 */
+    private buildMarker() {
+        const ut = this.getComponent(UITransform);
+        const topY = ut ? ut.contentSize.height + 64 : 160;   // 比「按 E 交談」提示再高一點
+
+        const n = new Node('QuestMark');
+        n.layer = this.node.layer;
+        this.node.addChild(n);
+        n.addComponent(UITransform).setContentSize(40, 44);
+        n.setPosition(0, topY, 0);
+
+        const lb = n.addComponent(Label);
+        lb.string = '！';
+        lb.fontSize = 40;
+        lb.color = new Color(255, 224, 110, 255);
+        lb.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lb.verticalAlign = Label.VerticalAlign.CENTER;
+        lb.enableOutline = true;
+        lb.outlineColor = new Color(30, 22, 44, 235);
+        lb.outlineWidth = 4;
+
+        n.active = false;
+        this.marker = n;
+        this.markerLabel = lb;
     }
 
     private pill(g: Graphics, x: number, y: number, w: number, h: number, r: number) {
