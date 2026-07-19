@@ -1,6 +1,6 @@
 import { _decorator, Component, Node, UITransform, Widget, Label, Color,
          Graphics, BlockInputEvents, UIOpacity, find, input, Input,
-         EventKeyboard, KeyCode } from 'cc';
+         EventKeyboard, KeyCode, view } from 'cc';
 import { UIState } from './UIState';
 import { Quests } from './Quests';
 const { ccclass } = _decorator;
@@ -35,6 +35,7 @@ export class QuestLog extends Component {
     private readonly headerH = 84;
     private readonly rowH = 84;
     private readonly footerH = 40;
+    private readonly rightMargin = 30;   // 面板離畫面右緣的距離（靠右彈出）
 
     onLoad() {
         QuestLog.instance = this;
@@ -97,6 +98,9 @@ export class QuestLog extends Component {
         panel.layer = layer;
         this.root!.addChild(panel);
         panel.addComponent(UITransform).setContentSize(this.panelW, panelH);
+        // root 置中＝畫面中心；用可見畫面寬把面板推到右側（垂直仍置中）
+        const vis = view.getVisibleSize();
+        panel.setPosition(vis.width / 2 - this.panelW / 2 - this.rightMargin, 0, 0);
         const pg = panel.addComponent(Graphics);
         pg.lineWidth = 4;
         pg.fillColor = new Color(38, 30, 52, 245);
