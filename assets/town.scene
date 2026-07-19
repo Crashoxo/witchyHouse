@@ -1080,6 +1080,9 @@
       },
       {
         "__id__": 29
+      },
+      {
+        "__id__": 53
       }
     ],
     "_prefab": null,
@@ -1189,6 +1192,9 @@
       },
       {
         "__id__": 32
+      },
+      {
+        "__id__": 54
       }
     ],
     "_prefab": null,
@@ -1670,5 +1676,41 @@
     "__prefab": null,
     "interactRange": 230,
     "_id": "decorShopFlower00001"
+  },
+  {
+    "__type__": "5c0abHeAA9MAIoAXAqx3gAP",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 27
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "npcName": "精靈書商",
+    "lines": [
+      "書店隨時歡迎你，慢慢逛。"
+    ],
+    "portrait": "elf",
+    "interactRange": 220,
+    "_id": "talkNpcScrollShop001"
+  },
+  {
+    "__type__": "5c0abHeAA9MAIoAXAqx3gAP",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 30
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "npcName": "魔法貓",
+    "lines": [
+      "喵～今天也是好天氣呢。"
+    ],
+    "portrait": "fox",
+    "interactRange": 220,
+    "_id": "talkNpcSpellShop0001"
   }
 ]

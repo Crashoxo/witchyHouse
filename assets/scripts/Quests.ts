@@ -101,6 +101,46 @@ const QUEST_DEFS: QuestDef[] = [
         readyLines: ['300 金！你已經是像樣的老闆了。'],
         doneLines: ['這是給成功商人的賀禮：100 金，還有兩顆金蘋果！'],
     },
+
+    // 精靈書商（scroll-shop）的支線——用採集/金幣目標，不跟地精的 sell/brew 累積衝突
+    {
+        id: 'eb_herbs', giver: '精靈書商', title: '古籍的配方',
+        objective: { kind: 'gather', item: '藥草', count: 4 },
+        rewardGold: 35,
+        offerLines: ['這本舊書寫著一帖失傳的配方…', '幫我採 4 株藥草來，我想試著重現它。'],
+        activeLines: ['藥草採到 4 株了嗎？森林的花圃裡就有。'],
+        readyLines: ['正是這種藥草！書上畫的沒錯。'],
+        doneLines: ['謝謝你，這 35 金是酬勞。'],
+    },
+    {
+        id: 'eb_rich', giver: '精靈書商', title: '藏書的價值',
+        objective: { kind: 'gold', count: 500 },
+        rewardGold: 0, rewardItem: '金蘋果', rewardQty: 2, requires: 'eb_herbs',
+        offerLines: ['知識是無價的，但書可不便宜。', '等你存到 500 金幣，我把珍藏的好東西分你一些。'],
+        activeLines: ['存到 500 金幣了嗎？藥水利潤最高囉。'],
+        readyLines: ['哇，你真的辦到了！'],
+        doneLines: ['說好的珍藏——兩顆金蘋果，收下吧。'],
+    },
+
+    // 魔法貓（spell-shop）的支線——同樣用採集目標
+    {
+        id: 'cat_berries', giver: '魔法貓', title: '喵的點心',
+        objective: { kind: 'gather', item: '黑莓', count: 3 },
+        rewardGold: 30,
+        offerLines: ['喵～我最愛黑莓了。', '去採 3 顆黑莓給我，我告訴你一個祕密，喵。'],
+        activeLines: ['黑莓採到 3 顆了嗎？荊棘叢裡有喔，喵。'],
+        readyLines: ['喵嗚～就是這個味道！'],
+        doneLines: ['祕密是…東邊森林的樹會結金蘋果喔。這 30 金給你，喵。'],
+    },
+    {
+        id: 'cat_leaves', giver: '魔法貓', title: '鋪窩大工程',
+        objective: { kind: 'gather', item: '落葉', count: 6 },
+        rewardGold: 40, requires: 'cat_berries',
+        offerLines: ['本喵想鋪一個又軟又香的窩，喵。', '幫我收集 6 片落葉吧！'],
+        activeLines: ['落葉撿到 6 片了嗎？樹下的落葉堆最多，喵。'],
+        readyLines: ['蓬鬆鬆的，本喵很滿意，喵～'],
+        doneLines: ['賞你 40 金，去買點好吃的吧，喵。'],
+    },
 ];
 
 // ---- 存檔 ----
