@@ -1,21 +1,27 @@
 import { _decorator, Component, Node, UITransform, Widget, Label, Color,
-         Graphics, Sprite, SpriteFrame, BlockInputEvents, find, input, Input,
+         Graphics, Sprite, SpriteFrame, BlockInputEvents, UIOpacity, find, input, Input,
          EventKeyboard, KeyCode, view } from 'cc';
 import { UIState } from './UIState';
 import { GameArt } from './GameArt';
 const { ccclass } = _decorator;
 
+/** 對話裡的一個選項：顯示 label，選了就先關對話框、再跑 onPick。 */
+export interface DialogueChoice {
+    label: string;
+    onPick?: () => void;
+}
+
 /**
  * 一句對話。`speaker` 省略時沿用 NPC 名。
  *
- * `choices` 目前先預留、還沒實作——之後要做「分支/選項對話」時，讓某一句帶
- * 選項（例如 問好／問商品／離開），選了就跳到對應的後續。屆時只要在 advance()
- * 裡處理 choices，其餘 UI/流程都不用動。
+ * 帶 `choices` 的那一句會在下方冒出選項按鈕（例：接受任務／再想想）；此時不能用
+ * 空白鍵／點擊往下推進，一定要點一個選項（或 Esc 取消整段）。選了就關對話框再
+ * 執行該選項的 onPick——onPick 裡若要接續（例接下任務後說句話）可自行再 open()。
  */
 export interface DialogueLine {
     speaker?: string;
     text: string;
-    // choices?: DialogueChoice[];   // 之後做分支對話時啟用
+    choices?: DialogueChoice[];
 }
 
 /** open() 可以吃純字串（＝一句台詞）或完整的 DialogueLine。 */
@@ -56,6 +62,10 @@ export class Dialogue extends Component {
     private portraitBox = 0;                 // 頭像可用的方形邊長
     private nameLabel: Label | null = null;
     private textLabel: Label | null = null;
+    private hintLabel: Label | null = null;  // 底部提示（有選項時改字）
+    private choiceHost: Node | null = null;  // 選項按鈕容器（每句重建）
+    // 文字/選項區的範圍（box 本地座標，build 時算好、show 時給選項定位用）
+    private iTextLeft = 0; private iTextW = 0; private iBottom = 0;
 
     // 對話框外框美術原圖 584x234（比例 2.49）；這裡刻意拉寬壓扁成 980x268（比例 3.66）
     // 讓對話框更扁。米色內裡的內縮比例是從原圖量出來的（縮放後仍成立）。
@@ -101,6 +111,10 @@ export class Dialogue extends Component {
 
     isOpen(): boolean { return !!this.root?.active; }
 
+    private hasChoices(): boolean {
+        return !!this.lines[this.idx]?.choices?.length;
+    }
+
     private onKeyDown(e: EventKeyboard) {
         if (!this.root?.active) return;
         switch (e.keyCode) {
@@ -116,6 +130,7 @@ export class Dialogue extends Component {
     }
 
     private advance() {
+        if (this.hasChoices()) return;   // 有選項那句一定要點選項，不能空白鍵略過
         this.idx++;
         if (this.idx >= this.lines.length) this.close();
         else this.show();
@@ -126,6 +141,67 @@ export class Dialogue extends Component {
         const line = this.lines[this.idx];
         if (this.nameLabel) this.nameLabel.string = line.speaker || this.defaultName;
         if (this.textLabel) this.textLabel.string = line.text;
+        this.buildChoices(line.choices);
+        if (this.hintLabel) this.hintLabel.string = line.choices?.length
+            ? '選一個 · Esc 取消'
+            : '空白鍵 / 點擊 繼續 · Esc 跳過';
+    }
+
+    /** 重建這一句的選項按鈕（沒有選項就清空）。 */
+    private buildChoices(choices?: DialogueChoice[]) {
+        const host = this.choiceHost;
+        if (!host) return;
+        host.removeAllChildren();
+        if (!choices || !choices.length) return;
+
+        const btnH = 40, gap = 10;
+        const btnW = Math.min(this.iTextW, 300);
+        const centerX = this.iTextLeft + btnW / 2;
+        // 由文字區底部往上疊
+        for (let i = 0; i < choices.length; i++) {
+            const y = this.iBottom + 8 + btnH / 2 + i * (btnH + gap);
+            this.makeChoice(host, choices[i], centerX, y, btnW, btnH);
+        }
+    }
+
+    private makeChoice(parent: Node, choice: DialogueChoice, x: number, y: number, w: number, h: number) {
+        const layer = this.node.layer;
+        const n = new Node('choice');
+        n.layer = layer;
+        parent.addChild(n);
+        const ut = n.addComponent(UITransform);
+        ut.setContentSize(w, h);
+        ut.setAnchorPoint(0.5, 0.5);
+        n.setPosition(x, y, 0);
+
+        const g = n.addComponent(Graphics);
+        g.lineWidth = 2;
+        g.fillColor = new Color(88, 66, 120, 255);
+        g.strokeColor = new Color(230, 220, 240, 220);
+        this.roundRect(g, -w / 2, -h / 2, w, h, 8);
+        g.fill(); g.stroke();
+
+        const tn = new Node('t');
+        tn.layer = layer;
+        n.addChild(tn);
+        tn.addComponent(UITransform).setContentSize(w, h);
+        const lb = tn.addComponent(Label);
+        lb.string = choice.label;
+        lb.fontSize = 22;
+        lb.color = new Color(245, 242, 250, 255);
+        lb.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lb.verticalAlign = Label.VerticalAlign.CENTER;
+        lb.overflow = Label.Overflow.SHRINK;
+
+        const op = n.addComponent(UIOpacity);
+        n.on(Node.EventType.TOUCH_START, () => { op.opacity = 175; });
+        n.on(Node.EventType.TOUCH_CANCEL, () => { op.opacity = 255; });
+        // 先關對話框再跑 onPick：onPick 裡若再 open() 一段接續對話，順序才正確
+        n.on(Node.EventType.TOUCH_END, () => {
+            op.opacity = 255;
+            this.close();
+            choice.onPick?.();
+        });
     }
 
     /** 外框美術與頭像載好後套上（沒載到就維持 fallback / 隱藏頭像）。 */
@@ -222,6 +298,7 @@ export class Dialogue extends Component {
         // 文字區（頭像右側）
         const textLeft = left + this.portraitBox + 26;
         const textW = right - textLeft;
+        this.iTextLeft = textLeft; this.iTextW = textW; this.iBottom = bottom;
 
         // 說話者名字（文字區頂端）
         this.nameLabel = this.makeLabel(box, '', 27, new Color(96, 56, 40, 255),
@@ -236,10 +313,17 @@ export class Dialogue extends Component {
         tut.setAnchorPoint(0, 1);
         tut.setContentSize(textW, interiorH - 76);
 
-        // 底部提示
-        this.makeLabel(box, '空白鍵 / 點擊 繼續 · Esc 跳過', 15,
+        // 底部提示（有選項時 show() 會改成「選一個 · Esc 取消」）
+        this.hintLabel = this.makeLabel(box, '空白鍵 / 點擊 繼續 · Esc 跳過', 15,
             new Color(120, 100, 84, 255),
             textLeft, bottom + 12, textW, Label.HorizontalAlign.RIGHT);
+
+        // 選項按鈕容器（每句在 show() 裡重建）
+        const ch = new Node('Choices');
+        ch.layer = layer;
+        box.addChild(ch);
+        ch.addComponent(UITransform);
+        this.choiceHost = ch;
     }
 
     /** 把 sprite 依原圖比例塞進 maxW×maxH（不變形）。 */
