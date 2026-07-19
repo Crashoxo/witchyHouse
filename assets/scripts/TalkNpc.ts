@@ -184,16 +184,6 @@ export class TalkNpc extends Component {
     }
 
     private pill(g: Graphics, x: number, y: number, w: number, h: number, r: number) {
-        const H = Math.PI / 2;
-        g.moveTo(x + r, y);
-        g.lineTo(x + w - r, y);
-        g.arc(x + w - r, y + r, r, -H, 0, false);
-        g.lineTo(x + w, y + h - r);
-        g.arc(x + w - r, y + h - r, r, 0, H, false);
-        g.lineTo(x + r, y + h);
-        g.arc(x + r, y + h - r, r, H, Math.PI, false);
-        g.lineTo(x, y + r);
-        g.arc(x + r, y + r, r, Math.PI, Math.PI + H, false);
-        g.close();
+        g.rect(x, y, w, h);   // 一般方框（不圓角）
     }
 }

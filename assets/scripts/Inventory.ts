@@ -259,16 +259,6 @@ export class Inventory extends Component {
 
     /** 用線段＋圓弧畫一個圓角方框（Graphics 沒有現成的跨版本 roundRect）。 */
     private roundRect(g: Graphics, x: number, y: number, w: number, h: number, r: number) {
-        const HALF_PI = Math.PI / 2;
-        g.moveTo(x + r, y);
-        g.lineTo(x + w - r, y);
-        g.arc(x + w - r, y + r, r, -HALF_PI, 0, false);
-        g.lineTo(x + w, y + h - r);
-        g.arc(x + w - r, y + h - r, r, 0, HALF_PI, false);
-        g.lineTo(x + r, y + h);
-        g.arc(x + r, y + h - r, r, HALF_PI, Math.PI, false);
-        g.lineTo(x, y + r);
-        g.arc(x + r, y + r, r, Math.PI, Math.PI + HALF_PI, false);
-        g.close();
+        g.rect(x, y, w, h);   // 一般方框（不圓角）
     }
 }
