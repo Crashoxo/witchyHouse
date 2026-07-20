@@ -58,6 +58,17 @@ let loaded = false;
 let loading = false;
 const readyCbs: Array<() => void> = [];
 
+/**
+ * 取 Map 的所有 key。⚠️ 不要寫成 `[...map.keys()]` —— 建置會把程式降級成 ES5，
+ * spread 變成 `[].concat(map.keys())`，迭代器不會被展開，結果是「長度 1、內容是
+ * 迭代器物件」的爛陣列（編輯器預覽正常、線上就全壞）。forEach 最保險。
+ */
+function mapKeys<T>(m: Map<string, T>): string[] {
+    const out: string[] = [];
+    m.forEach((_v, k) => out.push(k));
+    return out;
+}
+
 export const GameArt = {
     get ready(): boolean { return loaded; },
 
@@ -154,13 +165,13 @@ export const GameArt = {
     customer(name: string): SpriteFrame | null { return customers.get(name) ?? null; },
 
     /** 所有已載入的顧客名（給隨機挑選用）。 */
-    customerNames(): string[] { return [...customers.keys()]; },
+    customerNames(): string[] { return mapKeys(customers); },
 
     /** 表情動畫幀陣列（未載入回 null）。 */
     emote(name: string): SpriteFrame[] | null { return emotes.get(name) ?? null; },
 
     /** 所有已載入的表情名（給隨機挑選用）。 */
-    emoteNames(): string[] { return [...emotes.keys()]; },
+    emoteNames(): string[] { return mapKeys(emotes); },
 
     /** NPC / 對話頭像（未載入回 null）。 */
     portrait(name: string): SpriteFrame | null { return portraits.get(name) ?? null; },
