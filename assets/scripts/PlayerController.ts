@@ -8,6 +8,7 @@ import { SceneFade } from './SceneFade';
 import { QuestLog } from './QuestLog';
 import { GameArt } from './GameArt';
 import { CharacterAnimator } from './CharacterAnimator';
+import { UpdatePanel } from './UpdatePanel';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -56,6 +57,7 @@ export class PlayerController extends Component {
         // 每個場景都有 Player → 在這裡叫出背包和金幣 HUD，讓它們永遠顯示
         Inventory.ensure();
         Hud.ensure();
+        UpdatePanel.showOnce();   // 開遊戲第一個場景跳更新公告（換場景不重跳）
     }
 
     onDestroy() {
