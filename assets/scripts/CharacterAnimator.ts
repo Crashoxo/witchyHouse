@@ -41,14 +41,17 @@ export class CharacterAnimator extends Component {
      * @param frames 動畫幀（空陣列＝不播）
      * @param dur    總長度（秒）
      * @param faceX  面向：>0 朝右、<0 朝左、0 維持原朝向
+     * @param front  正面圖（施法、待機那種）＝一律不翻面，翻了貓會跑到另一邊
      */
-    playOneShot(frames: SpriteFrame[], dur = 0.9, faceX = 0) {
+    playOneShot(frames: SpriteFrame[], dur = 0.9, faceX = 0, front = false) {
         if (!this.sprite || frames.length === 0) return;
         this.shot = frames;
         this.shotDur = Math.max(0.1, dur);
         this.shotTimer = 0;
-        if (faceX !== 0) {   // 圖是朝左的，朝右要翻面
-            const s = this.node.scale;
+        const s = this.node.scale;
+        if (front) {
+            if (s.x < 0) this.node.setScale(-s.x, s.y, s.z);
+        } else if (faceX !== 0) {   // 側面圖畫的是朝左，朝右要翻面
             const want = faceX > 0 ? -Math.abs(s.x) : Math.abs(s.x);
             if (want !== s.x) this.node.setScale(want, s.y, s.z);
         }

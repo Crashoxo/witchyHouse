@@ -6,6 +6,8 @@ import { Inventory } from './Inventory';
 import { Hud } from './Hud';
 import { SceneFade } from './SceneFade';
 import { QuestLog } from './QuestLog';
+import { GameArt } from './GameArt';
+import { CharacterAnimator } from './CharacterAnimator';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -133,5 +135,8 @@ export class PlayerController extends Component {
         this.node.parent!.addChild(spell);                   // 生在角色的同一層
         spell.setPosition(this.node.position);
         spell.getComponent(SpellProjectile)?.fire(this.facing);
+        // 施法姿勢（正面圖，不翻面）；一移動就自動取消
+        const f = GameArt.cast();
+        if (f) this.getComponent(CharacterAnimator)?.playOneShot([f], 0.4, 0, true);
     }
 }

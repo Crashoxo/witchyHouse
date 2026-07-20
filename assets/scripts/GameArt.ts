@@ -54,6 +54,7 @@ const portraits = new Map<string, SpriteFrame>();   // 頭像名 → 圖
 const decor = new Map<string, SpriteFrame>();       // 裝飾品 id → 圖
 const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
 const gather: SpriteFrame[] = [];                   // 女巫採集動畫幀
+let castFrame: SpriteFrame | null = null;           // 女巫施法姿勢（正面）
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 let brewRoomFrame: SpriteFrame | null = null;       // 藥水室背景
 let questScrollFrame: SpriteFrame | null = null;    // 任務簿捲軸底板
@@ -92,8 +93,8 @@ export const GameArt = {
         for (const name of Object.keys(POTION_ITEMS)) singleJobs.push([items, name, `potions/${POTION_ITEMS[name]}`]);
         const emoteNames = Object.keys(EMOTE_INFO);
 
-        // +1 對話框外框、+1 藥水室背景、+1 任務簿捲軸、+鍋爐幀、+採集幀
-        const total = singleJobs.length + emoteNames.length + 3 + CAULDRON_FRAMES + GATHER_FRAMES;
+        // +1 對話框外框、+1 藥水室背景、+1 任務簿捲軸、+1 施法姿勢、+鍋爐幀、+採集幀
+        const total = singleJobs.length + emoteNames.length + 4 + CAULDRON_FRAMES + GATHER_FRAMES;
         let done = 0;
         const finish = () => {
             if (++done >= total) {
@@ -155,6 +156,12 @@ export const GameArt = {
                 finish();
             });
         }
+        // 女巫施法姿勢（正面，單張）
+        resources.load('witch/cast', ImageAsset, (err, img) => {
+            if (!err && img) castFrame = SpriteFrame.createWithImage(img);
+            else console.warn('[GameArt] 載入失敗 witch/cast', err);
+            finish();
+        });
         // 女巫採集動畫幀（gather1..3，順序＝播放順序）
         gather.length = GATHER_FRAMES;
         for (let i = 0; i < GATHER_FRAMES; i++) {
@@ -201,6 +208,9 @@ export const GameArt = {
 
     /** 女巫採集動畫幀（0..2；未載入回空陣列）。 */
     gatherFrames(): SpriteFrame[] { return gather.filter(Boolean); },
+
+    /** 女巫施法姿勢（正面；未載入回 null）。 */
+    cast(): SpriteFrame | null { return castFrame; },
 
     /** 藥水室背景（未載入回 null）。 */
     brewRoom(): SpriteFrame | null { return brewRoomFrame; },
