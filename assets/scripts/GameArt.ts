@@ -44,12 +44,16 @@ const POTION_ITEMS: Record<string, string> = {
 /** 鍋爐熬煮動畫幀數（resources/cauldron/f0..f5）。 */
 const CAULDRON_FRAMES = 6;
 
+/** 女巫採集動畫幀數（resources/witch/gather1..3：彎腰伸手→捏起→起身舉起）。 */
+const GATHER_FRAMES = 3;
+
 const items = new Map<string, SpriteFrame>();       // 材料名 → 圖
 const customers = new Map<string, SpriteFrame>();   // 動物名 → 圖
 const emotes = new Map<string, SpriteFrame[]>();    // 表情名 → 動畫幀陣列
 const portraits = new Map<string, SpriteFrame>();   // 頭像名 → 圖
 const decor = new Map<string, SpriteFrame>();       // 裝飾品 id → 圖
 const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
+const gather: SpriteFrame[] = [];                   // 女巫採集動畫幀
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 let brewRoomFrame: SpriteFrame | null = null;       // 藥水室背景
 let questScrollFrame: SpriteFrame | null = null;    // 任務簿捲軸底板
@@ -88,8 +92,8 @@ export const GameArt = {
         for (const name of Object.keys(POTION_ITEMS)) singleJobs.push([items, name, `potions/${POTION_ITEMS[name]}`]);
         const emoteNames = Object.keys(EMOTE_INFO);
 
-        // +1 對話框外框、+1 藥水室背景、+1 任務簿捲軸、+CAULDRON_FRAMES 鍋爐幀
-        const total = singleJobs.length + emoteNames.length + 3 + CAULDRON_FRAMES;
+        // +1 對話框外框、+1 藥水室背景、+1 任務簿捲軸、+鍋爐幀、+採集幀
+        const total = singleJobs.length + emoteNames.length + 3 + CAULDRON_FRAMES + GATHER_FRAMES;
         let done = 0;
         const finish = () => {
             if (++done >= total) {
@@ -151,6 +155,16 @@ export const GameArt = {
                 finish();
             });
         }
+        // 女巫採集動畫幀（gather1..3，順序＝播放順序）
+        gather.length = GATHER_FRAMES;
+        for (let i = 0; i < GATHER_FRAMES; i++) {
+            const idx = i;
+            resources.load(`witch/gather${idx + 1}`, ImageAsset, (err, img) => {
+                if (!err && img) gather[idx] = SpriteFrame.createWithImage(img);
+                else console.warn(`[GameArt] 載入失敗 witch/gather${idx + 1}`, err);
+                finish();
+            });
+        }
     },
 
     /** 註冊「載入完成」回呼；已完成則立即呼叫。 */
@@ -184,6 +198,9 @@ export const GameArt = {
 
     /** 鍋爐熬煮動畫幀（0..5；未載入回空陣列）。 */
     cauldronFrames(): SpriteFrame[] { return cauldron.filter(Boolean); },
+
+    /** 女巫採集動畫幀（0..2；未載入回空陣列）。 */
+    gatherFrames(): SpriteFrame[] { return gather.filter(Boolean); },
 
     /** 藥水室背景（未載入回 null）。 */
     brewRoom(): SpriteFrame | null { return brewRoomFrame; },
