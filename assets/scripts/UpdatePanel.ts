@@ -25,11 +25,11 @@ const UPDATE_LINES = [
     '· 施法姿勢：按 J／空白鍵會擺出施法動作',
 ];
 
-/** 底圖比例（切好的 update-frame.png 是 1074×647）。 */
-const ART_ASPECT = 1074 / 647;
+/** 底圖比例（切好的 update-frame.png 是 1031×647）。 */
+const ART_ASPECT = 1031 / 647;
 /** 底圖上「米色內裡」與「OK 鈕」的相對位置（量出來的）。 */
-const INNER = { l: 0.110, r: 0.899, t: 0.284, b: 0.839 };
-const OK_BTN = { l: 0.399, r: 0.610, t: 0.861, b: 0.964 };
+const INNER = { l: 0.099, r: 0.901, t: 0.284, b: 0.839 };
+const OK_BTN = { l: 0.389, r: 0.610, t: 0.861, b: 0.972 };
 
 let shown = false;   // 這次載入跳過了沒
 
