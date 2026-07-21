@@ -72,12 +72,15 @@ export class UpdatePanel extends Component {
     private loadFrameArt() {
         const ready = GameArt.updateFrame();
         if (ready) { this.applyFrame(ready); return; }
+        // 回呼可能在面板關掉之後才回來 —— 元件被銷毀後 this.node 會是 null，
+        // 所以先確認還活著再動 UI。
+        const alive = () => !!this.node && this.node.isValid;
         resources.load('ui/update-frame', ImageAsset, (err, img) => {
-            if (!err && img && this.node.isValid) this.applyFrame(SpriteFrame.createWithImage(img));
+            if (!err && img && alive()) this.applyFrame(SpriteFrame.createWithImage(img));
         });
         GameArt.onReady(() => {                   // 保險：萬一上面那次失敗，整批載完再補
             const f = GameArt.updateFrame();
-            if (f && this.node.isValid) this.applyFrame(f);
+            if (f && alive()) this.applyFrame(f);
         });
     }
 

@@ -70,7 +70,14 @@ export class PlayerController extends Component {
     onDestroy() {
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.off(Input.EventType.KEY_UP, this.onKeyUp, this);
-        this.ground?.off(Node.EventType.TOUCH_END, this.onGroundClick, this);
+        // ⚠️ 一定要檢查 isValid：換場景時整棵樹一起銷毀，Ground 可能已經沒了。
+        // 被銷毀的節點物件仍然是 truthy（`?.` 擋不掉），呼叫 off() 會踩到內部
+        // 已成 null 的 _eventProcessor 而丟例外，連帶把場景的銷毀流程打斷。
+        if (this.ground && this.ground.isValid) {
+            this.ground.off(Node.EventType.TOUCH_END, this.onGroundClick, this);
+        }
+        this.ground = null;
+        this.moveTarget = null;
     }
 
     /** 點地面 → 記下目的地，update 每幀走過去。 */
