@@ -41,6 +41,13 @@ const POTION_ITEMS: Record<string, string> = {
     羽翼掃帚: 'broom_white',
 };
 
+/**
+ * 城鎮景物圖檔名（resources/town 底下）。只放「有高度、要吃 Y-sort」的東西——
+ * 路面、橋、水窪那些平的素材已經烤進 `town-ground.png`，不必執行期載入。
+ */
+const TOWN_FILES = ['arch', 'fountain', 'lamp-post', 'lamp-small', 'fence-lamp',
+                    'fence-white', 'planter', 'bush-green', 'bush-pink', 'bush-white'];
+
 /** 鍋爐熬煮動畫幀數（resources/cauldron/f0..f5）。 */
 const CAULDRON_FRAMES = 6;
 
@@ -52,6 +59,7 @@ const customers = new Map<string, SpriteFrame>();   // 動物名 → 圖
 const emotes = new Map<string, SpriteFrame[]>();    // 表情名 → 動畫幀陣列
 const portraits = new Map<string, SpriteFrame>();   // 頭像名 → 圖
 const decor = new Map<string, SpriteFrame>();       // 裝飾品 id → 圖
+const town = new Map<string, SpriteFrame>();        // 城鎮景物名 → 圖
 const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
 const gather: SpriteFrame[] = [];                   // 女巫採集動畫幀
 let castFrame: SpriteFrame | null = null;           // 女巫施法姿勢（正面）
@@ -90,6 +98,7 @@ export const GameArt = {
         for (const file of CUSTOMER_FILES) singleJobs.push([customers, file, `customers/${file}`]);
         for (const file of PORTRAIT_FILES) singleJobs.push([portraits, file, `portraits/${file}`]);
         for (const file of DECOR_FILES) singleJobs.push([decor, file, `decor/${file}`]);
+        for (const file of TOWN_FILES) singleJobs.push([town, file, `town/${file}`]);
         // 藥水成品：載進 items map（key 用中文名），圖示查找就跟材料同一套
         for (const name of Object.keys(POTION_ITEMS)) singleJobs.push([items, name, `potions/${POTION_ITEMS[name]}`]);
         const emoteNames = Object.keys(EMOTE_INFO);
@@ -210,6 +219,9 @@ export const GameArt = {
 
     /** 裝飾品圖（未載入回 null）。 */
     decor(id: string): SpriteFrame | null { return decor.get(id) ?? null; },
+
+    /** 城鎮景物圖（未載入回 null）。 */
+    town(name: string): SpriteFrame | null { return town.get(name) ?? null; },
 
     /** 鍋爐熬煮動畫幀（0..5；未載入回空陣列）。 */
     cauldronFrames(): SpriteFrame[] { return cauldron.filter(Boolean); },
