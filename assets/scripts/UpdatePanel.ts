@@ -15,14 +15,15 @@ const { ccclass } = _decorator;
  */
 
 /** 這次更新的日期（顯示在公告最上方）。 */
-const UPDATE_DATE = '2026 / 07 / 20';
+const UPDATE_DATE = '2026 / 07 / 21';
 
 /** 這次更新的內容，一行一條。 */
 const UPDATE_LINES = [
-    '· 遊戲上線！現在用瀏覽器就能直接玩',
-    '· 修好線上版顧客不上門的問題',
-    '· 採集動畫：女巫彎腰摘取、樹會搖晃、星星與材料飄出',
-    '· 施法姿勢：按 J／空白鍵會擺出施法動作',
+    '· 城鎮大改建！地圖放大，鋪上石板街道與磚砌廣場',
+    '· 廣場中央立起噴泉，西邊的路口多了一座城門',
+    '· 東側多了一條溪流，三座橋通往對岸的草原',
+    '· 路燈、柵欄、花圃點綴街道，走到景物後方會被擋住',
+    '· 更新公告板換上新的木框',
 ];
 
 /** 底圖比例（切好的 update-frame.png 是 1031×647）。 */
@@ -130,8 +131,10 @@ export class UpdatePanel extends Component {
         bodyNode.setPosition(innerX + pad, innerTop - h * 0.12, 0);
         const bl = bodyNode.addComponent(Label);
         bl.string = UPDATE_LINES.join('\n');
-        bl.fontSize = Math.round(h * 0.052);
-        bl.lineHeight = Math.round(h * 0.088);
+        // 行高依行數自動收斂，條目多的時候才不會壓到底下的裝飾線與 OK 鈕
+        const lineH = Math.min(h * 0.088, bodyH / Math.max(1, UPDATE_LINES.length));
+        bl.fontSize = Math.round(Math.min(h * 0.052, lineH * 0.62));
+        bl.lineHeight = Math.round(lineH);
         bl.color = new Color(74, 50, 38, 255);
         bl.horizontalAlign = Label.HorizontalAlign.LEFT;
         bl.verticalAlign = Label.VerticalAlign.TOP;
