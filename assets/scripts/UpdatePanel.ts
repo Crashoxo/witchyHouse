@@ -1,6 +1,6 @@
-import { _decorator, Component, Node, UITransform, Sprite, Label, Color, Graphics,
-         BlockInputEvents, UIOpacity, find, input, Input, EventKeyboard, KeyCode,
-         view, tween, Vec3 } from 'cc';
+import { _decorator, Component, Node, UITransform, Sprite, SpriteFrame, ImageAsset,
+         Label, Color, Graphics, BlockInputEvents, UIOpacity, find, resources,
+         input, Input, EventKeyboard, KeyCode, view, tween, Vec3 } from 'cc';
 import { UIState } from './UIState';
 import { GameArt } from './GameArt';
 const { ccclass } = _decorator;
@@ -52,6 +52,7 @@ export class UpdatePanel extends Component {
 
     private root: Node | null = null;
     private panel: Node | null = null;
+    private loading: Node | null = null;
     private hiddenY = 0;
     private closing = false;
 
@@ -60,7 +61,24 @@ export class UpdatePanel extends Component {
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         GameArt.preload();
         this.build();
-        GameArt.onReady(() => this.applyArt());   // 美術晚一點載好就補上
+        this.loadFrameArt();
+    }
+
+    /**
+     * 先把底圖單獨載進來。
+     * 不能等 `GameArt.onReady` —— 那要等上百張圖（商品、顧客、頭像、裝飾……）
+     * 全部載完才會觸發，公告板會空等好幾秒。這裡直接 load 這一張，通常一眨眼就到。
+     */
+    private loadFrameArt() {
+        const ready = GameArt.updateFrame();
+        if (ready) { this.applyFrame(ready); return; }
+        resources.load('ui/update-frame', ImageAsset, (err, img) => {
+            if (!err && img && this.node.isValid) this.applyFrame(SpriteFrame.createWithImage(img));
+        });
+        GameArt.onReady(() => {                   // 保險：萬一上面那次失敗，整批載完再補
+            const f = GameArt.updateFrame();
+            if (f && this.node.isValid) this.applyFrame(f);
+        });
     }
 
     onDestroy() {
@@ -164,15 +182,12 @@ export class UpdatePanel extends Component {
             .to(0.55, { position: new Vec3(0, 0, 0) }, { easing: 'backOut' })
             .start();
 
-        this.applyArt();
+        this.drawPlaceholder();
+        this.buildLoading(h);
     }
 
-    /** 底圖載好後貼上（沒載到就留純色框，不開天窗）。 */
-    private applyArt() {
-        const sp = this.panel?.getComponent(Sprite);
-        if (!sp || sp.spriteFrame) return;
-        const f = GameArt.updateFrame();
-        if (f) { sp.spriteFrame = f; return; }
+    /** 底圖還沒到之前先畫個素框，不開天窗。 */
+    private drawPlaceholder() {
         const ut = this.panel!.getComponent(UITransform)!;
         const g = this.panel!.getComponent(Graphics) ?? this.panel!.addComponent(Graphics);
         g.clear();
@@ -181,6 +196,31 @@ export class UpdatePanel extends Component {
         g.strokeColor = new Color(120, 74, 42, 255);
         g.rect(-ut.width / 2, -ut.height / 2, ut.width, ut.height);
         g.fill(); g.stroke();
+    }
+
+    /** 「載入中…」字樣，蓋在素框上，底圖到了就收掉。 */
+    private buildLoading(h: number) {
+        const n = new Node('loading');
+        n.layer = this.node.layer;
+        this.panel!.addChild(n);
+        n.addComponent(UITransform).setContentSize(this.panel!.getComponent(UITransform)!.width, h * 0.12);
+        const l = n.addComponent(Label);
+        l.string = '載入中…';
+        l.fontSize = Math.round(h * 0.055);
+        l.color = new Color(150, 108, 76, 255);
+        l.horizontalAlign = Label.HorizontalAlign.CENTER;
+        l.verticalAlign = Label.VerticalAlign.CENTER;
+        this.loading = n;
+    }
+
+    /** 底圖到了：貼上、清掉素框與「載入中…」。 */
+    private applyFrame(f: SpriteFrame) {
+        const sp = this.panel?.getComponent(Sprite);
+        if (!sp || sp.spriteFrame) return;
+        sp.spriteFrame = f;
+        this.panel!.getComponent(Graphics)?.clear();   // 素框收掉，不然會從木框的透明處透出來
+        if (this.loading?.isValid) this.loading.destroy();
+        this.loading = null;
     }
 
     // ---- 關閉 ----
