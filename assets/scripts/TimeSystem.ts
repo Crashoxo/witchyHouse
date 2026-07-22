@@ -24,6 +24,7 @@ const STEP_MIN = 10;                      // 文字讀數 clockText 的顯示刻
 
 const DAY_START = 6 * 60;                 // 360 = 06:00 醒來
 const DAY_END = 26 * 60;                  // 1560 = 隔天 02:00 昏倒
+const NIGHT_SLEEP = 20 * 60;              // 1200 = 白天睡覺會跳到當晚 20:00
 const SUNSET = 18;                        // 18:00 起算夜晚（盤面換月亮）
 
 const DAYS_PER_MONTH = 28;               // 一個月 28 天（同星露谷一季天數）
@@ -84,8 +85,14 @@ export const TimeSystem = {
         if (sinceSave >= 4) { sinceSave = 0; save(); }   // 存檔節流
     },
 
-    /** 睡覺：提前結束當天，跳到隔天 06:00。 */
-    sleep(): void { rollToNextDay(); save(); },
+    /**
+     * 睡覺：白天睡 → 跳到當晚 20:00；晚上睡 → 跳到隔天 06:00。
+     * 回傳 true 代表跨到了隔天（給睡覺畫面顯示「早上/晚上」用）。
+     */
+    sleep(): boolean {
+        if (this.isNight) { rollToNextDay(); save(); return true; }
+        tod = NIGHT_SLEEP; save(); return false;
+    },
 
     /** 切換洞穴減速模式（10 分鐘由 438 幀變 563 幀）。 */
     setSlow(v: boolean): void { slow = v; },

@@ -59,6 +59,7 @@ const clockParts = new Map<string, SpriteFrame>();  // 時鐘零件名 → 圖
 const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
 const gather: SpriteFrame[] = [];                   // 女巫採集動畫幀
 let castFrame: SpriteFrame | null = null;           // 女巫施法姿勢（正面）
+let sleepingFrame: SpriteFrame | null = null;       // 女巫睡覺立繪（含床，睡覺過場用）
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 let brewRoomDayFrame: SpriteFrame | null = null;    // 藥水室背景（白天）
 let brewRoomNightFrame: SpriteFrame | null = null;  // 藥水室背景（夜晚）
@@ -101,8 +102,8 @@ export const GameArt = {
         const emoteNames = Object.keys(EMOTE_INFO);
 
         // +1 對話框外框、+2 藥水室背景(日/夜)、+1 任務簿捲軸、+1 施法姿勢、+1 更新公告板
-        // 、+鍋爐幀、+採集幀
-        const total = singleJobs.length + emoteNames.length + 6 + CAULDRON_FRAMES + GATHER_FRAMES;
+        // 、+1 睡覺立繪、+鍋爐幀、+採集幀
+        const total = singleJobs.length + emoteNames.length + 7 + CAULDRON_FRAMES + GATHER_FRAMES;
         let done = 0;
         const finish = () => {
             if (++done >= total) {
@@ -181,6 +182,12 @@ export const GameArt = {
             else console.warn('[GameArt] 載入失敗 witch/cast', err);
             finish();
         });
+        // 女巫睡覺立繪（含床，睡覺過場用，單張）
+        resources.load('witch/sleeping', ImageAsset, (err, img) => {
+            if (!err && img) sleepingFrame = SpriteFrame.createWithImage(img);
+            else console.warn('[GameArt] 載入失敗 witch/sleeping', err);
+            finish();
+        });
         // 女巫採集動畫幀（gather1..3，順序＝播放順序）
         gather.length = GATHER_FRAMES;
         for (let i = 0; i < GATHER_FRAMES; i++) {
@@ -233,6 +240,9 @@ export const GameArt = {
 
     /** 女巫施法姿勢（正面；未載入回 null）。 */
     cast(): SpriteFrame | null { return castFrame; },
+
+    /** 女巫睡覺立繪（含床，睡覺過場用；未載入回 null）。 */
+    sleeping(): SpriteFrame | null { return sleepingFrame; },
 
     /** 藥水室背景（night=true 回夜晚版；未載入回 null）。 */
     brewRoom(night: boolean): SpriteFrame | null { return (night ? brewRoomNightFrame : brewRoomDayFrame); },

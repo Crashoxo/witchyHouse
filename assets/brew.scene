@@ -386,6 +386,9 @@
       },
       {
         "__id__": 35
+      },
+      {
+        "__id__": 39
       }
     ],
     "_active": true,
@@ -1148,5 +1151,63 @@
     "interactRange": 200,
     "displayScale": 0.62,
     "_id": "brewCauldronComp0001"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "Bed",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": {
+      "__id__": 9
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 40
+      }
+    ],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 319,
+      "y": 179,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "brewBedNode000000001"
+  },
+  {
+    "__type__": "5c0abHeAB1MAIoAXAqx3gAd",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 39
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "interactRange": 220,
+    "_id": "brewBedComp000000001"
   }
 ]
