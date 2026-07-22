@@ -4,6 +4,7 @@ import { SpellProjectile } from './SpellProjectile';
 import { UIState } from './UIState';
 import { Inventory } from './Inventory';
 import { Hud } from './Hud';
+import { Clock } from './Clock';
 import { SceneFade } from './SceneFade';
 import { QuestLog } from './QuestLog';
 import { GameArt } from './GameArt';
@@ -64,6 +65,7 @@ export class PlayerController extends Component {
         // 每個場景都有 Player → 在這裡叫出背包和金幣 HUD，讓它們永遠顯示
         Inventory.ensure();
         Hud.ensure();
+        Clock.ensure();           // 右上角時鐘（其 update 同時驅動 TimeSystem 時間流動）
         UpdatePanel.showOnce();   // 開遊戲第一個場景跳更新公告（換場景不重跳）
     }
 

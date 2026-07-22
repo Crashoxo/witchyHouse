@@ -41,6 +41,9 @@ const POTION_ITEMS: Record<string, string> = {
     羽翼掃帚: 'broom_white',
 };
 
+/** 時鐘盤面零件（resources/ui/clock 底下）：盤面／日月圖示／指針。 */
+const CLOCK_FILES = ['face', 'sun', 'moon', 'hand-hour', 'hand-min', 'hand-day'];
+
 /** 鍋爐熬煮動畫幀數（resources/cauldron/f0..f5）。 */
 const CAULDRON_FRAMES = 6;
 
@@ -52,6 +55,7 @@ const customers = new Map<string, SpriteFrame>();   // 動物名 → 圖
 const emotes = new Map<string, SpriteFrame[]>();    // 表情名 → 動畫幀陣列
 const portraits = new Map<string, SpriteFrame>();   // 頭像名 → 圖
 const decor = new Map<string, SpriteFrame>();       // 裝飾品 id → 圖
+const clockParts = new Map<string, SpriteFrame>();  // 時鐘零件名 → 圖
 const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
 const gather: SpriteFrame[] = [];                   // 女巫採集動畫幀
 let castFrame: SpriteFrame | null = null;           // 女巫施法姿勢（正面）
@@ -90,6 +94,7 @@ export const GameArt = {
         for (const file of CUSTOMER_FILES) singleJobs.push([customers, file, `customers/${file}`]);
         for (const file of PORTRAIT_FILES) singleJobs.push([portraits, file, `portraits/${file}`]);
         for (const file of DECOR_FILES) singleJobs.push([decor, file, `decor/${file}`]);
+        for (const file of CLOCK_FILES) singleJobs.push([clockParts, file, `ui/clock/${file}`]);
         // 藥水成品：載進 items map（key 用中文名），圖示查找就跟材料同一套
         for (const name of Object.keys(POTION_ITEMS)) singleJobs.push([items, name, `potions/${POTION_ITEMS[name]}`]);
         const emoteNames = Object.keys(EMOTE_INFO);
@@ -210,6 +215,9 @@ export const GameArt = {
 
     /** 裝飾品圖（未載入回 null）。 */
     decor(id: string): SpriteFrame | null { return decor.get(id) ?? null; },
+
+    /** 時鐘零件圖（face/sun/moon/hand-hour/hand-min/hand-day；未載入回 null）。 */
+    clockArt(name: string): SpriteFrame | null { return clockParts.get(name) ?? null; },
 
     /** 鍋爐熬煮動畫幀（0..5；未載入回空陣列）。 */
     cauldronFrames(): SpriteFrame[] { return cauldron.filter(Boolean); },
