@@ -1,7 +1,8 @@
 import { _decorator, Component, Node, UITransform, Widget, Label, Sprite, SpriteFrame,
-         Color, Graphics, find } from 'cc';
+         UIOpacity, Color, Graphics, find } from 'cc';
 import { TimeSystem } from './TimeSystem';
 import { GameArt } from './GameArt';
+import { UIState } from './UIState';
 const { ccclass } = _decorator;
 
 /**
@@ -52,6 +53,7 @@ export class Clock extends Component {
     private minNode: Node | null = null;
     private hourSprite: Sprite | null = null;
     private minSprite: Sprite | null = null;
+    private handsOpacity: UIOpacity | null = null;
     private sunNode: Node | null = null;
     private moonNode: Node | null = null;
     private monthLabel: Label | null = null;
@@ -60,6 +62,8 @@ export class Clock extends Component {
     private lastMonth = -1;
     private lastDay = -1;
     private lastNight: boolean | null = null;
+    private warmed = false;      // 第一次 update 讓指針直接就位（不從 0 掃過去）
+    private blinkT = 0;          // 暫停閃爍計時
 
     onLoad() {
         Clock.instance = this;
@@ -73,12 +77,28 @@ export class Clock extends Component {
     }
 
     update(dt: number) {
-        // 全遊戲唯一的時間推進點
-        TimeSystem.tick(dt);
+        // 開選單/對話時暫停時間（單人模式；星露谷式）
+        const paused = UIState.modalOpen;
 
-        // 指針每幀轉（angle 正向為逆時針，時鐘要順時針故取負）
-        if (this.hourNode) this.hourNode.angle = -TimeSystem.hourFraction * 360;
-        if (this.minNode) this.minNode.angle = -TimeSystem.minuteFraction * 360;
+        // 全遊戲唯一的時間推進點
+        TimeSystem.tick(dt, paused);
+
+        // 指針轉：時間是 10 分鐘離散跳動，這裡用「最短路徑」朝目標角度快速補間，
+        // 做出機械式 tick 而非硬跳（angle 正向為逆時針，時鐘要順時針故取負）。
+        this.driveHand(this.hourNode, TimeSystem.hourFraction, dt);
+        this.driveHand(this.minNode, TimeSystem.minuteFraction, dt);
+        this.warmed = true;
+
+        // 暫停時指針整組變灰閃爍（表示時間凍結）
+        if (this.handsOpacity) {
+            if (paused) {
+                this.blinkT += dt;
+                this.handsOpacity.opacity = Math.round(90 + 130 * (0.5 + 0.5 * Math.sin(this.blinkT * 7)));
+            } else if (this.handsOpacity.opacity !== 255) {
+                this.blinkT = 0;
+                this.handsOpacity.opacity = 255;
+            }
+        }
 
         // 月/日數字有變才改
         const m = TimeSystem.month, d = TimeSystem.day;
@@ -92,6 +112,16 @@ export class Clock extends Component {
             if (this.sunNode) this.sunNode.active = !night;
             if (this.moonNode) this.moonNode.active = night;
         }
+    }
+
+    /** 指針朝目標角度以最短路徑補間；第一次（未 warmed）直接就位。 */
+    private driveHand(node: Node | null, fraction: number, dt: number) {
+        if (!node) return;
+        const target = -fraction * 360;
+        if (!this.warmed) { node.angle = target; return; }
+        const cur = node.angle;
+        const diff = ((target - cur + 540) % 360) - 180;   // (-180,180] 最短角差
+        node.angle = cur + diff * Math.min(1, dt * 12);
     }
 
     /** 建好節點結構（美術之後 applyArt 補上）。 */
@@ -143,13 +173,18 @@ export class Clock extends Component {
         const face = add('face');
         this.faceSprite = sizedSprite(face, D, Dh);
 
+        // 指針容器（掛 UIOpacity，暫停時整組閃爍變灰）
+        const hands = add('hands');
+        hands.setPosition(0, 0, 0);
+        this.handsOpacity = hands.addComponent(UIOpacity);
+
         // 時針、分針（樞軸在底部 knob → anchor(0.5, anchorY)，擺盤心，往上指）
         const makeHand = (spec: typeof HOUR): [Node, Sprite] => {
             const reach = spec.reach * R;
             const dispH = reach / (1 - spec.anchorY);
             const dispW = dispH * spec.w / spec.h;
-            const n = add('hand-' + spec.key);
-            const u = n.getComponent(UITransform)!;
+            const n = new Node('hand-' + spec.key); n.layer = layer; hands.addChild(n);
+            const u = n.addComponent(UITransform);
             u.setContentSize(dispW, dispH);
             u.setAnchorPoint(0.5, spec.anchorY);
             const sp = n.addComponent(Sprite);
