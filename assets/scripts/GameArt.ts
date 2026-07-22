@@ -60,7 +60,8 @@ const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
 const gather: SpriteFrame[] = [];                   // 女巫採集動畫幀
 let castFrame: SpriteFrame | null = null;           // 女巫施法姿勢（正面）
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
-let brewRoomFrame: SpriteFrame | null = null;       // 藥水室背景
+let brewRoomDayFrame: SpriteFrame | null = null;    // 藥水室背景（白天）
+let brewRoomNightFrame: SpriteFrame | null = null;  // 藥水室背景（夜晚）
 let questScrollFrame: SpriteFrame | null = null;    // 任務簿捲軸底板
 let updateFrameArt: SpriteFrame | null = null;      // 更新公告板木框
 
@@ -99,9 +100,9 @@ export const GameArt = {
         for (const name of Object.keys(POTION_ITEMS)) singleJobs.push([items, name, `potions/${POTION_ITEMS[name]}`]);
         const emoteNames = Object.keys(EMOTE_INFO);
 
-        // +1 對話框外框、+1 藥水室背景、+1 任務簿捲軸、+1 施法姿勢、+1 更新公告板
+        // +1 對話框外框、+2 藥水室背景(日/夜)、+1 任務簿捲軸、+1 施法姿勢、+1 更新公告板
         // 、+鍋爐幀、+採集幀
-        const total = singleJobs.length + emoteNames.length + 5 + CAULDRON_FRAMES + GATHER_FRAMES;
+        const total = singleJobs.length + emoteNames.length + 6 + CAULDRON_FRAMES + GATHER_FRAMES;
         let done = 0;
         const finish = () => {
             if (++done >= total) {
@@ -141,10 +142,15 @@ export const GameArt = {
             else console.warn('[GameArt] 載入失敗 ui/dialogue-box', err);
             finish();
         });
-        // 藥水室背景（單張）
-        resources.load('rooms/brew-room', ImageAsset, (err, img) => {
-            if (!err && img) brewRoomFrame = SpriteFrame.createWithImage(img);
-            else console.warn('[GameArt] 載入失敗 rooms/brew-room', err);
+        // 藥水室背景（白天／夜晚各一張，尺寸相同→切換不位移）
+        resources.load('rooms/brew-room-day', ImageAsset, (err, img) => {
+            if (!err && img) brewRoomDayFrame = SpriteFrame.createWithImage(img);
+            else console.warn('[GameArt] 載入失敗 rooms/brew-room-day', err);
+            finish();
+        });
+        resources.load('rooms/brew-room-night', ImageAsset, (err, img) => {
+            if (!err && img) brewRoomNightFrame = SpriteFrame.createWithImage(img);
+            else console.warn('[GameArt] 載入失敗 rooms/brew-room-night', err);
             finish();
         });
         // 任務簿捲軸底板（單張）
@@ -228,8 +234,8 @@ export const GameArt = {
     /** 女巫施法姿勢（正面；未載入回 null）。 */
     cast(): SpriteFrame | null { return castFrame; },
 
-    /** 藥水室背景（未載入回 null）。 */
-    brewRoom(): SpriteFrame | null { return brewRoomFrame; },
+    /** 藥水室背景（night=true 回夜晚版；未載入回 null）。 */
+    brewRoom(night: boolean): SpriteFrame | null { return (night ? brewRoomNightFrame : brewRoomDayFrame); },
 
     /** 任務簿捲軸底板（未載入回 null）。 */
     questScroll(): SpriteFrame | null { return questScrollFrame; },
