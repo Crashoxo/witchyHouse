@@ -4,21 +4,12 @@ import { _decorator, Component, Node, UITransform, Widget, Label, Color,
 import { Inventory } from './Inventory';
 import { UIState } from './UIState';
 import { Wallet } from './Wallet';
+import { BuyEntry, DEFAULT_BUY } from './data/prices';
 const { ccclass } = _decorator;
 
-/** 商店收購一項材料的定義：名稱 + 單價。 */
-export interface BuyEntry { name: string; price: number; }
-
-/** 沒在 inspector 指定時，雜貨鋪預設收購的材料與單價。 */
-export const DEFAULT_BUY: BuyEntry[] = [
-    { name: '木材', price: 5 },
-    { name: '樹枝', price: 3 },
-    { name: '漿果', price: 8 },
-    { name: '落葉', price: 2 },
-    { name: '藥草', price: 12 },
-    { name: '黑莓', price: 10 },
-    { name: '金蘋果', price: 50 },
-];
+// BuyEntry / DEFAULT_BUY 已搬到 data/prices.ts；re-export 供既有 import（如 ShopBuilding）使用。
+export type { BuyEntry };
+export { DEFAULT_BUY };
 
 /**
  * 收購面板（modal）：全域唯一，走近商店按 E 開，可把背包材料賣成金幣。

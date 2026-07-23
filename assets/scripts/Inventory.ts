@@ -2,6 +2,7 @@ import { _decorator, Component, Node, UITransform, Widget, Sprite, SpriteFrame,
          Label, Color, Graphics, CCString, find, sys } from 'cc';
 import { GameArt } from './GameArt';
 import { Upgrades } from './Upgrades';
+import { SaveManager } from './SaveManager';
 const { ccclass, property } = _decorator;
 
 /**
@@ -15,7 +16,7 @@ const STOCK_KEY = 'witch.stock';
 
 function loadStock(): Stack[] {
     try {
-        const v = sys.localStorage.getItem(STOCK_KEY);
+        const v = SaveManager.getString(STOCK_KEY);
         const arr = v ? JSON.parse(v) : [];
         // 只收合法的堆疊，避免壞存檔炸掉
         return Array.isArray(arr)
@@ -27,7 +28,7 @@ function loadStock(): Stack[] {
 const stock: Stack[] = loadStock();
 
 function saveStock() {
-    sys.localStorage.setItem(STOCK_KEY, JSON.stringify(stock));
+    SaveManager.setString(STOCK_KEY, JSON.stringify(stock));
 }
 
 /** 一格背包的畫面元件（純顯示，資料在 stock）。 */

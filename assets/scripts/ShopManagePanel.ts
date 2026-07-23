@@ -7,10 +7,10 @@ import { UIState } from './UIState';
 import { Wallet } from './Wallet';
 import { Upgrades, Track } from './Upgrades';
 import { PotionRecipes } from './PotionRecipes';
+import { MATERIALS } from './data/items';
 const { ccclass } = _decorator;
 
-/** 材料的固定顯示順序。實際上架清單是「背包有的或已上架的」動態產生（含做好的藥水）。 */
-const MATERIALS = ['木材', '樹枝', '漿果', '落葉', '藥草', '黑莓', '金蘋果', '藍莓'];
+// MATERIALS（材料固定顯示順序）已搬到 data/items.ts，見頂部 import。
 /** 藥水成品的顯示順序（接在材料後面）。 */
 const POTIONS = PotionRecipes.all.map(r => r.name);
 /** 上架頁最多顯示幾列（面板高度以此為準，超過的截掉——一般不會有這麼多種）。 */

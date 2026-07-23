@@ -1,5 +1,6 @@
-import { sys } from 'cc';
 import { Upgrades } from './Upgrades';
+import { SaveManager } from './SaveManager';
+import { BASE_PRICE } from './data/prices';
 
 /**
  * 玩家商店的「貨架」資料：把背包材料上架、定價，等顧客上門買（顧客在 Phase 2）。
@@ -8,19 +9,13 @@ import { Upgrades } from './Upgrades';
  */
 export interface Listing { name: string; price: number; count: number; }
 
-/** 各材料/藥水的建議售價（賣給顧客，比雜貨鋪收購價高一些）。藥水價＝配方 sellPrice。 */
-const BASE_PRICE: Record<string, number> = {
-    木材: 8, 樹枝: 5, 漿果: 12, 落葉: 3, 藥草: 18, 黑莓: 15, 金蘋果: 80, 藍莓: 14,
-    // 藥水成品（PotionRecipes 的 sellPrice）
-    清涼藥水: 35, 戀愛藥水: 40, 暗影藥水: 42, 烈焰藥水: 45, 溫暖熱可可: 30,
-    蜂蜜藥劑: 55, 黃金藥劑: 70, 夜影掃帚: 120, 星光掃帚: 140, 羽翼掃帚: 160,
-};
+// BASE_PRICE（建議售價表）已搬到 data/prices.ts，見頂部 import。
 
 const KEY = 'witch.shop.listings';
 
 function load(): Listing[] {
     try {
-        const v = sys.localStorage.getItem(KEY);
+        const v = SaveManager.getString(KEY);
         const arr = v ? JSON.parse(v) : [];
         return Array.isArray(arr)
             ? arr.filter(l => l && typeof l.name === 'string'
@@ -33,7 +28,7 @@ function load(): Listing[] {
 const listings: Listing[] = load();
 
 function save() {
-    sys.localStorage.setItem(KEY, JSON.stringify(listings));
+    SaveManager.setString(KEY, JSON.stringify(listings));
 }
 
 export const ShopStock = {

@@ -1,14 +1,14 @@
-import { sys } from 'cc';
+import { SaveManager } from './SaveManager';
 
 /**
  * 玩家錢包（金幣）。金額存在 module 變數（換場景 `director.loadScene` 保留），
- * 並用 `sys.localStorage` 存檔 —— 關掉遊戲再開，金幣還在。
+ * 並透過 `SaveManager` 存檔 —— 關掉遊戲再開，金幣還在。
  * ShopPanel 賣東西時 add()，Hud 常駐顯示讀 gold。
  */
 const KEY = 'witch.gold';
 
 function load(): number {
-    const v = sys.localStorage.getItem(KEY);
+    const v = SaveManager.getString(KEY);
     const n = v ? parseInt(v, 10) : 0;
     return Number.isFinite(n) ? n : 0;
 }
@@ -16,7 +16,7 @@ function load(): number {
 let gold = load();
 
 function save() {
-    sys.localStorage.setItem(KEY, String(gold));
+    SaveManager.setString(KEY, String(gold));
 }
 
 export const Wallet = {

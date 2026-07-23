@@ -3,6 +3,7 @@ import { _decorator, Component, Node, UITransform, Color, Graphics, CCString,
 import { Dialogue, DialogueInput } from './Dialogue';
 import { UIState } from './UIState';
 import { Quests } from './Quests';
+import { DEFAULT_NPC_LINES } from './data/dialogue';
 const { ccclass, property } = _decorator;
 
 /**
@@ -22,13 +23,6 @@ export class TalkNpc extends Component {
     portrait = '';
     @property({ tooltip: '玩家離多近才能交談（像素）' })
     interactRange = 200;
-
-    /** 沒在 inspector 填台詞時的預設對話。 */
-    private static readonly DEFAULT_LINES = [
-        '嗨，旅行者！歡迎來到魔法小鎮。',
-        '往東邊的森林去採些材料，回你的店裡上架，客人自然會上門喔。',
-        '有空再來找我聊聊吧！',
-    ];
 
     private player: Node | null = null;
     private hint: Node | null = null;   // 「按 E 交談」浮動提示
@@ -52,7 +46,7 @@ export class TalkNpc extends Component {
         // npcName 對得上任務 giver、而且此刻有任務可談 → 走任務對話；否則一般閒聊
         const qid = Quests.currentFor(this.npcName);
         if (qid) { this.openQuest(qid); return; }
-        const lines = this.lines.length ? this.lines : TalkNpc.DEFAULT_LINES;
+        const lines = this.lines.length ? this.lines : DEFAULT_NPC_LINES;
         Dialogue.ensure()?.open(this.npcName, lines, this.portrait);
     }
 

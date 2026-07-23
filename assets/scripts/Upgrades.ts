@@ -1,5 +1,5 @@
-import { sys } from 'cc';
 import { Wallet } from './Wallet';
+import { SaveManager } from './SaveManager';
 
 /**
  * 店鋪升級：花金幣升級各項軌道，等級存 localStorage（key `witch.upgrades`）。
@@ -47,7 +47,7 @@ const KEY = 'witch.upgrades';
 function load(): Record<Track, number> {
     const base: Record<Track, number> = { signboard: 0, bag: 0, shelf: 0 };
     try {
-        const v = sys.localStorage.getItem(KEY);
+        const v = SaveManager.getString(KEY);
         if (v) {
             const o = JSON.parse(v);
             for (const t of Object.keys(base) as Track[]) {
@@ -60,7 +60,7 @@ function load(): Record<Track, number> {
 
 const levels = load();
 
-function save() { sys.localStorage.setItem(KEY, JSON.stringify(levels)); }
+function save() { SaveManager.setString(KEY, JSON.stringify(levels)); }
 
 export const Upgrades = {
     tracks(): Track[] { return ['signboard', 'bag', 'shelf']; },

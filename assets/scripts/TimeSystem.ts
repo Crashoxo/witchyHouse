@@ -1,4 +1,4 @@
-import { sys } from 'cc';
+import { SaveManager } from './SaveManager';
 
 /**
  * 遊戲時間系統 —— 照星露谷（Stardew Valley）的邏輯：
@@ -33,7 +33,7 @@ const MONTHS_PER_YEAR = 12;              // 對應盤面羅馬數字 I..XII
 interface Save { d: number; t: number; }
 function load(): Save {
     try {
-        const raw = sys.localStorage.getItem(KEY);
+        const raw = SaveManager.getString(KEY);
         if (raw) {
             const o = JSON.parse(raw);
             if (o && Number.isFinite(o.d) && Number.isFinite(o.t)) {
@@ -57,7 +57,7 @@ const newDayCbs: Array<() => void> = [];
 }
 
 function save() {
-    sys.localStorage.setItem(KEY, JSON.stringify({ d: totalDays, t: tod }));
+    SaveManager.setString(KEY, JSON.stringify({ d: totalDays, t: tod }));
 }
 
 /** 跳到隔天早上 06:00。 */
