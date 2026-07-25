@@ -112,6 +112,12 @@ export const TimeSystem = {
     /** 一天過了幾成（0..1，06:00→02:00）。給天色漸變等用。 */
     get dayProgress(): number { return (tod - DAY_START) / (DAY_END - DAY_START); },
 
+    /**
+     * 連續的「當日時數」，範圍 6.0..26.0（含分鐘的小數）。跨午夜仍單調遞增
+     * （24=00:00、25=01:00、26=02:00），故適合直接餵天色/色板曲線做插值。
+     */
+    get todHours(): number { return tod / 60; },
+
     /** 時針角度比例（0..1，12 小時制，連續含分鐘量→平滑）。 */
     get hourFraction(): number { return ((displayHour() % 12) + (tod % 60) / 60) / 12; },
     /** 分針角度比例（0..1，連續）。 */
