@@ -5,6 +5,7 @@ import { Inventory } from './Inventory';
 import { UIState } from './UIState';
 import { Quests } from './Quests';
 import { DailyLog } from './DailyLog';
+import { TimeSystem } from './TimeSystem';
 import { GameArt } from './GameArt';
 import { CharacterAnimator } from './CharacterAnimator';
 const { ccclass, property } = _decorator;
@@ -56,18 +57,27 @@ export class GatherTree extends Component {
         this.gather();
     }
 
+    /** 這項材料是不是當季盛產（採量 +1、稀有掉落機率加成）。 */
+    private inSeason(item: string): boolean {
+        const list = TimeSystem.seasonDef.bonusItems;
+        for (let i = 0; i < list.length; i++) if (list[i] === item) return true;
+        return false;
+    }
+
     private gather() {
         const inv = Inventory.ensure();   // 沒有背包 UI 時會自動在 Canvas 底下生一個
-        // 隨機數量（min~max）
+        // 隨機數量（min~max），當季盛產的材料多給一個
         const lo = Math.min(this.minYield, this.maxYield);
         const hi = Math.max(this.minYield, this.maxYield);
-        const qty = lo + Math.floor(Math.random() * (hi - lo + 1));
+        const bonus = this.inSeason(this.itemName);
+        const qty = lo + Math.floor(Math.random() * (hi - lo + 1)) + (bonus ? 1 : 0);
         inv?.add(this.itemName, qty);
         Quests.record('gather', this.itemName, qty);   // 累積「採集」任務進度
         DailyLog.recordGather(qty);                    // 記進今日採集量
         this.playFx(this.itemName, qty);
-        // 機率額外掉稀有物
-        if (this.rareItem && Math.random() < this.rareChance) {
+        // 機率額外掉稀有物（稀有物也當季的話機率再提高）
+        const rareRate = this.rareChance * (this.rareItem && this.inSeason(this.rareItem) ? 1.6 : 1);
+        if (this.rareItem && Math.random() < rareRate) {
             inv?.add(this.rareItem, 1);
             Quests.record('gather', this.rareItem, 1);
             DailyLog.recordGather(1);

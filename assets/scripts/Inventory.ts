@@ -10,7 +10,7 @@ const { ccclass, property } = _decorator;
  * 所以在森林採到的東西走到城鎮還在；並用 `sys.localStorage` 存檔（關遊戲再開還在）。
  * 每個場景的背包 UI 只是把這份資料畫出來。只存非空的堆疊、依取得順序排列。
  */
-interface Stack { name: string; count: number; }
+export interface Stack { name: string; count: number; }
 
 const STOCK_KEY = 'witch.stock';
 
@@ -126,6 +126,19 @@ export class Inventory extends Component {
 
     /** 背包裡某物品的總數量。 */
     countOf(name: string): number {
+        return stock.find(s => s.name === name)?.count ?? 0;
+    }
+
+    /**
+     * 目前背包內容（複本，改它不會動到真資料）。
+     * 是 static —— 資料本來就在 module 層，就算某個場景還沒生過背包 UI 也讀得到。
+     */
+    static list(): Stack[] {
+        return stock.map(s => ({ name: s.name, count: s.count }));
+    }
+
+    /** 背包裡某物品的總數量（static 版，同上不需要 UI 存在）。 */
+    static countOf(name: string): number {
         return stock.find(s => s.name === name)?.count ?? 0;
     }
 

@@ -8,7 +8,7 @@ const { ccclass } = _decorator;
 /**
  * 常駐時鐘 HUD：畫面右上角一個華麗盤面，顯示遊戲時間。
  * - 時針（華麗矛形）＋分針（細長）在羅馬數字圈上旋轉 → 一天的時間
- * - 中央 Month／Day 兩個卷軸框顯示當前月／日數字（畫在指針之上，永遠讀得到）
+ * - 中央兩個卷軸框：左＝季節字（春/夏/秋/冬）、右＝當季第幾天（畫在指針之上，永遠讀得到）
  * - 頂端徽章切換太陽／月亮 → 日夜
  * 仿 Hud/Inventory 的 ensure()：每個場景由 PlayerController.onLoad 叫出來，
  * 且它的 update() 是全遊戲唯一驅動 TimeSystem.tick 的地方（時間隨場景延續）。
@@ -98,9 +98,9 @@ export class Clock extends Component {
             }
         }
 
-        // 月/日數字有變才改
-        const m = TimeSystem.month, d = TimeSystem.day;
-        if (this.monthLabel && m !== this.lastMonth) { this.lastMonth = m; this.monthLabel.string = String(m); }
+        // 季/日有變才改（左框放季節字「春夏秋冬」、右框放日數）
+        const m = TimeSystem.season, d = TimeSystem.day;
+        if (this.monthLabel && m !== this.lastMonth) { this.lastMonth = m; this.monthLabel.string = TimeSystem.seasonName; }
         if (this.dayLabel && d !== this.lastDay) { this.lastDay = d; this.dayLabel.string = String(d); }
 
         // 日夜切換太陽/月亮

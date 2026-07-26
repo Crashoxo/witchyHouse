@@ -33,6 +33,7 @@ export const SAVE_KEYS: string[] = [
     'witch.decor.placed',    // DecorCatalog：擺出的裝飾
     'witch.daily',           // DailyLog：當日統計＋前一天結算
     'witch.reputation',      // Reputation：名聲點數
+    'witch.friendship',      // Friendship：村民友誼度
 ];
 
 /**

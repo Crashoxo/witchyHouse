@@ -144,11 +144,15 @@ export class DaySummaryPanel extends Component {
         const leftX = -this.panelW / 2 + 34;
         const rightX = this.panelW / 2 - 34;
 
-        // 標題：第 N 天結束 / 副標：新的一天
-        this.label(panel, `第 ${rec.day} 天 結算`, 30, new Color(250, 236, 214, 255),
+        // 標題：剛結束那天的日期 / 副標：新的一天（今天是節日就順便預告）
+        const ft = TimeSystem.festivalToday();
+        this.label(panel, `${TimeSystem.dateTextOf(rec.day)} 結算`, 30, new Color(250, 236, 214, 255),
             0, topY - 44, this.panelW - 68, Label.HorizontalAlign.CENTER);
-        this.label(panel, `— 第 ${rec.day + 1} 天 早晨 ${TimeSystem.clockText()} —`, 19,
-            new Color(198, 186, 214, 255), 0, topY - 78, this.panelW - 68, Label.HorizontalAlign.CENTER);
+        this.label(panel,
+            ft ? `— ${TimeSystem.dateTextFull()}　今天是「${ft.name}」 —`
+               : `— ${TimeSystem.dateTextFull()} 早晨 ${TimeSystem.clockText()} —`,
+            19, ft ? new Color(226, 196, 255, 255) : new Color(198, 186, 214, 255),
+            0, topY - 78, this.panelW - 68, Label.HorizontalAlign.CENTER);
 
         let y = topY - headerH;
 

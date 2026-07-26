@@ -7,6 +7,7 @@ import { Upgrades } from './Upgrades';
 import { Quests } from './Quests';
 import { DailyLog } from './DailyLog';
 import { Reputation } from './Reputation';
+import { TimeSystem } from './TimeSystem';
 const { ccclass, property } = _decorator;
 
 /** 顧客的行為狀態。 */
@@ -54,12 +55,13 @@ export class CustomerManager extends Component {
     }
 
     update(dt: number) {
-        // 生成（來客速度/人數＝「招牌」升級 × 名聲加成；且只在營業時間內上門）
+        // 生成（來客速度/人數＝「招牌」升級 × 名聲加成 × 節日加成；且只在營業時間內上門）
         this.spawnTimer += dt;
-        const interval = Upgrades.customerInterval() * Reputation.intervalScale();
+        const festival = !!TimeSystem.festivalToday();
+        const interval = Upgrades.customerInterval() * Reputation.intervalScale() * (festival ? 0.6 : 1);
         if (this.spawnTimer >= interval) {
             this.spawnTimer = 0;
-            const room = Upgrades.customerMax() + Reputation.extraCustomers();
+            const room = Upgrades.customerMax() + Reputation.extraCustomers() + (festival ? 1 : 0);
             if (DailyLog.isShopOpen() && GameArt.ready
                 && ShopStock.listings.length > 0 && this.customers.length < room) {
                 this.spawn();

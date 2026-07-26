@@ -70,7 +70,7 @@ export class SleepOverlay extends Component {
         this.scheduleOnce(() => {
             TimeSystem.sleep();                                   // 白天→當晚 / 晚上→隔天早晨
             const period = TimeSystem.isNight ? '夜晚' : '早晨';
-            msg.string = `— 第 ${TimeSystem.day} 天 ${period} ${TimeSystem.clockText()} —`;
+            msg.string = `— ${TimeSystem.dateTextFull()} ${period} ${TimeSystem.clockText()} —`;
         }, 0.7);
         this.scheduleOnce(() => this.finish(op), 2.3);
     }

@@ -13,6 +13,7 @@ import { UpdatePanel } from './UpdatePanel';
 import { DayNightTint } from './DayNightTint';
 import { LampGlow } from './LampGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
+import { PlayerInfoPanel } from './PlayerInfoPanel';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -109,6 +110,11 @@ export class PlayerController extends Component {
         this.keys.add(e.keyCode);
         if (UIState.modalOpen) return;                       // 開著視窗時不施法、不開任務簿
         if (e.keyCode === KeyCode.KEY_Q) { QuestLog.ensure()?.open(); return; }   // Q 開任務簿
+        // Tab 開玩家資訊（物品／村民／日曆）。瀏覽器有時會把 Tab 拿去切換焦點，
+        // 所以 I 也能開，兩個鍵等價。
+        if (e.keyCode === KeyCode.TAB || e.keyCode === KeyCode.KEY_I) {
+            PlayerInfoPanel.ensure()?.open(); return;
+        }
         if (e.keyCode === KeyCode.KEY_J || e.keyCode === KeyCode.SPACE) this.cast();
     }
     private onKeyUp(e: EventKeyboard) { this.keys.delete(e.keyCode); }

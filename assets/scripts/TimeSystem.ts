@@ -1,4 +1,5 @@
 import { SaveManager } from './SaveManager';
+import { SEASONS, FESTIVALS, SeasonDef, Festival } from './data/seasons';
 
 /**
  * 遊戲時間系統 —— 照星露谷（Stardew Valley）的邏輯：
@@ -27,8 +28,8 @@ const DAY_END = 26 * 60;                  // 1560 = 隔天 02:00 昏倒
 const NIGHT_SLEEP = 20 * 60;              // 1200 = 白天睡覺會跳到當晚 20:00
 const SUNSET = 18;                        // 18:00 起算夜晚（盤面換月亮）
 
-const DAYS_PER_MONTH = 28;               // 一個月 28 天（同星露谷一季天數）
-const MONTHS_PER_YEAR = 12;              // 對應盤面羅馬數字 I..XII
+const DAYS_PER_SEASON = 28;              // 一季 28 天（同星露谷）
+const SEASONS_PER_YEAR = 4;              // 春夏秋冬 → 一年 112 天
 
 interface Save { d: number; t: number; }
 function load(): Save {
@@ -108,12 +109,48 @@ export const TimeSystem = {
 
     get hour(): number { return displayHour() % 24; },       // 0..23（25:00→1）
     get minute(): number { return Math.floor(tod % 60); },   // 0..59（連續，取整）
-    get day(): number { return (totalDays % DAYS_PER_MONTH) + 1; },
-    get month(): number { return (Math.floor(totalDays / DAYS_PER_MONTH) % MONTHS_PER_YEAR) + 1; },
-    get year(): number { return Math.floor(totalDays / (DAYS_PER_MONTH * MONTHS_PER_YEAR)) + 1; },
+    get day(): number { return (totalDays % DAYS_PER_SEASON) + 1; },       // 當季第幾天 1..28
+    get season(): number { return Math.floor(totalDays / DAYS_PER_SEASON) % SEASONS_PER_YEAR; },
+    get year(): number { return Math.floor(totalDays / (DAYS_PER_SEASON * SEASONS_PER_YEAR)) + 1; },
+    /** 一季幾天／一年幾季（日曆面板要用）。 */
+    get daysPerSeason(): number { return DAYS_PER_SEASON; },
 
-    /** 夜晚？（18:00 到隔天 02:00）。決定盤面日/月圖示，之後也可拿來做天色。 */
-    get isNight(): boolean { return displayHour() >= SUNSET; },
+    /** 目前季節的定義（名稱、天色偏移、當季盛產材料）。 */
+    get seasonDef(): SeasonDef { return SEASONS[this.season]; },
+    /** 單字季名：春/夏/秋/冬。 */
+    get seasonName(): string { return this.seasonDef.name; },
+
+    /** 日期文字，例：「春 12 日」。 */
+    dateText(): string { return `${this.seasonName} ${this.day} 日`; },
+    /** 含年份的日期文字，例：「第 1 年 春 12 日」。 */
+    dateTextFull(): string { return `第 ${this.year} 年 ${this.seasonName} ${this.day} 日`; },
+
+    /**
+     * 把「從開檔起算的第 N 天」（1 起，同 totalDay）換成日期文字。
+     * 每日結算要顯示「剛結束的那一天」，那時 totalDay 已經跳到隔天了，所以需要這個。
+     */
+    dateTextOf(totalDay: number): string {
+        const n = Math.max(0, Math.floor(totalDay) - 1);
+        const s = Math.floor(n / DAYS_PER_SEASON) % SEASONS_PER_YEAR;
+        return `${SEASONS[s].name} ${(n % DAYS_PER_SEASON) + 1} 日`;
+    },
+
+    /** 今天是節日的話回傳它，否則 null。 */
+    festivalToday(): Festival | null { return this.festivalOn(this.season, this.day); },
+    /** 某季某日的節日（日曆面板逐格查）。 */
+    festivalOn(season: number, day: number): Festival | null {
+        for (let i = 0; i < FESTIVALS.length; i++) {
+            const f = FESTIVALS[i];
+            if (f.season === season && f.day === day) return f;
+        }
+        return null;
+    },
+
+    /** 這一季的天黑時刻（小時）——冬天黑得早、夏天黑得晚。 */
+    get sunsetHour(): number { return SUNSET + this.seasonDef.duskShift; },
+
+    /** 夜晚？（天黑到隔天 02:00）。決定盤面日/月圖示、房間日夜背景、天色。 */
+    get isNight(): boolean { return tod / 60 >= this.sunsetHour; },
 
     /** 一天過了幾成（0..1，06:00→02:00）。給天色漸變等用。 */
     get dayProgress(): number { return (tod - DAY_START) / (DAY_END - DAY_START); },

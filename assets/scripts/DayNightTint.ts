@@ -72,7 +72,8 @@ export class DayNightTint extends Component {
     private redraw() {
         if (!this.g) return;
 
-        const c = sample(TimeSystem.todHours);
+        const s = TimeSystem.seasonDef;
+        const c = sample(TimeSystem.todHours, s.dawnShift, s.duskShift);
         // 量化節流：色值/濃度沒有明顯變化就跳過重畫
         const key = `${Math.round(c.r / 3)},${Math.round(c.g / 3)},${Math.round(c.b / 3)},${Math.round(c.a * 60)}`;
         if (key === this.lastKey) return;
@@ -87,15 +88,28 @@ export class DayNightTint extends Component {
     }
 }
 
-/** 在 KEYS 上依當日時數線性內插出 {r,g,b,a}。 */
-function sample(h: number): { r: number; g: number; b: number; a: number } {
+/**
+ * 關鍵幀的時刻依季節挪動：`dawn` 挪「天亮」那一幀（冬天亮得晚）、`dusk` 挪傍晚到入夜
+ * 那幾幀（冬天黑得早、夏天黑得晚）。第一幀(06:00 拂曉)與最後一幀(02:00 最暗)不動，
+ * 挪動幅度也刻意小於幀距，所以時間序永遠是遞增的、插值不會壞掉。
+ */
+function keyTime(i: number, dawn: number, dusk: number): number {
+    const t = KEYS[i][0];
+    if (i === 1) return t + dawn;                    // 08:00 天亮
+    if (i >= 3 && i <= 5) return t + dusk;           // 18:00 / 19:30 / 21:00
+    return t;
+}
+
+/** 在 KEYS 上依當日時數線性內插出 {r,g,b,a}（時刻先套季節偏移）。 */
+function sample(h: number, dawn: number, dusk: number): { r: number; g: number; b: number; a: number } {
     if (h <= KEYS[0][0]) { const k = KEYS[0]; return { r: k[1], g: k[2], b: k[3], a: k[4] }; }
     const last = KEYS[KEYS.length - 1];
     if (h >= last[0]) return { r: last[1], g: last[2], b: last[3], a: last[4] };
     for (let i = 0; i < KEYS.length - 1; i++) {
         const a = KEYS[i], b = KEYS[i + 1];
-        if (h >= a[0] && h <= b[0]) {
-            const t = (h - a[0]) / (b[0] - a[0]);
+        const at = keyTime(i, dawn, dusk), bt = keyTime(i + 1, dawn, dusk);
+        if (h >= at && h <= bt) {
+            const t = (h - at) / Math.max(0.001, bt - at);
             return {
                 r: a[1] + (b[1] - a[1]) * t,
                 g: a[2] + (b[2] - a[2]) * t,

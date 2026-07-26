@@ -3,6 +3,7 @@ import { _decorator, Component, Node, UITransform, Color, Graphics, CCString,
 import { Dialogue, DialogueInput } from './Dialogue';
 import { UIState } from './UIState';
 import { Quests } from './Quests';
+import { Friendship } from './Friendship';
 import { DEFAULT_NPC_LINES } from './data/dialogue';
 const { ccclass, property } = _decorator;
 
@@ -43,6 +44,7 @@ export class TalkNpc extends Component {
     private onKeyDown(e: EventKeyboard) {
         if (e.keyCode !== KeyCode.KEY_E) return;
         if (!this.inRange || UIState.modalOpen) return;   // 已開著別重複觸發
+        Friendship.talk(this.npcName);   // 每天第一次交談加友誼（同一天再聊不重複給）
         // npcName 對得上任務 giver、而且此刻有任務可談 → 走任務對話；否則一般閒聊
         const qid = Quests.currentFor(this.npcName);
         if (qid) { this.openQuest(qid); return; }

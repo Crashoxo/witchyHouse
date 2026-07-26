@@ -1,0 +1,65 @@
+/**
+ * 季節「內容」資料：一年 4 季、一季 28 天（同星露谷的節奏）。
+ *
+ * 季節目前影響三件事，都是從這張表讀出來的：
+ *   1. 天色 —— dawnShift / duskShift 把 DayNightTint 的曲線整段前後挪（冬天早黑晚亮）。
+ *   2. 採集 —— bonusItems 是當季盛產的材料，採到會多給、稀有掉落機率也高一點。
+ *   3. 節日 —— FESTIVALS 標在日曆上，當天客人特別多。
+ * 要調整季節感就改這裡，程式不用動。
+ */
+
+export interface SeasonDef {
+    /** 單字季名（時鐘盤面那個小框放得下的長度）。 */
+    name: string;
+    /** 完整季名（面板標題用）。 */
+    label: string;
+    /** 一句話的季節描述（日曆頁顯示）。 */
+    desc: string;
+    /** 天亮時刻偏移（小時，正＝亮得晚）。 */
+    dawnShift: number;
+    /** 天黑時刻偏移（小時，負＝黑得早）。 */
+    duskShift: number;
+    /** 當季盛產的材料（採集會多給、稀有掉落機率提高）。 */
+    bonusItems: string[];
+}
+
+/** 四季，索引 0..3。 */
+export const SEASONS: SeasonDef[] = [
+    {
+        name: '春', label: '春天', desc: '萬物冒芽，花草長得特別快。',
+        dawnShift: 0, duskShift: 0,
+        bonusItems: ['藥草', '漿果'],
+    },
+    {
+        name: '夏', label: '夏天', desc: '日照最長的季節，莓果又甜又多。',
+        dawnShift: -0.5, duskShift: 1.0,
+        bonusItems: ['漿果', '黑莓', '藍莓'],
+    },
+    {
+        name: '秋', label: '秋天', desc: '果實成熟、落葉滿地，收成的季節。',
+        dawnShift: 0.4, duskShift: -0.7,
+        bonusItems: ['落葉', '金蘋果'],
+    },
+    {
+        name: '冬', label: '冬天', desc: '天黑得早，只有耐寒的枯枝與木材。',
+        dawnShift: 1.0, duskShift: -1.5,
+        bonusItems: ['木材', '樹枝'],
+    },
+];
+
+/** 節日：某季的第幾天。當天客人特別多，日曆上會標出來。 */
+export interface Festival {
+    season: number;   // 0..3
+    day: number;      // 1..28
+    name: string;
+    desc: string;
+}
+
+export const FESTIVALS: Festival[] = [
+    { season: 0, day: 7,  name: '播種祭',   desc: '村民互相分送種子，森林的藥草冒得特別旺。' },
+    { season: 0, day: 21, name: '花之祭典', desc: '街上鋪滿花瓣，逛街的人潮一整天不斷。' },
+    { season: 1, day: 14, name: '仲夏螢火節', desc: '入夜後溪邊全是螢火蟲，鎮上熱鬧到很晚。' },
+    { season: 2, day: 10, name: '月光茶會', desc: '大家帶著自釀的飲品聚在廣場，藥水特別好賣。' },
+    { season: 2, day: 28, name: '豐收祭',   desc: '一年裡最盛大的市集，店門口大排長龍。' },
+    { season: 3, day: 24, name: '星光節',   desc: '冬夜點起星燈，村民習慣在這天互送小禮物。' },
+];

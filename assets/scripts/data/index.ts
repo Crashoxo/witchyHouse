@@ -10,3 +10,5 @@ export * from './prices';
 export * from './decor';
 export * from './dialogue';
 export * from './quests';
+export * from './seasons';
+export * from './villagers';
