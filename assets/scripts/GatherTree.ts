@@ -4,6 +4,7 @@ import { _decorator, Component, Node, Sprite, Color, input, Input,
 import { Inventory } from './Inventory';
 import { UIState } from './UIState';
 import { Quests } from './Quests';
+import { DailyLog } from './DailyLog';
 import { GameArt } from './GameArt';
 import { CharacterAnimator } from './CharacterAnimator';
 const { ccclass, property } = _decorator;
@@ -63,11 +64,13 @@ export class GatherTree extends Component {
         const qty = lo + Math.floor(Math.random() * (hi - lo + 1));
         inv?.add(this.itemName, qty);
         Quests.record('gather', this.itemName, qty);   // 累積「採集」任務進度
+        DailyLog.recordGather(qty);                    // 記進今日採集量
         this.playFx(this.itemName, qty);
         // 機率額外掉稀有物
         if (this.rareItem && Math.random() < this.rareChance) {
             inv?.add(this.rareItem, 1);
             Quests.record('gather', this.rareItem, 1);
+            DailyLog.recordGather(1);
             this.scheduleOnce(() => this.popItem(this.rareItem, 1, 46), 0.35);   // 慢一拍再冒
         }
         this.ready = false;

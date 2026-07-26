@@ -12,6 +12,7 @@ import { CharacterAnimator } from './CharacterAnimator';
 import { UpdatePanel } from './UpdatePanel';
 import { DayNightTint } from './DayNightTint';
 import { LampGlow } from './LampGlow';
+import { DaySummaryPanel } from './DaySummaryPanel';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -68,6 +69,7 @@ export class PlayerController extends Component {
         Inventory.ensure();
         Hud.ensure();
         Clock.ensure();           // 右上角時鐘（其 update 同時驅動 TimeSystem 時間流動）
+        DaySummaryPanel.arm();    // 換日時跳每日結算（整個遊戲只註冊一次）
         // 戶外天色色板：只在森林/城鎮裝（室內 brew/shop 各自有背景，不套）。
         const scene = director.getScene()?.name;
         if (scene === 'main' || scene === 'town') DayNightTint.ensure();

@@ -45,11 +45,14 @@ function load(): Save {
     return { d: 0, t: DAY_START };
 }
 
+/** 一天怎麼結束的：自己去睡 / 撐到 02:00 昏倒。給每日結算畫面分辨用。 */
+export type DayEndCause = 'sleep' | 'collapse';
+
 let totalDays = 0;        // 從開檔起算的第幾天（0 起）
 let tod = DAY_START;      // 一天內的分鐘（DAY_START..DAY_END，連續 float）
 let sinceSave = 0;        // 距上次存檔的真實秒（節流用）
 let slow = false;         // 減速模式（洞穴）
-const newDayCbs: Array<() => void> = [];
+const newDayCbs: Array<(cause: DayEndCause) => void> = [];
 
 {
     const s = load();
@@ -61,10 +64,10 @@ function save() {
 }
 
 /** 跳到隔天早上 06:00。 */
-function rollToNextDay() {
+function rollToNextDay(cause: DayEndCause) {
     totalDays += 1;
     tod = DAY_START;
-    newDayCbs.forEach(cb => cb());
+    newDayCbs.forEach(cb => cb(cause));
 }
 
 /** 目前時刻的「顯示小時」（6..25，其中 24=00:00、25=01:00）。 */
@@ -80,7 +83,7 @@ export const TimeSystem = {
         if (dt > 0.25) dt = 0.25;                 // 掉幀/剛換場景鉗住
         const per = slow ? SEC_PER_10MIN_SLOW : SEC_PER_10MIN_NORMAL;
         tod += dt * (STEP_MIN / per);             // 連續累積遊戲分鐘（平滑）
-        if (tod >= DAY_END) rollToNextDay();      // 02:00 昏倒 → 隔天 06:00
+        if (tod >= DAY_END) rollToNextDay('collapse');   // 02:00 昏倒 → 隔天 06:00
         sinceSave += dt;
         if (sinceSave >= 4) { sinceSave = 0; save(); }   // 存檔節流
     },
@@ -90,15 +93,18 @@ export const TimeSystem = {
      * 回傳 true 代表跨到了隔天（給睡覺畫面顯示「早上/晚上」用）。
      */
     sleep(): boolean {
-        if (this.isNight) { rollToNextDay(); save(); return true; }
+        if (this.isNight) { rollToNextDay('sleep'); save(); return true; }
         tod = NIGHT_SLEEP; save(); return false;
     },
 
     /** 切換洞穴減速模式（10 分鐘由 438 幀變 563 幀）。 */
     setSlow(v: boolean): void { slow = v; },
 
-    /** 註冊「換新的一天」回呼（睡覺或昏倒都會觸發）。 */
-    onNewDay(cb: () => void): void { newDayCbs.push(cb); },
+    /** 註冊「換新的一天」回呼（睡覺或昏倒都會觸發，cause 分辨是哪一種）。 */
+    onNewDay(cb: (cause: DayEndCause) => void): void { newDayCbs.push(cb); },
+
+    /** 從開檔起算的第幾天（1 起，不受月份影響）——給每日結算標題用。 */
+    get totalDay(): number { return totalDays + 1; },
 
     get hour(): number { return displayHour() % 24; },       // 0..23（25:00→1）
     get minute(): number { return Math.floor(tod % 60); },   // 0..59（連續，取整）

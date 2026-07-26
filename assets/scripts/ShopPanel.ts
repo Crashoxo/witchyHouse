@@ -4,6 +4,7 @@ import { _decorator, Component, Node, UITransform, Widget, Label, Color,
 import { Inventory } from './Inventory';
 import { UIState } from './UIState';
 import { Wallet } from './Wallet';
+import { DailyLog } from './DailyLog';
 import { BuyEntry, DEFAULT_BUY } from './data/prices';
 const { ccclass } = _decorator;
 
@@ -190,6 +191,7 @@ export class ShopPanel extends Component {
         if (!inv || qty <= 0) return;
         if (!inv.remove(e.name, qty)) return;   // 數量不足就不成交
         Wallet.add(e.price * qty);
+        DailyLog.recordTrade(e.price * qty);    // 記進今日的材料收購收入
         this.refresh();
     }
 

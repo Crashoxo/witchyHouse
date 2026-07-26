@@ -1,5 +1,6 @@
 import { Wallet } from './Wallet';
 import { SaveManager } from './SaveManager';
+import { DailyLog } from './DailyLog';
 
 /**
  * 店鋪升級：花金幣升級各項軌道，等級存 localStorage（key `witch.upgrades`）。
@@ -85,6 +86,7 @@ export const Upgrades = {
         const c = this.cost(t);
         if (c === null || Wallet.gold < c) return false;
         Wallet.add(-c);
+        DailyLog.recordSpend(c);      // 記進今日支出
         levels[t] += 1;
         save();
         return true;

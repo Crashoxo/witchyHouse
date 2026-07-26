@@ -31,6 +31,8 @@ export const SAVE_KEYS: string[] = [
     'witch.upgrades',        // Upgrades：升級等級
     'witch.decor.owned',     // DecorCatalog：擁有的裝飾
     'witch.decor.placed',    // DecorCatalog：擺出的裝飾
+    'witch.daily',           // DailyLog：當日統計＋前一天結算
+    'witch.reputation',      // Reputation：名聲點數
 ];
 
 /**

@@ -1,5 +1,6 @@
 import { Wallet } from './Wallet';
 import { SaveManager } from './SaveManager';
+import { DailyLog } from './DailyLog';
 import { DecorDef, DECOR_CATALOG } from './data/decor';
 
 /**
@@ -67,6 +68,7 @@ export const DecorCatalog = {
         const d = this.def(id);
         if (!d || Wallet.gold < d.price) return false;
         Wallet.add(-d.price);
+        DailyLog.recordSpend(d.price);   // 記進今日支出
         owned[id] = this.ownedCount(id) + 1;
         saveOwned();
         return true;

@@ -3,6 +3,7 @@ import { _decorator, Component, Node, UITransform, Label, Sprite, Color, Graphic
 import { GameArt } from './GameArt';
 import { UIState } from './UIState';
 import { TimeSystem } from './TimeSystem';
+import { DaySummaryPanel } from './DaySummaryPanel';
 const { ccclass } = _decorator;
 
 /**
@@ -92,6 +93,8 @@ export class SleepOverlay extends Component {
             this.busy = false;
             SleepOverlay.instance = null;
             this.node.destroy();
+            // 睡到隔天的話，過場演完才跳當日結算（結算面板會自己再把 modalOpen 打開）
+            DaySummaryPanel.showPending();
         }).start();
     }
 }

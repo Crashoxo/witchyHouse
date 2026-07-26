@@ -7,6 +7,8 @@ import { UIState } from './UIState';
 import { Wallet } from './Wallet';
 import { Upgrades, Track } from './Upgrades';
 import { PotionRecipes } from './PotionRecipes';
+import { DailyLog } from './DailyLog';
+import { Reputation } from './Reputation';
 import { MATERIALS } from './data/items';
 const { ccclass } = _decorator;
 
@@ -42,6 +44,7 @@ export class ShopManagePanel extends Component {
     private tabBox: Node | null = null;
     private rowsBox: Node | null = null;
     private goldLabel: Label | null = null;
+    private statusLabel: Label | null = null;
     private mode: Mode = 'stock';
 
     private readonly panelW = 720;
@@ -130,6 +133,10 @@ export class ShopManagePanel extends Component {
         this.makeLabel(panel, 'Esc 關閉', 15, new Color(190, 180, 170, 255),
             -panelH / 2 + 18, 200, Label.HorizontalAlign.CENTER, 0, true);
 
+        // 營業狀態列（分頁按鈕與列表之間）——顧客只在營業時間上門，要讓玩家看得到
+        this.statusLabel = this.makeLabel(panel, '', 16, new Color(200, 190, 178, 255),
+            topY - 116, this.panelW - 60, Label.HorizontalAlign.CENTER, 0, true);
+
         const rowsBox = new Node('Rows');
         rowsBox.layer = layer;
         panel.addChild(rowsBox);
@@ -142,6 +149,13 @@ export class ShopManagePanel extends Component {
 
     private refresh() {
         if (this.goldLabel) this.goldLabel.string = `金幣 ${Wallet.gold}`;
+        if (this.statusLabel) {
+            const open = DailyLog.isShopOpen() ? '營業中' : '已打烊';
+            const d = DailyLog.today;
+            this.statusLabel.string = `營業 ${DailyLog.hoursText()}（${open}）`
+                + `　今日營收 ${d.revenue} 金 / ${d.sales} 件`
+                + `　名聲 Lv.${Reputation.level} ${Reputation.title}`;
+        }
         this.buildTabs();
         const box = this.rowsBox;
         if (!box) return;
