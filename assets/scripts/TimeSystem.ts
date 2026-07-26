@@ -1,5 +1,5 @@
 import { SaveManager } from './SaveManager';
-import { SEASONS, FESTIVALS, MONTH_NAMES, DAYS_PER_MONTH, MONTHS_PER_YEAR,
+import { SEASONS, FESTIVALS, DAYS_PER_MONTH, MONTHS_PER_YEAR,
          MONTHS_PER_SEASON, SeasonDef, Festival } from './data/seasons';
 
 /**
@@ -116,8 +116,6 @@ export const TimeSystem = {
     /** 一個月幾天（日曆面板要用）。 */
     get daysPerMonth(): number { return DAYS_PER_MONTH; },
 
-    /** 月份名：一月…十二月。 */
-    get monthName(): string { return MONTH_NAMES[this.month - 1]; },
 
     /** 季節索引 0..3（一～三月＝春、四～六月＝夏…）。 */
     get season(): number { return this.seasonOfMonth(this.month); },
@@ -129,11 +127,11 @@ export const TimeSystem = {
     /** 單字季名：春/夏/秋/冬。 */
     get seasonName(): string { return this.seasonDef.name; },
 
-    /** 日期文字，例：「三月 16 日」。 */
-    dateText(): string { return `${this.monthName} ${this.day} 日`; },
-    /** 含年份與季節的日期文字，例：「第 1 年 三月 16 日（春）」。 */
+    /** 日期文字，例：「3 月 16 日」。 */
+    dateText(): string { return `${this.month} 月 ${this.day} 日`; },
+    /** 含年份與季節的日期文字，例：「第 1 年 3 月 16 日（春）」。 */
     dateTextFull(): string {
-        return `第 ${this.year} 年 ${this.monthName} ${this.day} 日（${this.seasonName}）`;
+        return `第 ${this.year} 年 ${this.month} 月 ${this.day} 日（${this.seasonName}）`;
     },
 
     /**
@@ -143,7 +141,7 @@ export const TimeSystem = {
     dateTextOf(totalDay: number): string {
         const n = Math.max(0, Math.floor(totalDay) - 1);
         const m = (Math.floor(n / DAYS_PER_MONTH) % MONTHS_PER_YEAR) + 1;
-        return `${MONTH_NAMES[m - 1]} ${(n % DAYS_PER_MONTH) + 1} 日`;
+        return `${m} 月 ${(n % DAYS_PER_MONTH) + 1} 日`;
     },
 
     /** 今天是節日的話回傳它，否則 null。 */

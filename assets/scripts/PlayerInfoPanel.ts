@@ -10,7 +10,7 @@ import { Friendship } from './Friendship';
 import { Reputation } from './Reputation';
 import { MATERIALS, ITEM_DESC, DEFAULT_ITEM_DESC, POTION_ITEMS } from './data/items';
 import { DEFAULT_BUY, BASE_PRICE } from './data/prices';
-import { SEASONS, MONTH_NAMES } from './data/seasons';
+import { SEASONS } from './data/seasons';
 const { ccclass } = _decorator;
 
 /**
@@ -379,8 +379,22 @@ export class PlayerInfoPanel extends Component {
         const today = TimeSystem.day;
         const days = TimeSystem.daysPerMonth;
 
-        this.label(box, `第 ${TimeSystem.year} 年 · ${TimeSystem.monthName}（${def.label}．${days} 天）`, 20,
-            new Color(244, 236, 224, 255), leftX, -16, 420, Label.HorizontalAlign.LEFT);
+        // 季節圖標（等比縮到 32 高）＋標題
+        const icon = GameArt.seasonIcon(TimeSystem.season);
+        if (icon) {
+            const n = new Node('seasonIcon');
+            n.layer = this.node.layer;
+            box.addChild(n);
+            const k = 32 / icon.rect.height;
+            n.addComponent(UITransform).setContentSize(icon.rect.width * k, 32);
+            n.setPosition(leftX + 16, -16, 0);
+            const sp = n.addComponent(Sprite);
+            sp.sizeMode = Sprite.SizeMode.CUSTOM;
+            sp.type = Sprite.Type.SIMPLE;
+            sp.spriteFrame = icon;
+        }
+        this.label(box, `第 ${TimeSystem.year} 年 · ${month} 月（${def.label}．${days} 天）`, 20,
+            new Color(244, 236, 224, 255), leftX + 40, -16, 420, Label.HorizontalAlign.LEFT);
         this.label(box, `當季盛產：${def.bonusItems.join('、')}`, 15,
             new Color(180, 220, 180, 255), this.panelW / 2 - 34, -16, 320, Label.HorizontalAlign.RIGHT);
         this.label(box, def.desc, 15, new Color(190, 182, 204, 255),
@@ -432,7 +446,7 @@ export class PlayerInfoPanel extends Component {
         } else {
             const next = TimeSystem.nextFestivalFrom(month, today);
             this.label(box, next
-                ? `下一個節日：${next.name}（${MONTH_NAMES[next.month - 1]} ${next.day} 日）——${next.desc}`
+                ? `下一個節日：${next.name}（${next.month} 月 ${next.day} 日）——${next.desc}`
                 : '今年剩下的日子沒有節日了，好好做生意吧。',
                 16, new Color(190, 182, 204, 255), leftX, listY, 700, Label.HorizontalAlign.LEFT);
         }

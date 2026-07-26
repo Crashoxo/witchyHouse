@@ -32,6 +32,8 @@ const BOX_Y = -0.05;           // Month/Day 框中心：盤心往下 0.05*Dh
 const MONTH_X = -0.135;        // Month 框中心 x（*D）
 const DAY_X = 0.145;           // Day 框中心 x（*D）
 const ICON_H = 22;             // 日月圖示顯示高
+const RIBBON_Y = 0.284;        // 盤面上方那條空米色緞帶的中心：盤心往上 0.284*Dh
+const SEASON_H = 26;           // 緞帶上季節圖標的顯示高
 
 @ccclass('Clock')
 export class Clock extends Component {
@@ -58,6 +60,8 @@ export class Clock extends Component {
     private moonNode: Node | null = null;
     private monthLabel: Label | null = null;
     private dayLabel: Label | null = null;
+    private seasonSprite: Sprite | null = null;   // 緞帶上的季節圖標
+    private lastSeason = -1;
 
     private lastMonth = -1;
     private lastDay = -1;
@@ -98,9 +102,13 @@ export class Clock extends Component {
             }
         }
 
-        // 月/日有變才改（左框放月份「一月…十二月」、右框放日數）
+        // 月/日有變才改（左框月份數字、右框日數）；季節換了就換緞帶上的圖標
         const m = TimeSystem.month, d = TimeSystem.day;
-        if (this.monthLabel && m !== this.lastMonth) { this.lastMonth = m; this.monthLabel.string = TimeSystem.monthName; }
+        if (this.monthLabel && m !== this.lastMonth) {
+            this.lastMonth = m;
+            this.monthLabel.string = String(m);
+            this.applySeasonIcon();
+        }
         if (this.dayLabel && d !== this.lastDay) { this.lastDay = d; this.dayLabel.string = String(d); }
 
         // 日夜切換太陽/月亮
@@ -194,10 +202,32 @@ export class Clock extends Component {
         this.moonNode = moon;
 
         // Month／Day 數字（畫在最上層，指針掃過也讀得到）
-        // 月份框放中文月名（「十二月」三個字），所以比日期框寬一點；Label 是 SHRINK，
-        // 字多會自動縮小，一月/三月這種兩個字剛好填滿牛皮紙框。
-        this.monthLabel = this.makeNumber(dial, MONTH_X * D, BOX_Y * Dh, 0.26);
+        this.monthLabel = this.makeNumber(dial, MONTH_X * D, BOX_Y * Dh, 0.20);
         this.dayLabel = this.makeNumber(dial, DAY_X * D, BOX_Y * Dh, 0.20);
+
+        // 季節圖標坐在盤面上方那條空的米色緞帶上（比例是對 face.png 量出來的）
+        const sn = new Node('season'); sn.layer = this.node.layer; dial.addChild(sn);
+        sn.addComponent(UITransform).setContentSize(SEASON_H, SEASON_H);
+        sn.setPosition(0, RIBBON_Y * Dh, 0);
+        const ssp = sn.addComponent(Sprite);
+        ssp.sizeMode = Sprite.SizeMode.CUSTOM;
+        ssp.type = Sprite.Type.SIMPLE;
+        this.seasonSprite = ssp;
+    }
+
+    /** 依目前季節換緞帶上的圖標（等比縮到 SEASON_H 高；美術還沒載到就隱藏）。 */
+    private applySeasonIcon() {
+        const sp = this.seasonSprite;
+        if (!sp || !sp.isValid) return;
+        const s = TimeSystem.season;
+        const f = GameArt.seasonIcon(s);
+        if (!f) { sp.node.active = false; return; }
+        if (s === this.lastSeason && sp.spriteFrame === f) { sp.node.active = true; return; }
+        this.lastSeason = s;
+        sp.spriteFrame = f;
+        const k = SEASON_H / f.rect.height;
+        sp.getComponent(UITransform)!.setContentSize(f.rect.width * k, SEASON_H);
+        sp.node.active = true;
     }
 
     private makeNumber(parent: Node, x: number, y: number, widthFactor: number): Label {
@@ -226,5 +256,6 @@ export class Clock extends Component {
         set(this.minSprite, GameArt.clockArt(MIN.key));
         set(this.sunNode?.getComponent(Sprite) ?? null, GameArt.clockArt('sun'));
         set(this.moonNode?.getComponent(Sprite) ?? null, GameArt.clockArt('moon'));
+        this.applySeasonIcon();   // 季節圖標是非同步載入的，載好才貼得上
     }
 }

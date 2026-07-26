@@ -40,6 +40,9 @@ const DECOR_FILES = ['succulent', 'daisypot', 'violetpot', 'birdcage_small', 'bo
 /** 時鐘盤面零件（resources/ui/clock 底下）：盤面／日月圖示／指針。 */
 const CLOCK_FILES = ['face', 'sun', 'moon', 'hand-hour', 'hand-min', 'hand-day'];
 
+/** 季節圖標（resources/ui/season 底下），索引＝TimeSystem.season（0 春 … 3 冬）。 */
+const SEASON_FILES = ['spring', 'summer', 'autumn', 'winter'];
+
 /** 鍋爐熬煮動畫幀數（resources/cauldron/f0..f5）。 */
 const CAULDRON_FRAMES = 6;
 
@@ -52,6 +55,7 @@ const emotes = new Map<string, SpriteFrame[]>();    // 表情名 → 動畫幀�
 const portraits = new Map<string, SpriteFrame>();   // 頭像名 → 圖
 const decor = new Map<string, SpriteFrame>();       // 裝飾品 id → 圖
 const clockParts = new Map<string, SpriteFrame>();  // 時鐘零件名 → 圖
+const seasonIcons = new Map<string, SpriteFrame>(); // 季節圖標名 → 圖
 const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
 const gather: SpriteFrame[] = [];                   // 女巫採集動畫幀
 let castFrame: SpriteFrame | null = null;           // 女巫施法姿勢（正面）
@@ -155,6 +159,7 @@ function loadGroup(name: string): void {
         for (const key of Object.keys(ITEM_FILES)) loadImg(items, key, `items/${ITEM_FILES[key]}`);
         for (const key of Object.keys(POTION_ITEMS)) loadImg(items, key, `potions/${POTION_ITEMS[key]}`);
         for (const file of CLOCK_FILES) loadImg(clockParts, file, `ui/clock/${file}`);
+        for (const file of SEASON_FILES) loadImg(seasonIcons, file, `ui/season/${file}`);
         loadSingle('ui/dialogue-box', sf => { dialogueBoxFrame = sf; });
         loadSingle('ui/quest-scroll', sf => { questScrollFrame = sf; });
         loadSingle('ui/update-frame', sf => { updateFrameArt = sf; });
@@ -226,6 +231,11 @@ export const GameArt = {
 
     /** 時鐘零件圖（face/sun/moon/hand-hour/hand-min/hand-day；未載入回 null）。 */
     clockArt(name: string): SpriteFrame | null { return clockParts.get(name) ?? null; },
+
+    /** 季節圖標（依 TimeSystem.season 索引 0..3；未載入回 null）。 */
+    seasonIcon(season: number): SpriteFrame | null {
+        return seasonIcons.get(SEASON_FILES[season] ?? '') ?? null;
+    },
 
     /** 鍋爐熬煮動畫幀（0..5；未載入回空陣列）。 */
     cauldronFrames(): SpriteFrame[] { return cauldron.filter(Boolean); },

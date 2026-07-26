@@ -53,12 +53,6 @@ export const DAYS_PER_MONTH = 28;
 export const MONTHS_PER_YEAR = 12;
 export const MONTHS_PER_SEASON = 3;
 
-/** 月份名稱（時鐘牛皮紙框與日曆頁顯示用）。 */
-export const MONTH_NAMES: string[] = [
-    '一月', '二月', '三月', '四月', '五月', '六月',
-    '七月', '八月', '九月', '十月', '十一月', '十二月',
-];
-
 /** 節日：某個月的第幾天。當天客人特別多，日曆上會標出來。 */
 export interface Festival {
     month: number;    // 1..12
