@@ -41,20 +41,28 @@ export class DaySummaryPanel extends Component {
     static arm(): void {
         if (armed) return;
         armed = true;
-        TimeSystem.onNewDay(cause => {
+        TimeSystem.onNewDay(() => {
             // DailyLog 也註冊了 onNewDay，而且比這裡早（它在被 import 時就註冊），
             // 所以這時 DailyLog.last 已經是剛結算完的那一天。
+            // 真正打開面板的時機交給 SleepOverlay：不論是上床睡還是昏倒，都要等
+            // 睡覺過場演完（昏倒還會先把人送回房間）才顯示結算。
             pending = DailyLog.last;
-            if (cause !== 'sleep') DaySummaryPanel.showPending();   // 昏倒：當場跳
         });
     }
 
-    /** 有待顯示的結算就打開（睡覺過場結束時由 SleepOverlay 呼叫）。 */
-    static showPending(): void {
-        if (!pending) return;
+    /**
+     * 有待顯示的結算就打開；回傳是否真的開了。
+     * 呼叫點有三個：睡覺過場結束、昏倒送回房間後、以及每個場景的 PlayerController.onLoad
+     * （最後這個是保險——過場若被換場景打斷，結算不會就這樣消失）。
+     */
+    static showPending(): boolean {
+        if (!pending) return false;
         const rec = pending;
         pending = null;
-        DaySummaryPanel.ensure()?.open(rec);
+        const p = DaySummaryPanel.ensure();
+        if (!p) return false;
+        p.open(rec);
+        return true;
     }
 
     private root: Node | null = null;
@@ -88,6 +96,8 @@ export class DaySummaryPanel extends Component {
         if (this.root) { this.root.destroy(); this.root = null; }
         UIState.modalOpen = false;
     }
+
+    isOpen(): boolean { return !!this.root; }
 
     // ---- 版面 ----
 

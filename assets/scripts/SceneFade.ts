@@ -29,30 +29,39 @@ function makeOverlay(): UIOpacity | null {
     return n.addComponent(UIOpacity);
 }
 
+/** go() 的選項。 */
+interface FadeOpts {
+    /** 畫面已經是黑的（例如睡覺過場正蓋著）→ 跳過淡出，直接載入。 */
+    skipFadeOut?: boolean;
+    /** 新場景淡入完成後呼叫（呼叫端的節點通常已隨舊場景銷毀，用 module 層的閉包才收得到）。 */
+    onArrive?: () => void;
+}
+
 export const SceneFade = {
     /** 淡出 → 載入場景 → 淡入。dur＝單邊時間（秒）。 */
-    go(sceneName: string, dur = 0.3): void {
+    go(sceneName: string, dur = 0.3, opts?: FadeOpts): void {
         if (busy) return;
         busy = true;
 
+        // 載入 → 在新場景蓋黑幕淡入 → 通知呼叫端
+        const enter = () => {
+            director.loadScene(sceneName, () => {
+                const op2 = makeOverlay();
+                if (!op2) { busy = false; opts?.onArrive?.(); return; }
+                op2.opacity = 255;
+                tween(op2)
+                    .to(dur, { opacity: 0 })
+                    .call(() => { op2.node.destroy(); busy = false; opts?.onArrive?.(); })
+                    .start();
+            });
+        };
+
+        if (opts?.skipFadeOut) { enter(); return; }
+
         const op = makeOverlay();
-        if (!op) { director.loadScene(sceneName); busy = false; return; }   // 沒 Canvas 就直接切
+        if (!op) { director.loadScene(sceneName); busy = false; opts?.onArrive?.(); return; }   // 沒 Canvas 就直接切
 
         op.opacity = 0;
-        tween(op)
-            .to(dur, { opacity: 255 })
-            .call(() => {
-                director.loadScene(sceneName, () => {
-                    // 新場景已就緒 → 蓋黑幕淡入
-                    const op2 = makeOverlay();
-                    if (!op2) { busy = false; return; }
-                    op2.opacity = 255;
-                    tween(op2)
-                        .to(dur, { opacity: 0 })
-                        .call(() => { op2.node.destroy(); busy = false; })
-                        .start();
-                });
-            })
-            .start();
+        tween(op).to(dur, { opacity: 255 }).call(enter).start();
     },
 };

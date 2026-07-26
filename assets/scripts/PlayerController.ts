@@ -14,6 +14,7 @@ import { DayNightTint } from './DayNightTint';
 import { LampGlow } from './LampGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
 import { PlayerInfoPanel } from './PlayerInfoPanel';
+import { SleepOverlay } from './SleepOverlay';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -70,12 +71,15 @@ export class PlayerController extends Component {
         Inventory.ensure();
         Hud.ensure();
         Clock.ensure();           // 右上角時鐘（其 update 同時驅動 TimeSystem 時間流動）
-        DaySummaryPanel.arm();    // 換日時跳每日結算（整個遊戲只註冊一次）
+        DaySummaryPanel.arm();    // 換日時備妥每日結算（整個遊戲只註冊一次）
+        SleepOverlay.arm();       // 昏倒時也演睡覺過場，並把人送回房間
         // 戶外天色色板：只在森林/城鎮裝（室內 brew/shop 各自有背景，不套）。
         const scene = director.getScene()?.name;
         if (scene === 'main' || scene === 'town') DayNightTint.ensure();
         if (scene === 'town') LampGlow.ensure();   // 城鎮路燈夜間發光（疊在色板之上）
         UpdatePanel.showOnce();   // 開遊戲第一個場景跳更新公告（換場景不重跳）
+        // 有還沒顯示的每日結算就補上（昏倒被送回房間後，就是在這裡跳出來的）
+        DaySummaryPanel.showPending();
     }
 
     onDestroy() {
