@@ -10,14 +10,14 @@ import { Friendship } from './Friendship';
 import { Reputation } from './Reputation';
 import { MATERIALS, ITEM_DESC, DEFAULT_ITEM_DESC, POTION_ITEMS } from './data/items';
 import { DEFAULT_BUY, BASE_PRICE } from './data/prices';
-import { SEASONS } from './data/seasons';
+import { SEASONS, MONTH_NAMES } from './data/seasons';
 const { ccclass } = _decorator;
 
 /**
  * 玩家資訊面板（Tab 或 I 開）：三個分頁
  *   物品 —— 所有材料/藥水的圖示、持有數、收購價、建議售價與說明（翻頁）
  *   村民 —— 每位村民的頭像、住處、友誼度（心）與介紹
- *   日曆 —— 當季 28 天的月曆，標出今天與節日，附當季盛產材料
+ *   日曆 —— 當月 28 天的月曆，標出今天與節日，附當季盛產材料
  * 仿 ShopPanel/QuestLog 的 ensure() 自動生 UI，完全不需要場景改動。
  */
 
@@ -50,6 +50,14 @@ export class PlayerInfoPanel extends Component {
     private dateLabel: Label | null = null;
     private tab: Tab = 'items';
     private page = 0;
+    /**
+     * 「這一幀才剛打開」——擋掉開啟那一次按鍵的回聲。
+     * PlayerController 與本面板都掛在全域 input 上，同一個 KEY_DOWN 兩邊都會收到，
+     * 而且 PlayerController 先註冊＝先執行：它把面板打開後，本面板的 onKeyDown 緊接著
+     * 在**同一次事件**裡跑，就會把才剛開的面板立刻關掉（症狀＝按一次之後就再也打不開）。
+     * 開啟時立旗標、下一幀 update 清掉，就只擋開啟那一下。
+     */
+    private justOpened = false;
 
     private readonly panelW = 780;
     private readonly panelH = 520;
@@ -67,12 +75,16 @@ export class PlayerInfoPanel extends Component {
         if (this.root?.active) UIState.modalOpen = false;
     }
 
+    /** 清掉開啟旗標（開啟那一次的按鍵事件早就跑完了）。 */
+    update() { this.justOpened = false; }
+
     private onKeyDown(e: EventKeyboard) {
         if (!this.root?.active) return;
-        // Tab / I 再按一次關閉：此時 modalOpen 已是 true，PlayerController 那邊會先 return，
-        // 不會發生「同一下按鍵關掉又立刻開回來」（同 ShopPanel 的考量）。
-        if (e.keyCode === KeyCode.ESCAPE || e.keyCode === KeyCode.TAB || e.keyCode === KeyCode.KEY_I) {
-            this.close(); return;
+        if (e.keyCode === KeyCode.ESCAPE) { this.close(); return; }
+        // Tab / I 是開關鍵：再按一次收起來，但要避開「開啟那一下」的回聲（見 justOpened）
+        if (e.keyCode === KeyCode.TAB || e.keyCode === KeyCode.KEY_I) {
+            if (!this.justOpened) this.close();
+            return;
         }
         if (e.keyCode === KeyCode.ARROW_LEFT) this.turn(-1);
         else if (e.keyCode === KeyCode.ARROW_RIGHT) this.turn(1);
@@ -82,6 +94,7 @@ export class PlayerInfoPanel extends Component {
         if (!this.root) this.build();
         this.root!.active = true;
         UIState.modalOpen = true;
+        this.justOpened = true;   // 擋掉開啟那一次按鍵在本面板的回聲
         this.page = 0;
         this.refresh();
     }
@@ -361,12 +374,12 @@ export class PlayerInfoPanel extends Component {
 
     private renderCalendar(box: Node) {
         const leftX = -this.panelW / 2 + 34;
-        const season = TimeSystem.season;
-        const def = SEASONS[season];
+        const month = TimeSystem.month;
+        const def = SEASONS[TimeSystem.season];
         const today = TimeSystem.day;
-        const days = TimeSystem.daysPerSeason;
+        const days = TimeSystem.daysPerMonth;
 
-        this.label(box, `第 ${TimeSystem.year} 年 · ${def.label}（一季 ${days} 天）`, 20,
+        this.label(box, `第 ${TimeSystem.year} 年 · ${TimeSystem.monthName}（${def.label}．${days} 天）`, 20,
             new Color(244, 236, 224, 255), leftX, -16, 420, Label.HorizontalAlign.LEFT);
         this.label(box, `當季盛產：${def.bonusItems.join('、')}`, 15,
             new Color(180, 220, 180, 255), this.panelW / 2 - 34, -16, 320, Label.HorizontalAlign.RIGHT);
@@ -382,7 +395,7 @@ export class PlayerInfoPanel extends Component {
             const col = (d - 1) % 7, row = Math.floor((d - 1) / 7);
             const cx = x0 + col * (cw + gx);
             const cy = yTop - row * (ch + gy) - ch / 2;
-            const fest = TimeSystem.festivalOn(season, d);
+            const fest = TimeSystem.festivalOn(month, d);
             const isToday = d === today;
 
             const cell = new Node('d' + d);
@@ -417,21 +430,12 @@ export class PlayerInfoPanel extends Component {
             this.label(box, `今天是「${ft.name}」——${ft.desc}`, 16, new Color(226, 196, 255, 255),
                 leftX, listY, 700, Label.HorizontalAlign.LEFT);
         } else {
-            const next = this.nextFestival(season, today);
+            const next = TimeSystem.nextFestivalFrom(month, today);
             this.label(box, next
-                ? `下一個節日：${next.name}（${def.name} ${next.day} 日）——${next.desc}`
-                : '這一季剩下的日子沒有節日了，好好做生意吧。',
+                ? `下一個節日：${next.name}（${MONTH_NAMES[next.month - 1]} ${next.day} 日）——${next.desc}`
+                : '今年剩下的日子沒有節日了，好好做生意吧。',
                 16, new Color(190, 182, 204, 255), leftX, listY, 700, Label.HorizontalAlign.LEFT);
         }
-    }
-
-    /** 這一季今天之後的下一個節日。 */
-    private nextFestival(season: number, fromDay: number) {
-        for (let d = fromDay + 1; d <= TimeSystem.daysPerSeason; d++) {
-            const f = TimeSystem.festivalOn(season, d);
-            if (f) return f;
-        }
-        return null;
     }
 
     // ---- 小工具 ----

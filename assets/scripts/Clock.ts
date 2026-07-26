@@ -8,7 +8,7 @@ const { ccclass } = _decorator;
 /**
  * 常駐時鐘 HUD：畫面右上角一個華麗盤面，顯示遊戲時間。
  * - 時針（華麗矛形）＋分針（細長）在羅馬數字圈上旋轉 → 一天的時間
- * - 中央兩個卷軸框：左＝季節字（春/夏/秋/冬）、右＝當季第幾天（畫在指針之上，永遠讀得到）
+ * - 中央兩個卷軸框：左＝月份（一月…十二月）、右＝當月第幾天（畫在指針之上，永遠讀得到）
  * - 頂端徽章切換太陽／月亮 → 日夜
  * 仿 Hud/Inventory 的 ensure()：每個場景由 PlayerController.onLoad 叫出來，
  * 且它的 update() 是全遊戲唯一驅動 TimeSystem.tick 的地方（時間隨場景延續）。
@@ -98,9 +98,9 @@ export class Clock extends Component {
             }
         }
 
-        // 季/日有變才改（左框放季節字「春夏秋冬」、右框放日數）
-        const m = TimeSystem.season, d = TimeSystem.day;
-        if (this.monthLabel && m !== this.lastMonth) { this.lastMonth = m; this.monthLabel.string = TimeSystem.seasonName; }
+        // 月/日有變才改（左框放月份「一月…十二月」、右框放日數）
+        const m = TimeSystem.month, d = TimeSystem.day;
+        if (this.monthLabel && m !== this.lastMonth) { this.lastMonth = m; this.monthLabel.string = TimeSystem.monthName; }
         if (this.dayLabel && d !== this.lastDay) { this.lastDay = d; this.dayLabel.string = String(d); }
 
         // 日夜切換太陽/月亮
@@ -194,14 +194,16 @@ export class Clock extends Component {
         this.moonNode = moon;
 
         // Month／Day 數字（畫在最上層，指針掃過也讀得到）
-        this.monthLabel = this.makeNumber(dial, MONTH_X * D, BOX_Y * Dh);
-        this.dayLabel = this.makeNumber(dial, DAY_X * D, BOX_Y * Dh);
+        // 月份框放中文月名（「十二月」三個字），所以比日期框寬一點；Label 是 SHRINK，
+        // 字多會自動縮小，一月/三月這種兩個字剛好填滿牛皮紙框。
+        this.monthLabel = this.makeNumber(dial, MONTH_X * D, BOX_Y * Dh, 0.26);
+        this.dayLabel = this.makeNumber(dial, DAY_X * D, BOX_Y * Dh, 0.20);
     }
 
-    private makeNumber(parent: Node, x: number, y: number): Label {
+    private makeNumber(parent: Node, x: number, y: number, widthFactor: number): Label {
         const n = new Node('num'); n.layer = this.node.layer; parent.addChild(n);
         const u = n.addComponent(UITransform);
-        u.setContentSize(0.2 * D, 0.16 * Dh);
+        u.setContentSize(widthFactor * D, 0.16 * Dh);
         u.setAnchorPoint(0.5, 0.5);
         n.setPosition(x, y, 0);
         const lb = n.addComponent(Label);

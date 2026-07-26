@@ -1,5 +1,6 @@
 /**
- * 季節「內容」資料：一年 4 季、一季 28 天（同星露谷的節奏）。
+ * 年曆與季節「內容」資料：**一個月 28 天、一年 12 個月（336 天），每 3 個月一季**。
+ *   一～三月＝春　四～六月＝夏　七～九月＝秋　十～十二月＝冬
  *
  * 季節目前影響三件事，都是從這張表讀出來的：
  *   1. 天色 —— dawnShift / duskShift 把 DayNightTint 的曲線整段前後挪（冬天早黑晚亮）。
@@ -47,19 +48,32 @@ export const SEASONS: SeasonDef[] = [
     },
 ];
 
-/** 節日：某季的第幾天。當天客人特別多，日曆上會標出來。 */
+/** 一個月 28 天、一年 12 個月，每 3 個月一季。 */
+export const DAYS_PER_MONTH = 28;
+export const MONTHS_PER_YEAR = 12;
+export const MONTHS_PER_SEASON = 3;
+
+/** 月份名稱（時鐘牛皮紙框與日曆頁顯示用）。 */
+export const MONTH_NAMES: string[] = [
+    '一月', '二月', '三月', '四月', '五月', '六月',
+    '七月', '八月', '九月', '十月', '十一月', '十二月',
+];
+
+/** 節日：某個月的第幾天。當天客人特別多，日曆上會標出來。 */
 export interface Festival {
-    season: number;   // 0..3
+    month: number;    // 1..12
     day: number;      // 1..28
     name: string;
     desc: string;
 }
 
 export const FESTIVALS: Festival[] = [
-    { season: 0, day: 7,  name: '播種祭',   desc: '村民互相分送種子，森林的藥草冒得特別旺。' },
-    { season: 0, day: 21, name: '花之祭典', desc: '街上鋪滿花瓣，逛街的人潮一整天不斷。' },
-    { season: 1, day: 14, name: '仲夏螢火節', desc: '入夜後溪邊全是螢火蟲，鎮上熱鬧到很晚。' },
-    { season: 2, day: 10, name: '月光茶會', desc: '大家帶著自釀的飲品聚在廣場，藥水特別好賣。' },
-    { season: 2, day: 28, name: '豐收祭',   desc: '一年裡最盛大的市集，店門口大排長龍。' },
-    { season: 3, day: 24, name: '星光節',   desc: '冬夜點起星燈，村民習慣在這天互送小禮物。' },
+    { month: 1,  day: 7,  name: '播種祭',     desc: '村民互相分送種子，森林的藥草冒得特別旺。' },
+    { month: 3,  day: 21, name: '花之祭典',   desc: '街上鋪滿花瓣，逛街的人潮一整天不斷。' },
+    { month: 5,  day: 14, name: '仲夏螢火節', desc: '入夜後溪邊全是螢火蟲，鎮上熱鬧到很晚。' },
+    { month: 6,  day: 18, name: '盛夏市集',   desc: '廣場擺滿攤子，連隔壁村的人都來逛。' },
+    { month: 8,  day: 10, name: '月光茶會',   desc: '大家帶著自釀的飲品聚在廣場，藥水特別好賣。' },
+    { month: 9,  day: 28, name: '豐收祭',     desc: '一年裡最盛大的市集，店門口大排長龍。' },
+    { month: 11, day: 5,  name: '初雪祭',     desc: '第一場雪落下的日子，鎮上會煮熱飲請大家。' },
+    { month: 12, day: 24, name: '星光節',     desc: '冬夜點起星燈，村民習慣在這天互送小禮物。' },
 ];
