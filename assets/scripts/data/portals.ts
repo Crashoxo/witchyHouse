@@ -16,13 +16,23 @@ export interface EdgePortal {
     scene: string;   // 場景名
     at: number;      // 傳送點在邊上的位置（左右側＝y、上下側＝x）
     span: number;    // 門的半寬（像素）
+    inset?: number;  // 光暈往地圖內縮多少（不填＝DEFAULT_INSET）
 }
 
+/**
+ * 光暈往地圖內縮的預設值。比光圈半徑（PortalGlow.EDGE_RX = 78）大一點，
+ * 整圈才會完全落在地圖內；想讓傳送點更貼著邊界就把 inset 調小，
+ * 光圈會被畫面邊緣切掉一部分，但看起來更像「邊界上的一道門」。
+ */
+export const DEFAULT_INSET = 82;
+
 export const EDGE_PORTALS: EdgePortal[] = [
-    // 森林東側 → 城鎮：玩家出生在 (0,0)，這一段東側沒有樹擋著
-    { scene: 'main', at: 0, span: 80 },
-    // 城鎮西側 → 森林：對準往西的泥土路 road-dirt-v-a (y=-40)，也是玩家進城的抵達點
-    { scene: 'town', at: -40, span: 80 },
+    // 森林東側 → 城鎮：玩家出生在 (0,0)，這一段東側沒有樹擋著。
+    // inset 小＝光點更靠右（貼著地圖東緣），被切到一點沒關係
+    { scene: 'main', at: 0, span: 80, inset: 26 },
+    // 城鎮西側 → 森林：對準往西的泥土路 road-dirt-v-a (y=-40)，也是玩家進城的抵達點。
+    // inset 小＝光點更靠左
+    { scene: 'town', at: -40, span: 80, inset: 26 },
     // 店內下方 → 城鎮：對準玩家從城鎮進店的抵達點＝店門口
     { scene: 'shop', at: -83, span: 80 },
 ];

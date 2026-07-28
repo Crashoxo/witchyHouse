@@ -2,7 +2,7 @@ import { _decorator, Component, Node, UITransform, UIOpacity, Graphics, Color, V
          find, director } from 'cc';
 import { SceneDoor } from './SceneDoor';
 import { UIState } from './UIState';
-import { edgePortalOf } from './data';
+import { edgePortalOf, DEFAULT_INSET } from './data';
 const { ccclass } = _decorator;
 
 /**
@@ -35,8 +35,7 @@ const DOOR_RX = 58;          // 門口地上光圈的半徑
 const DOOR_RY = 23;          // 壓扁＝貼在地上（俯視角）
 const EDGE_RX = 78;          // 邊界傳送點的光圈大一些（那是一道門不是門檻）
 const EDGE_RY = 30;
-// 光圈往地圖內縮：要比 EDGE_RX 大，否則光圈會有一截落在地圖外（相機夾在地圖內＝看不到）
-const EDGE_INSET = 82;
+// 光圈往地圖內縮多少由 data/portals.ts 的 inset 決定（想貼著邊界就調小，會被切到一點）
 const BEAM_H = 96;           // 往上的光柱高度（讓遠處也看得到）
 const BEAM_W = 40;
 const SPARK_RISE = 78;       // 光點往上飄多高
@@ -46,6 +45,8 @@ const LABEL_RANGE = 460;     // 玩家離傳送點多近才顯示指示牌
 // 走到這麼近的人早就看到牌子了，藏掉不影響引導。
 const LABEL_NEAR = 130;
 const LABEL_SHIFT = 54;      // 左右側的牌子往地圖內挪，免得被畫面邊緣切掉
+// 牌子（含箭頭）從中心到外緣要留的距離：傳送點越貼著邊界，牌子就得往內挪越多
+const LABEL_EDGE_CLEAR = 91;
 
 interface Spark {
     node: Node;
@@ -138,19 +139,21 @@ export class PortalGlow extends Component {
         const left = -ax * w, right = (1 - ax) * w;
         const bottom = -ay * h, top = (1 - ay) * h;
 
+        const inset = gate.inset ?? DEFAULT_INSET;
         let local: Vec3;
-        if (side === 'right')      local = new Vec3(right - EDGE_INSET, gate.at, 0);
-        else if (side === 'left')  local = new Vec3(left + EDGE_INSET, gate.at, 0);
-        else if (side === 'top')   local = new Vec3(gate.at, top - EDGE_INSET, 0);
-        else                       local = new Vec3(gate.at, bottom + EDGE_INSET, 0);
+        if (side === 'right')      local = new Vec3(right - inset, gate.at, 0);
+        else if (side === 'left')  local = new Vec3(left + inset, gate.at, 0);
+        else if (side === 'top')   local = new Vec3(gate.at, top - inset, 0);
+        else                       local = new Vec3(gate.at, bottom + inset, 0);
 
         this.buildPortal(ground, ut, local, EDGE_RX, EDGE_RY,
-                         SCENE_LABEL[targetScene] ?? targetScene, side);
+                         SCENE_LABEL[targetScene] ?? targetScene, side, inset);
     }
 
     /** 一個傳送點：地上光圈＋亮核心＋往上的光柱＋上飄光點（＋邊界的指示牌）。 */
     private buildPortal(src: Node, srcUT: UITransform | null, local: Vec3,
-                        rx: number, ry: number, labelText: string | null, side: string) {
+                        rx: number, ry: number, labelText: string | null, side: string,
+                        inset: number = DEFAULT_INSET) {
         const root = new Node('portal');
         root.layer = this.node.layer;
         root.addComponent(UITransform);
@@ -196,7 +199,7 @@ export class PortalGlow extends Component {
         this.addSparks(p, root, SPARK_PER_PORTAL);
         // 指示牌掛在傳送點底下 → 跟著一起移動，不用每幀自己對位
         if (labelText) {
-            p.label = this.buildLabel(labelText, side);
+            p.label = this.buildLabel(labelText, side, inset);
             root.addChild(p.label);
         }
         this.portals.push(p);
@@ -224,14 +227,16 @@ export class PortalGlow extends Component {
     }
 
     /** 指示牌：方框＋「前往 ○○」＋往外指的箭頭（箭頭用畫的，避免字型缺 ↑↓←→）。 */
-    private buildLabel(sceneName: string, side: string): Node {
+    private buildLabel(sceneName: string, side: string, inset: number): Node {
         const boxW = 140, boxH = 36, arrow = 13;
 
         const n = new Node('PortalLabel');
         n.layer = this.node.layer;
         n.addComponent(UITransform).setContentSize(boxW, boxH);
-        // 擺在光柱上方；左右側的傳送點貼著畫面邊，牌子要往內挪才不會被切掉
-        const shift = side === 'right' ? -LABEL_SHIFT : (side === 'left' ? LABEL_SHIFT : 0);
+        // 擺在光柱上方；左右側的傳送點貼著畫面邊，牌子要往內挪才不會被切掉。
+        // 光圈可以被切（那樣才像邊界上的門），但字被切就看不懂了，所以挪的量要跟著 inset 補。
+        const mag = Math.max(LABEL_SHIFT, LABEL_EDGE_CLEAR - inset);
+        const shift = side === 'right' ? -mag : (side === 'left' ? mag : 0);
         n.setPosition(shift, BEAM_H + 32, 0);
 
         const g = n.addComponent(Graphics);
