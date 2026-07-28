@@ -12,6 +12,7 @@ import { CharacterAnimator } from './CharacterAnimator';
 import { UpdatePanel } from './UpdatePanel';
 import { DayNightTint } from './DayNightTint';
 import { LampGlow } from './LampGlow';
+import { PortalGlow } from './PortalGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
 import { PlayerInfoPanel } from './PlayerInfoPanel';
 import { SleepOverlay } from './SleepOverlay';
@@ -77,6 +78,8 @@ export class PlayerController extends Component {
         const scene = director.getScene()?.name;
         if (scene === 'main' || scene === 'town') DayNightTint.ensure();
         if (scene === 'town') LampGlow.ensure();   // 城鎮路燈夜間發光（疊在色板之上）
+        // 傳送點發光：門與「走出邊界」的出口都亮起來，不熟的人才知道那裡可以走
+        PortalGlow.ensure(this.node, this.nextMapScene, this.nextMapEdge);
         UpdatePanel.showOnce();   // 開遊戲第一個場景跳更新公告（換場景不重跳）
         // 有還沒顯示的每日結算就補上（昏倒被送回房間後，就是在這裡跳出來的）
         DaySummaryPanel.showPending();
