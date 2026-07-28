@@ -16,6 +16,7 @@ import { PortalGlow } from './PortalGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
 import { PlayerInfoPanel } from './PlayerInfoPanel';
 import { SleepOverlay } from './SleepOverlay';
+import { edgePortalOf } from './data';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -156,10 +157,10 @@ export class PlayerController extends Component {
             let ny = p.y + this.dir.y * this.moveSpeed * dt;
 
             if (this.clampToBounds) {
-                if (nx < this.minX) { nx = this.minX; this.onReachEdge('left'); }
-                else if (nx > this.maxX) { nx = this.maxX; this.onReachEdge('right'); }
-                if (ny < this.minY) { ny = this.minY; this.onReachEdge('bottom'); }
-                else if (ny > this.maxY) { ny = this.maxY; this.onReachEdge('top'); }
+                if (nx < this.minX) { nx = this.minX; this.onReachEdge('left', ny); }
+                else if (nx > this.maxX) { nx = this.maxX; this.onReachEdge('right', ny); }
+                if (ny < this.minY) { ny = this.minY; this.onReachEdge('bottom', nx); }
+                else if (ny > this.maxY) { ny = this.maxY; this.onReachEdge('top', nx); }
             }
             this.node.setPosition(nx, ny, p.z);
         }
@@ -189,11 +190,15 @@ export class PlayerController extends Component {
 
     /**
      * 撞到地圖邊界時呼叫（持續推邊會每幀觸發）。
-     * 之後要做「走到邊界進入下一張地圖」，就在這裡依 side 換場景 / 換地圖資料。
+     * @param along 撞上去時人在那條邊上的位置（左右側＝y、上下側＝x）
      */
-    private onReachEdge(side: EdgeSide) {
+    private onReachEdge(side: EdgeSide, along: number) {
         // 只有設定了 nextMapScene、而且撞的是指定那一側時，才切換到下一張地圖。
         if (this.switching || !this.nextMapScene || side !== this.nextMapEdge) return;
+        // 而且要撞在那一側的傳送點上 —— 整條邊只有那個發光的點能過去，
+        // 其他地方就只是牆（PortalGlow 會在同一個點畫光暈，看得到的就走得過去）。
+        const gate = edgePortalOf(director.getScene()?.name ?? '');
+        if (Math.abs(along - gate.at) > gate.span) return;
         this.switching = true;
         SceneFade.go(this.nextMapScene);   // 淡出→切場景→淡入
     }

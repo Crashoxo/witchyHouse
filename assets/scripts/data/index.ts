@@ -12,3 +12,4 @@ export * from './dialogue';
 export * from './quests';
 export * from './seasons';
 export * from './villagers';
+export * from './portals';
