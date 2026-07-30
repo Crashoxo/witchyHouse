@@ -13,3 +13,4 @@ export * from './quests';
 export * from './seasons';
 export * from './villagers';
 export * from './portals';
+export * from './garden';

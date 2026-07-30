@@ -14,6 +14,8 @@ import { DayNightTint } from './DayNightTint';
 import { LampGlow } from './LampGlow';
 import { TownFolk } from './TownFolk';
 import { ShadowLayer } from './ShadowLayer';
+import { GardenRoom } from './GardenRoom';
+import { Doorways } from './Doorways';
 import { PortalGlow } from './PortalGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
 import { PlayerInfoPanel } from './PlayerInfoPanel';
@@ -86,6 +88,8 @@ export class PlayerController extends Component {
         if (scene === 'main' || scene === 'town') DayNightTint.ensure();
         if (scene === 'town') LampGlow.ensure();   // 城鎮路燈夜間發光（疊在色板之上）
         if (scene === 'town') TownFolk.ensure();   // 街上走動的村民（沿 Roads 的路點晃）
+        if (scene === 'garden') GardenRoom.ensure();   // 後花園：背景、花圃、回店的門、柵欄外的村民
+        if (scene === 'shop') Doorways.install();      // 店裡右邊通往後花園的門
         // 傳送點發光：門與「走出邊界」的出口都亮起來，不熟的人才知道那裡可以走
         PortalGlow.ensure(this.node, this.nextMapScene, this.nextMapEdge);
         UpdatePanel.showOnce();   // 開遊戲第一個場景跳更新公告（換場景不重跳）
@@ -182,12 +186,18 @@ export class PlayerController extends Component {
         let ground: Node | null = null;
         while (n && !ground) { ground = n.getChildByName('Ground'); n = n.parent; }
         this.ground = ground;                    // 點擊移動也用這個節點當接收面
-        const ut = ground?.getComponent(UITransform);
-        if (ground && ut) {
+        // 有 "WalkArea" 就以它為準：後花園的草地是個菱形，可以走的範圍比整張背景小很多，
+        // 不然人會走到柵欄外的石板路和房子上面去。沒有這個節點的場景照舊用 Ground。
+        let area: Node | null = null;
+        let m: Node | null = this.node.parent;
+        while (m && !area) { area = m.getChildByName('WalkArea'); m = m.parent; }
+        const bounds = area ?? ground;
+        const ut = bounds?.getComponent(UITransform);
+        if (bounds && ut) {
             halfW = ut.contentSize.width / 2;
             halfH = ut.contentSize.height / 2;
-            cx = ground.position.x;
-            cy = ground.position.y;
+            cx = bounds.position.x;
+            cy = bounds.position.y;
         }
         this.minX = cx - halfW + this.edgeMargin;
         this.maxX = cx + halfW - this.edgeMargin;

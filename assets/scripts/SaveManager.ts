@@ -34,6 +34,7 @@ export const SAVE_KEYS: string[] = [
     'witch.daily',           // DailyLog：當日統計＋前一天結算
     'witch.reputation',      // Reputation：名聲點數
     'witch.friendship',      // Friendship：村民友誼度
+    'witch.garden',          // Garden：後花園每一格種了什麼、澆水時間
 ];
 
 /**

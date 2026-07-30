@@ -29,7 +29,7 @@ const { ccclass } = _decorator;
  */
 
 const GLOW = { r: 168, g: 214, b: 255 };          // 冷青色：跟城鎮路燈的暖黃區隔＝「這是通道」
-const SCENE_LABEL: Record<string, string> = { main: '森林', town: '城鎮', shop: '店裡', brew: '房間' };
+const SCENE_LABEL: Record<string, string> = { main: '森林', town: '城鎮', shop: '店裡', brew: '房間', garden: '後花園' };
 
 const DOOR_RX = 58;          // 門口地上光圈的半徑
 const DOOR_RY = 23;          // 壓扁＝貼在地上（俯視角）

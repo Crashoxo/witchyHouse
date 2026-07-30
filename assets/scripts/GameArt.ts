@@ -1,5 +1,6 @@
 import { resources, SpriteFrame, ImageAsset, Rect, director } from 'cc';
 import { ITEM_FILES, POTION_ITEMS } from './data/items';
+import { FLOWERS } from './data/garden';
 
 /**
  * 遊戲美術的執行期載入器：把 `assets/resources/` 底下的圖用 `resources.load`
@@ -58,6 +59,14 @@ const CAULDRON_FRAMES = 6;
 /** 女巫採集動畫幀數（resources/witch/gather1..3：彎腰伸手→捏起→起身舉起）。 */
 const GATHER_FRAMES = 3;
 
+/** 後花園：土壤磚、澆水／摘花動作幀數。花的走圖名見 data/garden 的 FLOWERS。 */
+const SOIL_FILES = ['soil-dry', 'soil-wet'];
+const WATER_FRAMES = 4;
+const PICK_FRAMES = 4;
+/** 花的走圖：6 欄（成長階段）× 2 列（第 0 列健康、第 1 列枯萎）。 */
+const FLOWER_COLS = 6;
+const FLOWER_ROWS = 2;
+
 const items = new Map<string, SpriteFrame>();       // 材料/藥水名 → 圖
 const villagers = new Map<string, SpriteFrame[][]>();  // 村民名 → [面向][幀]
 const emotes = new Map<string, SpriteFrame[]>();    // 表情名 → 動畫幀陣列
@@ -67,11 +76,16 @@ const clockParts = new Map<string, SpriteFrame>();  // 時鐘零件名 → 圖
 const seasonIcons = new Map<string, SpriteFrame>(); // 季節圖標名 → 圖
 const cauldron: SpriteFrame[] = [];                 // 鍋爐熬煮動畫幀
 const gather: SpriteFrame[] = [];                   // 女巫採集動畫幀
+const water: SpriteFrame[] = [];                    // 女巫澆水動畫幀
+const pick: SpriteFrame[] = [];                     // 女巫摘花動畫幀
+const soil = new Map<string, SpriteFrame>();        // 土壤磚（乾/濕）
+const flowers = new Map<string, SpriteFrame[][]>(); // 花名 → [健康/枯萎][階段]
 let castFrame: SpriteFrame | null = null;           // 女巫施法姿勢（正面）
 let sleepingFrame: SpriteFrame | null = null;       // 女巫睡覺立繪（含床）
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 let brewRoomDayFrame: SpriteFrame | null = null;    // 藥水室背景（白天）
 let brewRoomNightFrame: SpriteFrame | null = null;  // 藥水室背景（夜晚）
+let gardenFrame: SpriteFrame | null = null;         // 後花園背景（草地＋柵欄）
 let questScrollFrame: SpriteFrame | null = null;    // 任務簿捲軸底板
 let updateFrameArt: SpriteFrame | null = null;      // 更新公告板木框
 
@@ -93,9 +107,10 @@ const SCENE_GROUPS: Record<string, string[]> = {
     town: ['portraits', 'decor', 'villagers'],    // 城鎮：NPC 頭像、花店裝飾目錄、街上走動的村民
     shop: ['shop', 'decor', 'villagers'],         // 自己的店：表情、擺出的裝飾、上門的顧客
     brew: ['brew'],                               // 藥水室：鍋爐幀、房間背景
+    garden: ['garden', 'villagers'],              // 後花園：土壤/花/澆水姿勢、柵欄外經過的村民
 };
 /** 保險用：全部區域組（拿不到場景名時退回全載）。 */
-const ALL_AREA_GROUPS = ['portraits', 'decor', 'shop', 'villagers', 'brew'];
+const ALL_AREA_GROUPS = ['portraits', 'decor', 'shop', 'villagers', 'garden', 'brew'];
 
 const requested: Record<string, boolean> = {};  // 已開始載入的組（idempotent 用）
 let started = false;
@@ -183,6 +198,34 @@ function loadVillager(name: string): void {
     });
 }
 
+/**
+ * 載入一種花的走圖，切成 [列][階段]（列 0 健康、列 1 枯萎）。
+ * 順便把「開花那一格」登記成該花的道具圖示，背包/貨架/顧客就都有圖可用。
+ */
+function loadFlower(art: string, flowerName: string): void {
+    pending++;
+    resources.load(`garden/${art}`, ImageAsset, (err, img) => {
+        if (!err && img) {
+            const tex = SpriteFrame.createWithImage(img).texture;
+            const cw = img.width / FLOWER_COLS, ch = img.height / FLOWER_ROWS;
+            const rows: SpriteFrame[][] = [];
+            for (let r = 0; r < FLOWER_ROWS; r++) {
+                const arr: SpriteFrame[] = [];
+                for (let c = 0; c < FLOWER_COLS; c++) {
+                    const sf = new SpriteFrame();
+                    sf.texture = tex;
+                    sf.rect = new Rect(c * cw, r * ch, cw, ch);
+                    arr.push(sf);
+                }
+                rows.push(arr);
+            }
+            flowers.set(art, rows);
+            items.set(flowerName, rows[0][FLOWER_COLS - 2]);   // 盛開那一格＝道具圖示
+        } else console.warn(`[GameArt] 載入失敗 garden/${art}`, err);
+        jobDone();
+    });
+}
+
 /** 載入一個區域組（idempotent —— 已請求過就跳過）。 */
 function loadGroup(name: string): void {
     if (requested[name]) return;
@@ -200,6 +243,12 @@ function loadGroup(name: string): void {
         loadSingle('witch/sleeping', sf => { sleepingFrame = sf; });
         gather.length = GATHER_FRAMES;
         for (let i = 0; i < GATHER_FRAMES; i++) loadIndexed(gather, i, `witch/gather${i + 1}`);
+        // 花與種子的圖示要在每個場景都拿得到（背包、貨架、顧客想要的東西都會用到），
+        // 所以放 common；只有後花園會用到的土壤磚與澆水姿勢才留在 garden 組。
+        for (const f of FLOWERS) {
+            loadFlower(f.art, f.flower);
+            loadImg(items, f.seed, `garden/${f.art}-seed`);
+        }
     } else if (name === 'portraits') {
         for (const file of PORTRAIT_FILES) loadImg(portraits, file, `portraits/${file}`);
     } else if (name === 'decor') {
@@ -208,6 +257,13 @@ function loadGroup(name: string): void {
         for (const key of Object.keys(EMOTE_INFO)) loadEmote(key);
     } else if (name === 'villagers') {
         for (const file of VILLAGER_FILES) loadVillager(file);
+    } else if (name === 'garden') {
+        for (const file of SOIL_FILES) loadImg(soil, file, `garden/${file}`);
+        water.length = WATER_FRAMES;
+        for (let i = 0; i < WATER_FRAMES; i++) loadIndexed(water, i, `witch/water${i + 1}`);
+        pick.length = PICK_FRAMES;
+        for (let i = 0; i < PICK_FRAMES; i++) loadIndexed(pick, i, `witch/pick${i + 1}`);
+        loadSingle('rooms/garden', sf => { gardenFrame = sf; });
     } else if (name === 'brew') {
         cauldron.length = CAULDRON_FRAMES;
         for (let i = 0; i < CAULDRON_FRAMES; i++) loadIndexed(cauldron, i, `cauldron/f${i}`);
@@ -282,6 +338,28 @@ export const GameArt = {
 
     /** 女巫採集動畫幀（0..2；未載入回空陣列）。 */
     gatherFrames(): SpriteFrame[] { return gather.filter(Boolean); },
+
+    /** 女巫澆水動畫幀（0..3；未載入回空陣列）。 */
+    waterFrames(): SpriteFrame[] { return water.filter(Boolean); },
+
+    /** 女巫摘花動畫幀（0..3；未載入回空陣列）。 */
+    pickFrames(): SpriteFrame[] { return pick.filter(Boolean); },
+
+    /** 土壤磚（'soil-dry' / 'soil-wet'；未載入回 null）。 */
+    soil(wet: boolean): SpriteFrame | null {
+        return soil.get(wet ? 'soil-wet' : 'soil-dry') ?? null;
+    },
+
+    /** 花的某一階圖（wilting=true 取枯萎那一列；未載入回 null）。 */
+    flower(art: string, stage: number, wilting: boolean): SpriteFrame | null {
+        const rows = flowers.get(art);
+        if (!rows) return null;
+        const row = rows[wilting ? 1 : 0] ?? rows[0];
+        return row[Math.max(0, Math.min(row.length - 1, stage))] ?? null;
+    },
+
+    /** 後花園背景（未載入回 null）。 */
+    garden(): SpriteFrame | null { return gardenFrame; },
 
     /** 女巫施法姿勢（正面；未載入回 null）。 */
     cast(): SpriteFrame | null { return castFrame; },

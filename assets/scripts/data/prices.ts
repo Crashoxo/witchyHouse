@@ -16,11 +16,16 @@ export const DEFAULT_BUY: BuyEntry[] = [
     { name: '藥草', price: 12 },
     { name: '黑莓', price: 10 },
     { name: '金蘋果', price: 50 },
+    { name: '薰衣草', price: 22 },
+    { name: '毛地黃', price: 26 },
+    { name: '星鈴花', price: 60 },
 ];
 
 /** 各材料/藥水的建議售價（賣給顧客，比雜貨鋪收購價高一些）。藥水價＝配方 sellPrice。 */
 export const BASE_PRICE: Record<string, number> = {
     木材: 8, 樹枝: 5, 漿果: 12, 落葉: 3, 藥草: 18, 黑莓: 15, 金蘋果: 80, 藍莓: 14,
+    // 後花園種出來的花
+    薰衣草: 34, 毛地黃: 40, 星鈴花: 95,
     // 藥水成品（PotionRecipes 的 sellPrice）
     清涼藥水: 35, 戀愛藥水: 40, 暗影藥水: 42, 烈焰藥水: 45, 溫暖熱可可: 30,
     蜂蜜藥劑: 55, 黃金藥劑: 70, 夜影掃帚: 120, 星光掃帚: 140, 羽翼掃帚: 160,

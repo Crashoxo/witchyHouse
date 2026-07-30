@@ -25,22 +25,40 @@ export class TownFolk extends Component {
     static readonly DAY_COUNT = 6;
     static readonly NIGHT_COUNT = 2;
 
-    /** 掛到 town.scene 既有的 Props 節點上（重複呼叫安全）。 */
-    static ensure(): TownFolk | null {
+    /**
+     * 掛到場景既有的 Props 節點上（重複呼叫安全）。
+     * @param route 走哪些路點。不給就讀場景裡的 `World/Roads`（城鎮）；
+     *              後花園沒有 Roads，改由 data/garden 給柵欄外那條石板路。
+     */
+    static ensure(route?: Array<{ x: number; y: number }>, crowd = TownFolk.DAY_COUNT): TownFolk | null {
         if (TownFolk.instance && TownFolk.instance.isValid) return TownFolk.instance;
         const props = find('Canvas/World/Props');
         if (!props) { console.warn('[TownFolk] 找不到 World/Props'); return null; }
-        return props.getComponent(TownFolk) ?? props.addComponent(TownFolk);
+        // ⚠️ 路線要在 addComponent 之前放好：addComponent 會當場跑 onLoad，
+        // 那時若還沒有路線，它就會去找這個場景根本沒有的 Roads 而白噴警告。
+        TownFolk.pendingRoute = route && route.length ? route : null;
+        TownFolk.pendingCrowd = crowd;
+        const folk = props.getComponent(TownFolk) ?? props.addComponent(TownFolk);
+        TownFolk.pendingRoute = null;
+        return folk;
     }
+
+    private static pendingRoute: Array<{ x: number; y: number }> | null = null;
+    private static pendingCrowd = TownFolk.DAY_COUNT;
 
     private waypoints: Vec3[] = [];
     private folk: Walker[] = [];
     private retry = 0;
 
+    private crowd = TownFolk.DAY_COUNT;
+
     onLoad() {
         TownFolk.instance = this;
         GameArt.preload();
-        this.collectWaypoints();
+        this.crowd = TownFolk.pendingCrowd;
+        const route = TownFolk.pendingRoute;
+        if (route) this.waypoints = route.map(p => new Vec3(p.x, p.y, 0));
+        else this.collectWaypoints();
     }
 
     onDestroy() {
@@ -52,7 +70,7 @@ export class TownFolk extends Component {
         if (this.waypoints.length < 2) return;
 
         // 人數：白天熱鬧、晚上剩零星幾個。美術還沒載完就先不生。
-        const want = TimeSystem.isNight ? TownFolk.NIGHT_COUNT : TownFolk.DAY_COUNT;
+        const want = TimeSystem.isNight ? Math.min(TownFolk.NIGHT_COUNT, this.crowd) : this.crowd;
         if (this.folk.length < want && GameArt.ready) {
             this.retry += dt;
             if (this.retry > 0.8) { this.retry = 0; this.spawn(); }

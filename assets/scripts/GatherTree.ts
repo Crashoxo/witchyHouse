@@ -6,6 +6,7 @@ import { UIState } from './UIState';
 import { Quests } from './Quests';
 import { DailyLog } from './DailyLog';
 import { TimeSystem } from './TimeSystem';
+import { FLOWERS } from './data/garden';
 import { GameArt } from './GameArt';
 import { CharacterAnimator } from './CharacterAnimator';
 const { ccclass, property } = _decorator;
@@ -57,6 +58,9 @@ export class GatherTree extends Component {
         this.gather();
     }
 
+    /** 每次採集額外撿到一包花種子的機率。 */
+    private static readonly SEED_CHANCE = 0.18;
+
     /** 這項材料是不是當季盛產（採量 +1、稀有掉落機率加成）。 */
     private inSeason(item: string): boolean {
         const list = TimeSystem.seasonDef.bonusItems;
@@ -82,6 +86,15 @@ export class GatherTree extends Component {
             Quests.record('gather', this.rareItem, 1);
             DailyLog.recordGather(1);
             this.scheduleOnce(() => this.popItem(this.rareItem, 1, 46), 0.35);   // 慢一拍再冒
+        }
+        // 森林裡採東西時偶爾會撿到花種子 —— 後花園的種子就是這樣來的。
+        // 做成掉落機率而不是逐棵樹去 inspector 設，才不用改場景檔。
+        if (Math.random() < GatherTree.SEED_CHANCE) {
+            const f = FLOWERS[Math.floor(Math.random() * FLOWERS.length)];
+            inv?.add(f.seed, 1);
+            Quests.record('gather', f.seed, 1);
+            DailyLog.recordGather(1);
+            this.scheduleOnce(() => this.popItem(f.seed, 1, 64), 0.6);
         }
         this.ready = false;
         this.timer = 0;
