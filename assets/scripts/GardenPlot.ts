@@ -1,0 +1,127 @@
+import { _decorator, Component, Node, UITransform, Sprite, Label, Color, Graphics,
+         Vec3, tween, UIOpacity } from 'cc';
+import { GameArt } from './GameArt';
+import { Garden } from './Garden';
+import { PLOT_SCALE, FLOWER_SCALE } from './data/garden';
+const { ccclass } = _decorator;
+
+/**
+ * 一塊花圃：底下是土壤磚（澆過水就換成深色那張），上面長花。
+ * 花畫成子節點，因為 Cocos 先畫父節點自己再畫子節點 —— 這樣花才會蓋在土上面。
+ */
+@ccclass('GardenPlot')
+export class GardenPlot extends Component {
+    index = 0;
+
+    private soil: Sprite | null = null;
+    private plant: Node | null = null;
+    private plantSprite: Sprite | null = null;
+    private hint: Node | null = null;
+    private hintLabel: Label | null = null;
+    private lastKey = '';
+
+    onLoad() {
+        const ut = this.node.getComponent(UITransform) ?? this.node.addComponent(UITransform);
+        ut.setAnchorPoint(0.5, 0.5);
+        this.soil = this.node.addComponent(Sprite);
+        this.soil.sizeMode = Sprite.SizeMode.CUSTOM;
+        this.soil.type = Sprite.Type.SIMPLE;
+
+        this.plant = new Node('plant');
+        this.plant.layer = this.node.layer;
+        this.node.addChild(this.plant);
+        const put = this.plant.addComponent(UITransform);
+        put.setAnchorPoint(0.5, 0);
+        this.plant.setPosition(0, -6, 0);      // 從磚面偏下一點長出來
+        this.plantSprite = this.plant.addComponent(Sprite);
+        this.plantSprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        this.plantSprite.type = Sprite.Type.SIMPLE;
+
+        this.buildHint();
+        GameArt.onReady(() => { if (this.isValid) this.refresh(true); });
+        this.refresh(true);
+    }
+
+    update() {
+        this.refresh();   // 時間會讓花自己長大 / 枯萎，所以每幀比對一次狀態
+    }
+
+    /** 依 Garden 的狀態重畫。狀態沒變就什麼都不做。 */
+    refresh(force = false) {
+        const v = Garden.view(this.index);
+        const key = `${v.art}|${v.stage}|${v.wilting}|${v.wet}|${v.empty}`;
+        if (key === this.lastKey && !force) return;
+        this.lastKey = key;
+
+        const soilFrame = GameArt.soil(v.wet);
+        if (this.soil && soilFrame) {
+            this.soil.spriteFrame = soilFrame;
+            this.node.getComponent(UITransform)?.setContentSize(
+                soilFrame.rect.width * PLOT_SCALE, soilFrame.rect.height * PLOT_SCALE);
+        }
+
+        const frame = v.empty ? null : GameArt.flower(v.art, v.stage, v.wilting);
+        if (this.plant && this.plantSprite) {
+            this.plant.active = !!frame;
+            if (frame) {
+                this.plantSprite.spriteFrame = frame;
+                this.plant.getComponent(UITransform)?.setContentSize(
+                    frame.rect.width * FLOWER_SCALE, frame.rect.height * FLOWER_SCALE);
+            }
+        }
+        if (this.hintLabel) this.hintLabel.string = this.hintText(v);
+    }
+
+    private hintText(v: ReturnType<typeof Garden.view>): string {
+        if (v.dead) return '按 E 清理';
+        if (v.empty) return '按 E 種下';
+        if (v.ripe) return '按 E 採收';
+        return '按 E 澆水';
+    }
+
+    showHint(on: boolean) {
+        if (this.hint) this.hint.active = on;
+    }
+
+    /** 操作完在花圃上方冒一行字，往上飄再淡出。 */
+    popup(text: string) {
+        const n = new Node('pop');
+        n.layer = this.node.layer;
+        this.node.addChild(n);
+        n.setPosition(0, 30, 0);
+        n.addComponent(UITransform).setContentSize(180, 24);
+        const lb = n.addComponent(Label);
+        lb.string = text;
+        lb.fontSize = 17;
+        lb.color = new Color(255, 246, 214, 255);
+        lb.horizontalAlign = Label.HorizontalAlign.CENTER;
+        const op = n.addComponent(UIOpacity);
+        tween(n).by(1.0, { position: new Vec3(0, 34, 0) }).start();
+        tween(op).delay(0.35).to(0.65, { opacity: 0 }).call(() => n.destroy()).start();
+    }
+
+    private buildHint() {
+        const n = new Node('hint');
+        n.layer = this.node.layer;
+        this.node.addChild(n);
+        n.setPosition(0, 54, 0);
+        n.addComponent(UITransform).setContentSize(96, 26);
+        const g = n.addComponent(Graphics);
+        g.fillColor = new Color(30, 26, 22, 200);
+        g.rect(-48, -13, 96, 26);
+        g.fill();
+        const t = new Node('t');
+        t.layer = this.node.layer;
+        n.addChild(t);
+        t.addComponent(UITransform).setContentSize(92, 24);
+        const lb = t.addComponent(Label);
+        lb.string = '按 E 種下';
+        lb.fontSize = 15;
+        lb.color = new Color(245, 240, 230, 255);
+        lb.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lb.verticalAlign = Label.VerticalAlign.CENTER;
+        this.hintLabel = lb;
+        n.active = false;
+        this.hint = n;
+    }
+}
