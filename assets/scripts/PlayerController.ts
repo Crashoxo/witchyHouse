@@ -13,6 +13,7 @@ import { UpdatePanel } from './UpdatePanel';
 import { DayNightTint } from './DayNightTint';
 import { LampGlow } from './LampGlow';
 import { TownFolk } from './TownFolk';
+import { ShadowLayer } from './ShadowLayer';
 import { PortalGlow } from './PortalGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
 import { PlayerInfoPanel } from './PlayerInfoPanel';
@@ -73,6 +74,10 @@ export class PlayerController extends Component {
         // 每個場景都有 Player → 在這裡叫出背包和金幣 HUD，讓它們永遠顯示
         Inventory.ensure();
         Hud.ensure();
+        // 腳下的影子。⚠️ 寬度在這裡量一次就好：Sprite 是 sizeMode RAW，採集/施法那幾張
+        // 圖比走路圖寬，每幀重量會讓影子跟著忽大忽小。
+        const put = this.node.getComponent(UITransform);
+        if (put) ShadowLayer.follow(this.node, put.contentSize.width * Math.abs(this.node.scale.x));
         Clock.ensure();           // 右上角時鐘（其 update 同時驅動 TimeSystem 時間流動）
         DaySummaryPanel.arm();    // 換日時備妥每日結算（整個遊戲只註冊一次）
         SleepOverlay.arm();       // 昏倒時也演睡覺過場，並把人送回房間

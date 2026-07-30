@@ -1,5 +1,6 @@
 import { _decorator, Component, Sprite, SpriteFrame, UITransform } from 'cc';
 import { GameArt, VillagerDir } from './GameArt';
+import { ShadowLayer } from './ShadowLayer';
 const { ccclass } = _decorator;
 
 /**
@@ -95,6 +96,7 @@ export class VillagerAnim extends Component {
         this.idx = -1;                       // 換面向 → 強制重畫一次
         const r = frames[0].rect;
         this.ut?.setContentSize(r.width * this.scale, r.height * this.scale);
+        ShadowLayer.follow(this.node, r.width * this.scale);   // 腳下的影子（尺寸確定後才叫得準）
         this.showFrame(this.moving ? Math.floor(this.timer * VillagerAnim.FPS) % frames.length : 0);
     }
 
