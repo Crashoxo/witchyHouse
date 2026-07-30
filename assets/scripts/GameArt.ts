@@ -8,7 +8,7 @@ import { ITEM_FILES, POTION_ITEMS } from './data/items';
  * ── 分區載入（2026-07-24）──
  * 不再開機一次載「全部」，而是分成幾個「組」：
  *   common ── 每個場景都用得到（道具/藥水圖、時鐘、對話框、任務捲軸、公告板、女巫姿勢）。開機即載。
- *   portraits / decor / shop / brew ── 各區域專屬，進到需要的場景才載（見 SCENE_GROUPS）。
+ *   portraits / decor / shop / villagers / brew ── 各區域專屬，進到需要的場景才載（見 SCENE_GROUPS）。
  * `preload()` 依「目前場景名」自動決定要載哪些組，所以**呼叫端一律 `preload()`、完全不用改**。
  * ⚠️ 保險：拿不到場景名或遇到未知場景，就退回「全部載入」＝跟舊行為一樣，寧可不省也不缺圖。
  *
@@ -16,9 +16,18 @@ import { ITEM_FILES, POTION_ITEMS } from './data/items';
  * ⚠️ ES5 build 下 Map/Set 不能 spread／for...of（迭代器不展開）；一律 forEach 或 Object.keys＋陣列 for...of。
  */
 
-/** 顧客（動物）檔名。 */
-const CUSTOMER_FILES = ['badger', 'owl', 'fox', 'hedgehog', 'rabbit', 'deer',
-                        'raccoon', 'bear', 'squirrel', 'wolf', 'mouse', 'otter'];
+/**
+ * 村民檔名（resources/villagers 底下）。每張是 4 欄 × 3 列的走路表：
+ * 第 0 列朝下（正面）、第 1 列側面（一律朝左，往右走時把節點翻面）、第 2 列朝上（背面）。
+ * 單格大小由圖檔尺寸算出（寬/4、高/3），所以每位角色可以有自己的畫布大小。
+ */
+const VILLAGER_FILES = ['frog', 'fox', 'rabbit', 'hedgehog', 'witch',
+                        'deer', 'broomwitch', 'fairy', 'traveler', 'mage'];
+
+/** 村民走路表的列（＝面向）。 */
+export const VillagerDir = { DOWN: 0, SIDE: 1, UP: 2 };
+const VILLAGER_COLS = 4;   // 每個面向的動畫幀數
+const VILLAGER_ROWS = 3;   // 面向數（下／側／上）
 
 /** 表情動畫：檔名 → [單幀寬, 單幀高, 幀數]（橫向 strip）。 */
 const EMOTE_INFO: Record<string, [number, number, number]> = {
@@ -50,7 +59,7 @@ const CAULDRON_FRAMES = 6;
 const GATHER_FRAMES = 3;
 
 const items = new Map<string, SpriteFrame>();       // 材料/藥水名 → 圖
-const customers = new Map<string, SpriteFrame>();   // 動物名 → 圖
+const villagers = new Map<string, SpriteFrame[][]>();  // 村民名 → [面向][幀]
 const emotes = new Map<string, SpriteFrame[]>();    // 表情名 → 動畫幀陣列
 const portraits = new Map<string, SpriteFrame>();   // 頭像名 → 圖
 const decor = new Map<string, SpriteFrame>();       // 裝飾品 id → 圖
@@ -80,13 +89,13 @@ function mapKeys<T>(m: Map<string, T>): string[] {
 
 /** 場景名 → 除了 common 之外還要載入的區域組。 */
 const SCENE_GROUPS: Record<string, string[]> = {
-    main: [],                       // 森林：只需 common
-    town: ['portraits', 'decor'],   // 城鎮：NPC 頭像、花店裝飾目錄
-    shop: ['shop', 'decor'],        // 自己的店：顧客/表情、擺出的裝飾
-    brew: ['brew'],                 // 藥水室：鍋爐幀、房間背景
+    main: [],                                     // 森林：只需 common
+    town: ['portraits', 'decor', 'villagers'],    // 城鎮：NPC 頭像、花店裝飾目錄、街上走動的村民
+    shop: ['shop', 'decor', 'villagers'],         // 自己的店：表情、擺出的裝飾、上門的顧客
+    brew: ['brew'],                               // 藥水室：鍋爐幀、房間背景
 };
 /** 保險用：全部區域組（拿不到場景名時退回全載）。 */
-const ALL_AREA_GROUPS = ['portraits', 'decor', 'shop', 'brew'];
+const ALL_AREA_GROUPS = ['portraits', 'decor', 'shop', 'villagers', 'brew'];
 
 const requested: Record<string, boolean> = {};  // 已開始載入的組（idempotent 用）
 let started = false;
@@ -150,6 +159,30 @@ function loadEmote(name: string): void {
     });
 }
 
+/** 載入一位村民的走路表，切成 [列][欄] 的 SpriteFrame（列＝面向，欄＝動畫幀）。 */
+function loadVillager(name: string): void {
+    pending++;
+    resources.load(`villagers/${name}`, ImageAsset, (err, img) => {
+        if (!err && img) {
+            const tex = SpriteFrame.createWithImage(img).texture;
+            const cw = img.width / VILLAGER_COLS, ch = img.height / VILLAGER_ROWS;
+            const rows: SpriteFrame[][] = [];
+            for (let r = 0; r < VILLAGER_ROWS; r++) {
+                const arr: SpriteFrame[] = [];
+                for (let c = 0; c < VILLAGER_COLS; c++) {
+                    const sf = new SpriteFrame();
+                    sf.texture = tex;
+                    sf.rect = new Rect(c * cw, r * ch, cw, ch);
+                    arr.push(sf);
+                }
+                rows.push(arr);
+            }
+            villagers.set(name, rows);
+        } else console.warn(`[GameArt] 載入失敗 villagers/${name}`, err);
+        jobDone();
+    });
+}
+
 /** 載入一個區域組（idempotent —— 已請求過就跳過）。 */
 function loadGroup(name: string): void {
     if (requested[name]) return;
@@ -172,8 +205,9 @@ function loadGroup(name: string): void {
     } else if (name === 'decor') {
         for (const file of DECOR_FILES) loadImg(decor, file, `decor/${file}`);
     } else if (name === 'shop') {
-        for (const file of CUSTOMER_FILES) loadImg(customers, file, `customers/${file}`);
         for (const key of Object.keys(EMOTE_INFO)) loadEmote(key);
+    } else if (name === 'villagers') {
+        for (const file of VILLAGER_FILES) loadVillager(file);
     } else if (name === 'brew') {
         cauldron.length = CAULDRON_FRAMES;
         for (let i = 0; i < CAULDRON_FRAMES; i++) loadIndexed(cauldron, i, `cauldron/f${i}`);
@@ -208,11 +242,17 @@ export const GameArt = {
     /** 材料/藥水圖（未載入回 null）。 */
     item(name: string): SpriteFrame | null { return items.get(name) ?? null; },
 
-    /** 顧客圖（未載入回 null）。 */
-    customer(name: string): SpriteFrame | null { return customers.get(name) ?? null; },
+    /**
+     * 村民某個面向的走路幀（VillagerDir.DOWN / SIDE / UP；未載入回空陣列）。
+     * 側面一律朝左，往右走請把節點 scale.x 取負（同女巫的作法）。
+     */
+    villagerFrames(name: string, dir: number): SpriteFrame[] {
+        const rows = villagers.get(name);
+        return rows ? (rows[dir] ?? rows[0]) : [];
+    },
 
-    /** 所有已載入的顧客名（給隨機挑選用）。 */
-    customerNames(): string[] { return mapKeys(customers); },
+    /** 所有已載入的村民名（給隨機挑選用）。 */
+    villagerNames(): string[] { return mapKeys(villagers); },
 
     /** 表情動畫幀陣列（未載入回 null）。 */
     emote(name: string): SpriteFrame[] | null { return emotes.get(name) ?? null; },

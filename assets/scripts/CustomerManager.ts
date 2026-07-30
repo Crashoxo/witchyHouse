@@ -8,6 +8,7 @@ import { Quests } from './Quests';
 import { DailyLog } from './DailyLog';
 import { Reputation } from './Reputation';
 import { TimeSystem } from './TimeSystem';
+import { VillagerAnim } from './VillagerAnim';
 const { ccclass, property } = _decorator;
 
 /** 顧客的行為狀態。 */
@@ -15,13 +16,12 @@ enum St { ENTER, BROWSE, LEAVE }
 
 interface Customer {
     node: Node;
-    display: number;      // 顯示高度（用來擺對話泡）
+    anim: VillagerAnim;   // 走路動畫（面向/翻面、顯示高度都由它處理）
     state: St;
     timer: number;
     want: string;         // 想買的材料名
     target: Vec3;
     bubble: Node | null;
-    faceRight: boolean;
     emoteFrames: SpriteFrame[] | null;   // 成交後的表情動畫幀
     emoteSprite: Sprite | null;
     emoteTimer: number;
@@ -29,9 +29,12 @@ interface Customer {
 }
 
 /**
- * 顧客系統（Phase 2）：定時生一位動物顧客走進店裡，看中一件上架商品就買下
+ * 顧客系統（Phase 2）：定時生一位村民走進店裡，看中一件上架商品就買下
  * （ShopStock.sellOne → Wallet.add），冒對話泡，然後離開。掛在 shop.scene 的
  * Props 節點上（顧客生成為 Props 子節點，跟著 YSortLayer 做前後遮擋）。
+ *
+ * 顧客立繪是四方向會走路的村民（VillagerAnim ＋ resources/villagers），
+ * 跟城鎮街上走動的是同一批人，身高也跟女巫主角差不多。
  */
 @ccclass('CustomerManager')
 export class CustomerManager extends Component {
@@ -41,8 +44,8 @@ export class CustomerManager extends Component {
     maxConcurrent = 3;
     @property({ tooltip: '顧客走路速度（像素/秒）' })
     walkSpeed = 120;
-    @property({ tooltip: '顧客顯示高度（像素）' })
-    displayHeight = 150;
+    @property({ tooltip: '顧客立繪縮放（原圖比例；0.7 時身高跟女巫差不多）' })
+    displayScale = VillagerAnim.SCALE;
 
     private readonly entrance = new Vec3(0, -330, 0);   // 進出口（畫面下方，靠出口）
     // 桌子（展示商品的長木凳）在世界座標中心約 (-260,-100)；顧客走到桌前挑貨
@@ -79,36 +82,25 @@ export class CustomerManager extends Component {
     // ---- 生成一位顧客 ----
 
     private spawn() {
-        const names = GameArt.customerNames();
+        const names = GameArt.villagerNames();
         if (names.length === 0) return;
-        const animal = names[Math.floor(Math.random() * names.length)];
-        const frame = GameArt.customer(animal);
-        if (!frame) return;
+        const who = names[Math.floor(Math.random() * names.length)];
 
         const list = ShopStock.listings;
         const want = list[Math.floor(Math.random() * list.length)].name;
 
-        const node = new Node('Customer-' + animal);
+        const node = new Node('Customer-' + who);
         node.layer = this.node.layer;
         this.node.addChild(node);
         node.setPosition(this.entrance);
-
-        // 立繪（依原圖比例縮到 displayHeight，錨點底部中央）
-        const r = frame.rect;
-        const w = this.displayHeight * (r.width / r.height);
-        const ut = node.addComponent(UITransform);
-        ut.setContentSize(w, this.displayHeight);
-        ut.setAnchorPoint(0.5, 0);
-        const sp = node.addComponent(Sprite);
-        sp.sizeMode = Sprite.SizeMode.CUSTOM;
-        sp.type = Sprite.Type.SIMPLE;
-        sp.spriteFrame = frame;
+        const anim = node.addComponent(VillagerAnim);
+        anim.init(who, this.displayScale);
 
         // 走到桌前的隨機位置（桌子在左側，x 約 -360..-140）挑貨
         const browseX = -360 + Math.random() * 220;
         this.customers.push({
-            node, display: this.displayHeight, state: St.ENTER, timer: 0,
-            want, target: new Vec3(browseX, this.tableFrontY, 0), bubble: null, faceRight: true,
+            node, anim, state: St.ENTER, timer: 0,
+            want, target: new Vec3(browseX, this.tableFrontY, 0), bubble: null,
             emoteFrames: null, emoteSprite: null, emoteTimer: 0, emoteIdx: 0,
         });
     }
@@ -121,6 +113,7 @@ export class CustomerManager extends Component {
             case St.ENTER:
                 if (this.moveTo(c, c.target, dt)) {
                     c.state = St.BROWSE; c.timer = 0;
+                    c.anim.faceTo(0, 1);     // 停在桌前，面向桌上的商品（背對玩家）
                     this.showBubble(c, GameArt.item(c.want), `想要 ${c.want}`);
                 }
                 return false;
@@ -150,21 +143,19 @@ export class CustomerManager extends Component {
         return false;
     }
 
-    /** 朝 target 移動；到達回 true。 */
+    /** 朝 target 移動；到達回 true。走路動畫與面向交給 VillagerAnim。 */
     private moveTo(c: Customer, target: Vec3, dt: number): boolean {
         const p = c.node.position;
         const dx = target.x - p.x, dy = target.y - p.y;
         const dist = Math.hypot(dx, dy);
         const step = this.walkSpeed * dt;
-        if (dist <= step) { c.node.setPosition(target.x, target.y, 0); return true; }
-        c.node.setPosition(p.x + dx / dist * step, p.y + dy / dist * step, 0);
-        // 面向移動方向（立繪預設朝右→往左翻）
-        const goRight = dx >= 0;
-        if (goRight !== c.faceRight) {
-            c.faceRight = goRight;
-            const s = c.node.scale;
-            c.node.setScale(goRight ? Math.abs(s.x) : -Math.abs(s.x), s.y, s.z);
+        if (dist <= step) {
+            c.node.setPosition(target.x, target.y, 0);
+            c.anim.setMove(0, 0);
+            return true;
         }
+        c.node.setPosition(p.x + dx / dist * step, p.y + dy / dist * step, 0);
+        c.anim.setMove(dx / dist, dy / dist);
         return false;
     }
 
@@ -180,7 +171,7 @@ export class CustomerManager extends Component {
         c.node.addChild(b);
         b.addComponent(UITransform).setContentSize(W, H);
         // 立繪錨點在底部 → 對話泡擺到頭頂上方
-        b.setPosition(0, c.display + 30, 0);
+        b.setPosition(0, c.anim.displayHeight + 30, 0);
         // 反轉父節點翻面的影響，讓泡泡文字不會鏡像
         const px = c.node.scale.x;
         if (px < 0) b.setScale(-1, 1, 1);
@@ -234,7 +225,7 @@ export class CustomerManager extends Component {
         b.layer = layer;
         c.node.addChild(b);
         b.addComponent(UITransform);
-        b.setPosition(0, c.display + 40, 0);
+        b.setPosition(0, c.anim.displayHeight + 40, 0);
         if (c.node.scale.x < 0) b.setScale(-1, 1, 1);   // 反轉父節點翻面，泡泡不鏡像
 
         // 隨機挑一個表情
