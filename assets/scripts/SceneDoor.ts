@@ -54,7 +54,10 @@ export class SceneDoor extends Component {
 
     private onKeyDown(e: EventKeyboard) {
         if (e.keyCode !== KeyCode.KEY_E) return;
-        if (!this.inRange) return;
+        // ⚠️ 按 E 也要看 armed，不能只有自動觸發看。出生點常常就落在門旁邊
+        // （藥水室離門 80px、後花園離門 75px），只鎖自動觸發的話，玩家一進場景
+        // 按 E 想做別的事（澆花、開櫃台）就被門送回上一個場景。
+        if (!this.inRange || !this.armed) return;
         this.enter();
     }
 
@@ -62,14 +65,11 @@ export class SceneDoor extends Component {
         if (!this.player) return;
         const dist = this.distToPlayer();
         this.inRange = dist <= this.interactRange;
-        if (this.hint) this.hint.active = this.inRange && !UIState.modalOpen;
-
-        if (!this.autoEnter) return;
-        if (!this.armed) {
-            if (dist > this.armThreshold()) this.armed = true;
-        } else if (dist <= this.autoRange) {
-            this.enter();
-        }
+        // 解鎖判定要在 autoEnter 之外做 —— 關掉自動過圖的門也要能解鎖，否則它會
+        // 永遠停在上鎖狀態，連按 E 都進不去。
+        if (!this.armed && dist > this.armThreshold()) this.armed = true;
+        if (this.hint) this.hint.active = this.inRange && this.armed && !UIState.modalOpen;
+        if (this.autoEnter && this.armed && dist <= this.autoRange) this.enter();
     }
 
     /**

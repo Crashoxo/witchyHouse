@@ -112,6 +112,11 @@ export class GardenRoom extends Component {
         const door = node.addComponent(SceneDoor);
         door.targetScene = 'shop';
         door.hintText = '回到店裡';
+        // ⚠️ 門預設 200px 內按 E 就走 —— 但花圃離這道門也才 200px 出頭，站在最靠近
+        // 房子那塊花圃前按 E 種花時，人離門只有約 150px，門會跟著收到同一個 E 把人
+        // 送回店裡。縮到剛好比 autoRange 大一點：提示照樣會冒，但按 E 不會隔空觸發，
+        // 而且走上去自動過圖那條路本來就還在。
+        door.interactRange = 90;
     }
 
     // ---- 操作：一顆 E 鍵，看花圃現在是什麼狀態決定做什麼 ----
