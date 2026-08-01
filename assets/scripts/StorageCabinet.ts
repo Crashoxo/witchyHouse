@@ -5,11 +5,9 @@ import { UIState } from './UIState';
 const { ccclass, property } = _decorator;
 
 /**
- * 店裡左邊書櫃下方那排櫥櫃＝倉庫。走近顯示「按 E 打開倉庫」，按 E 開背包/倉庫面板。
- * 節點本身沒有圖（櫥櫃是背景畫好的），只是個隱形觸發 —— 同 brew.scene 那張天蓬床的作法。
- *
- * ⚠️ 位置要離櫃台夠遠：櫃台的感應半徑是 200，站在它旁邊按 E 會兩邊都收到同一顆鍵
- * （花園的門踩過這個坑）。櫥櫃擺在 (-500,-110)、櫃台在 (120,-40)，相距 628px。
+ * 倉庫：藥水室（女巫房間）左邊那口木箱。走近顯示「按 E 打開倉庫」，按 E 開背包/倉庫面板。
+ * 節點本身沒有圖（木箱是背景畫好的），只是個隱形觸發 —— 同 brew.scene 那張天蓬床的作法。
+ * 位置與「不要跟別的 E 撞在一起」的算法見 Doorways.install()。
  */
 @ccclass('StorageCabinet')
 export class StorageCabinet extends Component {

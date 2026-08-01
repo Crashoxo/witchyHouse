@@ -2,6 +2,7 @@ import { _decorator, Component, Node, UITransform, Widget, Label, Color,
          Graphics, BlockInputEvents, find, input, Input,
          EventKeyboard, KeyCode, UIOpacity } from 'cc';
 import { Inventory } from './Inventory';
+import { Storage } from './Storage';
 import { UIState } from './UIState';
 import { Wallet } from './Wallet';
 import { DailyLog } from './DailyLog';
@@ -145,11 +146,11 @@ export class ShopPanel extends Component {
         if (!box) return;
         box.removeAllChildren();
 
-        const inv = Inventory.instance;
-        const owned = this.entries.filter(e => (inv?.countOf(e.name) ?? 0) > 0);
+        // 材料一進城鎮就自動歸位到倉庫，所以「有沒有得賣」要算背包＋倉庫
+        const owned = this.entries.filter(e => Storage.availableOf(e.name) > 0);
 
         if (owned.length === 0) {
-            this.makeLabel(box, '背包裡沒有可賣的材料', 22, new Color(200, 195, 210, 255),
+            this.makeLabel(box, '背包與倉庫裡都沒有可賣的材料', 22, new Color(200, 195, 210, 255),
                 0, -this.rowH / 2, this.panelW - 80, Label.HorizontalAlign.CENTER, 0);
             return;
         }
@@ -161,8 +162,7 @@ export class ShopPanel extends Component {
     }
 
     private buildRow(parent: Node, e: BuyEntry, y: number) {
-        const inv = Inventory.instance;
-        const count = inv?.countOf(e.name) ?? 0;
+        const count = Storage.availableOf(e.name);
         const layer = this.node.layer;
         const leftX = -this.panelW / 2 + 28;
 
@@ -187,9 +187,8 @@ export class ShopPanel extends Component {
     }
 
     private sell(e: BuyEntry, qty: number) {
-        const inv = Inventory.instance;
-        if (!inv || qty <= 0) return;
-        if (!inv.remove(e.name, qty)) return;   // 數量不足就不成交
+        if (qty <= 0) return;
+        if (!Storage.takeAny(e.name, qty)) return;   // 數量不足就不成交（背包先扣、再扣倉庫）
         Wallet.add(e.price * qty);
         DailyLog.recordTrade(e.price * qty);    // 記進今日的材料收購收入
         this.refresh();

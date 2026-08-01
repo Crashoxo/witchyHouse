@@ -2,6 +2,7 @@ import { _decorator, Component, Node, Sprite, Color, input, Input,
          EventKeyboard, KeyCode, Vec3, UITransform, UIOpacity, Graphics,
          Label, tween } from 'cc';
 import { Inventory } from './Inventory';
+import { Toast } from './Toast';
 import { UIState } from './UIState';
 import { Quests } from './Quests';
 import { DailyLog } from './DailyLog';
@@ -75,7 +76,8 @@ export class GatherTree extends Component {
         const hi = Math.max(this.minYield, this.maxYield);
         const bonus = this.inSeason(this.itemName);
         const qty = lo + Math.floor(Math.random() * (hi - lo + 1)) + (bonus ? 1 : 0);
-        inv?.add(this.itemName, qty);
+        // 背包裝不下（種類滿了）就直說一聲 —— 以前是靜靜地把採到的東西丟掉
+        if (!inv?.add(this.itemName, qty)) { Toast.show('背包滿了，先回去整理一下'); return; }
         Quests.record('gather', this.itemName, qty);   // 累積「採集」任務進度
         DailyLog.recordGather(qty);                    // 記進今日採集量
         this.playFx(this.itemName, qty);

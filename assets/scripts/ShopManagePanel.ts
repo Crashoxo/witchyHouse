@@ -2,6 +2,7 @@ import { _decorator, Component, Node, UITransform, Widget, Label, Color,
          Graphics, BlockInputEvents, find, input, Input,
          EventKeyboard, KeyCode, UIOpacity } from 'cc';
 import { Inventory } from './Inventory';
+import { Storage } from './Storage';
 import { ShopStock } from './ShopStock';
 import { UIState } from './UIState';
 import { Wallet } from './Wallet';
@@ -182,7 +183,7 @@ export class ShopManagePanel extends Component {
         const leftX = -this.panelW / 2 + 28;
         const hy = -6;
         this.makeLabel(box, '材料', 18, new Color(200, 190, 178, 255), hy, 90, Label.HorizontalAlign.LEFT, leftX);
-        this.makeLabel(box, '背包', 18, new Color(200, 190, 178, 255), hy, 60, Label.HorizontalAlign.CENTER, -210, true);
+        this.makeLabel(box, '可用', 18, new Color(200, 190, 178, 255), hy, 60, Label.HorizontalAlign.CENTER, -210, true);
         this.makeLabel(box, '貨架', 18, new Color(200, 190, 178, 255), hy, 60, Label.HorizontalAlign.CENTER, -120, true);
         this.makeLabel(box, '售價', 18, new Color(200, 190, 178, 255), hy, 90, Label.HorizontalAlign.CENTER, 20, true);
         this.makeLabel(box, `操作（貨架 ${ShopStock.listings.length}/${Upgrades.shelfCap()} 種）`, 16,
@@ -199,16 +200,16 @@ export class ShopManagePanel extends Component {
 
     /** 目前可管理的品項：材料在前、藥水在後，只列「背包有的或已上架的」。 */
     private stockItems(): string[] {
-        const inv = Inventory.instance;
+        // 「可用」＝背包＋倉庫（材料進城鎮會自動歸位到倉庫，只看背包會整排空掉）
         const relevant = (name: string) =>
-            (inv?.countOf(name) ?? 0) > 0 || ShopStock.listings.some(l => l.name === name);
+            Storage.availableOf(name) > 0 || ShopStock.listings.some(l => l.name === name);
         return [...MATERIALS, ...POTIONS].filter(relevant).slice(0, MAX_STOCK_ROWS);
     }
 
     private stockRow(parent: Node, name: string, y: number) {
         const leftX = -this.panelW / 2 + 28;
         const inv = Inventory.instance;
-        const bag = inv?.countOf(name) ?? 0;
+        const bag = Storage.availableOf(name);
         const listing = ShopStock.listings.find(l => l.name === name);
         const shelf = listing?.count ?? 0;
         const price = listing?.price ?? ShopStock.suggestedPrice(name);
@@ -234,11 +235,15 @@ export class ShopManagePanel extends Component {
         const canList = bag > 0 && ShopStock.canAdd(name);
         this.makeButton(row, '上架', 78, 36, 168, 0,
             canList ? new Color(78, 118, 92, 255) : new Color(70, 66, 62, 255), () => {
-                if (canList && inv?.remove(name, 1)) { ShopStock.add(name); this.refresh(); }
+                if (canList && Storage.takeAny(name, 1)) { ShopStock.add(name); this.refresh(); }
             });
         this.makeButton(row, '撤下', 78, 36, 256, 0,
             shelf > 0 ? new Color(120, 90, 70, 255) : new Color(70, 66, 62, 255), () => {
-                if (ShopStock.removeOne(name)) { inv?.add(name, 1); this.refresh(); }
+                if (ShopStock.removeOne(name)) {
+                    // 背包種類滿了就退回倉庫，別讓撤下來的東西憑空不見
+                    if (!inv?.add(name, 1)) Storage.add(name, 1);
+                    this.refresh();
+                }
             });
     }
 

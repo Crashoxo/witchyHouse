@@ -3,25 +3,24 @@ import { SceneDoor } from './SceneDoor';
 import { StorageCabinet } from './StorageCabinet';
 import { SHOP_TO_GARDEN } from './data/garden';
 
-/** 店裡左邊書櫃下方那排櫥櫃（背景畫好的）＝倉庫的位置。 */
-const CABINET = { x: -500, y: -110 };
+/** 藥水室（女巫房間）左邊背景畫好的那口木箱 ＝ 倉庫的位置。 */
+const CHEST = { x: -360, y: -125 };
 
 /**
- * 執行期補上的場景門。
+ * 執行期補上的場景物件（門、倉庫）。
  *
- * 店裡右邊通往後花園的那道門是這樣裝的，而不是直接存進 shop.scene —— 這樣加新出入口
- * 就不用動場景檔（使用者的 Cocos 常常開著，改場景檔會被編輯器存檔蓋掉）。裝好之後
- * PortalGlow 會自己掃到它（它是掃 SceneDoor 元件），所以門一樣會發光、一樣走上去就過。
- *
- * 之後想在 Cocos 裡改門的位置，把節點做進場景檔、再把這裡的 install 拿掉即可。
+ * 這些東西不直接存進場景檔 —— 使用者的 Cocos 常常開著，改場景檔會被編輯器存檔蓋掉。
+ * 裝好之後 PortalGlow 會自己掃到門（它是掃 SceneDoor 元件），所以門一樣會發光、
+ * 一樣走上去就過。之後想在 Cocos 裡自己擺，把節點做進場景檔再把這裡的安裝拿掉即可。
  */
 export const Doorways = {
-    /** 在目前場景補上該有的門（重複呼叫安全）。 */
-    install(): void {
+    /** 在指定場景補上該有的東西（重複呼叫安全）。 */
+    install(scene: string): void {
         const props = find('Canvas/World/Props');
         if (!props) return;
 
-        if (!props.getChildByName('GardenDoor')) {
+        // 店裡右邊通往後花園的門
+        if (scene === 'shop' && !props.getChildByName('GardenDoor')) {
             const node = new Node('GardenDoor');
             node.layer = props.layer;
             props.addChild(node);
@@ -32,13 +31,15 @@ export const Doorways = {
             door.hintText = '到後花園';
         }
 
-        // 倉庫：背景左邊那排櫥櫃上放一個隱形觸發（同 brew.scene 的床）
-        if (!props.getChildByName('StorageCabinet')) {
-            const node = new Node('StorageCabinet');
+        // 房間裡的倉庫：背景左邊那口木箱上放一個隱形觸發（同 brew.scene 的床）。
+        // ⚠️ 擺 (-360,-125)：鍋爐 (59,-135) 與出口 (0,-330) 的感應半徑都是 200，
+        // 這裡離兩者都有 410px 以上，不會有兩個東西搶同一顆 E 的問題（花園的門踩過）。
+        if (scene === 'brew' && !props.getChildByName('StorageChest')) {
+            const node = new Node('StorageChest');
             node.layer = props.layer;
             props.addChild(node);
-            node.setPosition(CABINET.x, CABINET.y, 0);
-            node.addComponent(UITransform).setContentSize(120, 60);
+            node.setPosition(CHEST.x, CHEST.y, 0);
+            node.addComponent(UITransform).setContentSize(110, 70);
             node.addComponent(StorageCabinet);
         }
     },

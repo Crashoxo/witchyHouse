@@ -1,4 +1,5 @@
 import { Inventory } from './Inventory';
+import { Storage } from './Storage';
 import { Recipe, RECIPES } from './data/recipes';
 
 /**
@@ -13,25 +14,26 @@ export const PotionRecipes = {
 
     get(name: string): Recipe | undefined { return RECIPES.find(r => r.name === name); },
 
-    /** 材料是否足夠製作。 */
+    /**
+     * 材料是否足夠製作。
+     * ⚠️ 算的是**背包＋倉庫**：材料一進城鎮就自動歸位到倉庫，只看背包的話回到鍋爐前
+     * 會變成什麼都做不了（倉庫就在同一個房間的木箱裡）。
+     */
     canCraft(r: Recipe): boolean {
-        const inv = Inventory.ensure();
-        if (!inv) return false;
-        return Object.keys(r.inputs).every(mat => inv.countOf(mat) >= r.inputs[mat]);
+        return Object.keys(r.inputs).every(mat => Storage.availableOf(mat) >= r.inputs[mat]);
     },
 
-    /** 只扣材料（開始熬煮時呼叫）。材料不足回 false、不扣。 */
+    /** 只扣材料（開始熬煮時呼叫）。材料不足回 false、不扣。先扣背包再扣倉庫。 */
     consume(r: Recipe): boolean {
-        const inv = Inventory.ensure();
-        if (!inv) return false;
-        if (!Object.keys(r.inputs).every(mat => inv.countOf(mat) >= r.inputs[mat])) return false;
-        Object.keys(r.inputs).forEach(mat => inv.remove(mat, r.inputs[mat]));
+        Inventory.ensure();
+        if (!this.canCraft(r)) return false;
+        Object.keys(r.inputs).forEach(mat => Storage.takeAny(mat, r.inputs[mat]));
         return true;
     },
 
-    /** 只把成品加進背包（熬煮動畫結束時呼叫）。 */
+    /** 只把成品加進背包（熬煮動畫結束時呼叫）；背包種類滿了就先放進倉庫，別弄丟。 */
     produce(r: Recipe): void {
-        Inventory.ensure()?.add(r.name);
+        if (!Inventory.ensure()?.add(r.name)) Storage.add(r.name, 1);
     },
 
     /** 一次做完：扣料＋產出（consume 成功才 produce）。 */

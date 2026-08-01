@@ -20,6 +20,8 @@ import { PortalGlow } from './PortalGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
 import { PlayerInfoPanel } from './PlayerInfoPanel';
 import { BagPanel } from './BagPanel';
+import { Storage } from './Storage';
+import { Toast } from './Toast';
 import { SleepOverlay } from './SleepOverlay';
 import { edgePortalOf } from './data';
 const { ccclass, property } = _decorator;
@@ -90,7 +92,12 @@ export class PlayerController extends Component {
         if (scene === 'town') LampGlow.ensure();   // 城鎮路燈夜間發光（疊在色板之上）
         if (scene === 'town') TownFolk.ensure();   // 街上走動的村民（沿 Roads 的路點晃）
         if (scene === 'garden') GardenRoom.ensure();   // 後花園：背景、花圃、回店的門、柵欄外的村民
-        if (scene === 'shop') Doorways.install();      // 店裡右邊通往後花園的門
+        if (scene === 'shop' || scene === 'brew') Doorways.install(scene);   // 花園的門／房間的倉庫
+        // 採集完一走進城鎮，材料與花自動歸位到房間的倉庫（藥水與種子留在身上）
+        if (scene === 'town') {
+            const n = Storage.stashFromBag();
+            if (n > 0) Toast.show(`材料已收進倉庫（${n} 種）`);
+        }
         // 傳送點發光：門與「走出邊界」的出口都亮起來，不熟的人才知道那裡可以走
         PortalGlow.ensure(this.node, this.nextMapScene, this.nextMapEdge);
         UpdatePanel.showOnce();   // 開遊戲第一個場景跳更新公告（換場景不重跳）
