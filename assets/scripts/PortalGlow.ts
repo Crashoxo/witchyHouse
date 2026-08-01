@@ -116,7 +116,9 @@ export class PortalGlow extends Component {
     private collectDoors(root: Node) {
         const door = root.getComponent(SceneDoor);
         if (door && door.targetScene) {
-            this.buildPortal(root, root.getComponent(UITransform), new Vec3(0, 0, 0),
+            // 光圈畫在「門口」而不是節點原點 —— 整棟房子當一個節點時，原點在房子正中央
+            this.buildPortal(root, root.getComponent(UITransform),
+                             new Vec3(door.doorX, door.doorY, 0),
                              DOOR_RX, DOOR_RY, null, '');
         }
         for (const child of root.children) this.collectDoors(child);

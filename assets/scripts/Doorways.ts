@@ -4,6 +4,12 @@ import { StorageCabinet } from './StorageCabinet';
 import { Wardrobe } from './Wardrobe';
 import { SHOP_TO_GARDEN } from './data/garden';
 
+/**
+ * 城鎮小屋的門在整棟房子圖上的位置（節點原點在房子正中央底部）。
+ * 拱門偏左 —— 沒有這個位移，地上的光圈會亮在房子正中間，看起來像從牆壁進去。
+ */
+const COTTAGE_DOOR = { x: -93, y: 12 };   // 量自 $scratch/door_pos_check.png
+
 /** 藥水室（女巫房間）左邊背景畫好的那口木箱 ＝ 倉庫的位置。 */
 const CHEST = { x: -360, y: -125 };
 /** 同一面牆上那座雕花木櫃 ＝ 衣櫃。離木箱 320px，兩個 E 不會打架。 */
@@ -21,6 +27,14 @@ export const Doorways = {
     install(scene: string): void {
         const props = find('Canvas/World/Props');
         if (!props) return;
+
+        // 城鎮：小屋的 SceneDoor 是存在場景檔裡的（掛在整棟房子上），這裡只把門口位置
+        // 補給它 —— 不動場景檔就能讓光圈與觸發點落在真正的門口。
+        if (scene === 'town') {
+            const cottage = props.getChildByName('cottage-home');
+            const door = cottage?.getComponent(SceneDoor);
+            if (door) { door.doorX = COTTAGE_DOOR.x; door.doorY = COTTAGE_DOOR.y; }
+        }
 
         // 店裡右邊通往後花園的門
         if (scene === 'shop' && !props.getChildByName('GardenDoor')) {

@@ -29,6 +29,15 @@ export class SceneDoor extends Component {
     autoEnter = true;
     @property({ tooltip: '走多近會自動換場景（像素）—— 跟地上那圈光暈差不多大' })
     autoRange = 70;
+    /**
+     * 門口相對節點原點的位移。整棟房子當一個節點時，節點原點在**房子正中央的底部**，
+     * 而門通常不在正中央（小屋的拱門偏左）——沒有這個位移的話，地上的光圈會亮在
+     * 房子中間、玩家也得走到房子中央才進得去。填「門在圖上的位置」即可。
+     */
+    @property({ tooltip: '門口相對節點原點的水平位移（像素，右為正）' })
+    doorX = 0;
+    @property({ tooltip: '門口相對節點原點的垂直位移（像素，上為正）' })
+    doorY = 0;
 
     private player: Node | null = null;
     private hint: Node | null = null;
@@ -87,20 +96,27 @@ export class SceneDoor extends Component {
         SceneFade.go(this.targetScene);   // 淡出→切場景→淡入
     }
 
+    /** 門口的實際位置（節點原點 ＋ doorX/doorY）。 */
+    doorPos(): Vec3 {
+        const p = this.node.position;
+        return new Vec3(p.x + this.doorX, p.y + this.doorY, p.z);
+    }
+
     private distToPlayer(): number {
         if (!this.player) return Number.MAX_VALUE;
-        return Vec3.distance(this.player.position, this.node.position);
+        return Vec3.distance(this.player.position, this.doorPos());
     }
 
     private buildHint() {
         const ut = this.getComponent(UITransform);
-        const topY = ut ? ut.contentSize.height + 24 : 120;
+        // 提示掛在門口正上方（不是房子正中央上方）
+        const topY = (ut ? ut.contentSize.height + 24 : 120) - this.doorY;
 
         const n = new Node('DoorHint');
         n.layer = this.node.layer;
         this.node.addChild(n);
         n.addComponent(UITransform).setContentSize(200, 32);
-        n.setPosition(0, topY, 0);
+        n.setPosition(this.doorX, topY, 0);
 
         const g = n.addComponent(Graphics);
         g.fillColor = new Color(20, 16, 28, 210);

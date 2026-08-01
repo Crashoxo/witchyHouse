@@ -94,7 +94,9 @@ export class PlayerController extends Component {
         if (scene === 'town') LampGlow.ensure();   // 城鎮路燈夜間發光（疊在色板之上）
         if (scene === 'town') TownFolk.ensure();   // 街上走動的村民（沿 Roads 的路點晃）
         if (scene === 'garden') GardenRoom.ensure();   // 後花園：背景、花圃、回店的門、柵欄外的村民
-        if (scene === 'shop' || scene === 'brew') Doorways.install(scene);   // 花園的門／房間的倉庫
+        // 花園的門／房間的倉庫與衣櫃／城鎮小屋的門口位置。⚠️ 一定要排在 PortalGlow.ensure()
+        // 之前，光圈才掃得到這些門。
+        if (scene === 'shop' || scene === 'brew' || scene === 'town') Doorways.install(scene);
         // 採集完一走進城鎮，材料與花自動歸位到房間的倉庫（藥水與種子留在身上）
         if (scene === 'town') {
             const n = Storage.stashFromBag();
