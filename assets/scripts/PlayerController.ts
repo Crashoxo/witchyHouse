@@ -15,6 +15,7 @@ import { LampGlow } from './LampGlow';
 import { TownFolk } from './TownFolk';
 import { ShadowLayer } from './ShadowLayer';
 import { GardenRoom } from './GardenRoom';
+import { CandyTown } from './CandyTown';
 import { Doorways } from './Doorways';
 import { PortalGlow } from './PortalGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
@@ -24,7 +25,7 @@ import { Outfits } from './Outfits';
 import { Storage } from './Storage';
 import { Toast } from './Toast';
 import { SleepOverlay } from './SleepOverlay';
-import { edgePortalOf } from './data';
+import { edgePortalsOf } from './data';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -90,10 +91,11 @@ export class PlayerController extends Component {
         SleepOverlay.arm();       // 昏倒時也演睡覺過場，並把人送回房間
         // 戶外天色色板：只在森林/城鎮裝（室內 brew/shop 各自有背景，不套）。
         const scene = director.getScene()?.name;
-        if (scene === 'main' || scene === 'town') DayNightTint.ensure();
+        if (scene === 'main' || scene === 'town' || scene === 'candy') DayNightTint.ensure();
         if (scene === 'town') LampGlow.ensure();   // 城鎮路燈夜間發光（疊在色板之上）
         if (scene === 'town') TownFolk.ensure();   // 街上走動的村民（沿 Roads 的路點晃）
         if (scene === 'garden') GardenRoom.ensure();   // 後花園：背景、花圃、回店的門、柵欄外的村民
+        if (scene === 'candy') CandyTown.ensure();     // 糖果鎮：地圖、鎮上的角色、街上的小東西
         // 花園的門／房間的倉庫與衣櫃／城鎮小屋的門口位置。⚠️ 一定要排在 PortalGlow.ensure()
         // 之前，光圈才掃得到這些門。
         if (scene === 'shop' || scene === 'brew' || scene === 'town') Doorways.install(scene);
@@ -223,14 +225,22 @@ export class PlayerController extends Component {
      * @param along 撞上去時人在那條邊上的位置（左右側＝y、上下側＝x）
      */
     private onReachEdge(side: EdgeSide, along: number) {
-        // 只有設定了 nextMapScene、而且撞的是指定那一側時，才切換到下一張地圖。
-        if (this.switching || !this.nextMapScene || side !== this.nextMapEdge) return;
-        // 而且要撞在那一側的傳送點上 —— 整條邊只有那個發光的點能過去，
-        // 其他地方就只是牆（PortalGlow 會在同一個點畫光暈，看得到的就走得過去）。
-        const gate = edgePortalOf(director.getScene()?.name ?? '');
-        if (Math.abs(along - gate.at) > gate.span) return;
+        if (this.switching) return;
+        // 一張地圖可以有好幾個出口（森林往東到城鎮、往北到糖果鎮），全部寫在
+        // data/portals.ts。撞到的那一側有出口、而且撞在那個點上才過得去 ——
+        // 整條邊只有發光的那一段能走，其他地方就只是牆。
+        const scene = director.getScene()?.name ?? '';
+        const gates = edgePortalsOf(scene);
+        for (const g of gates) {
+            if (g.side !== side || Math.abs(along - g.at) > g.span) continue;
+            this.switching = true;
+            SceneFade.go(g.to);            // 淡出→切場景→淡入
+            return;
+        }
+        // 沒登記在表裡的場景才退回節點上的 @property（舊行為）
+        if (gates.length > 0 || !this.nextMapScene || side !== this.nextMapEdge) return;
         this.switching = true;
-        SceneFade.go(this.nextMapScene);   // 淡出→切場景→淡入
+        SceneFade.go(this.nextMapScene);
     }
 
     private cast() {

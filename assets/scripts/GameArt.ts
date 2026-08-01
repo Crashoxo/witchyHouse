@@ -1,7 +1,8 @@
 import { resources, SpriteFrame, ImageAsset, Rect, director } from 'cc';
-import { ITEM_FILES, POTION_ITEMS } from './data/items';
+import { ITEM_FILES, POTION_ITEMS, CANDY_ITEMS } from './data/items';
 import { FLOWERS } from './data/garden';
 import { OUTFITS } from './data/outfits';
+import { CANDY_NPCS, CANDY_CRITTERS } from './data/candy';
 
 /**
  * 遊戲美術的執行期載入器：把 `assets/resources/` 底下的圖用 `resources.load`
@@ -103,6 +104,8 @@ let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 let brewRoomDayFrame: SpriteFrame | null = null;    // 藥水室背景（白天）
 let brewRoomNightFrame: SpriteFrame | null = null;  // 藥水室背景（夜晚）
 let gardenFrame: SpriteFrame | null = null;         // 後花園背景（草地＋柵欄）
+let candyMapFrame: SpriteFrame | null = null;       // 糖果鎮地圖
+const candyArt = new Map<string, SpriteFrame>();    // 糖果鎮的角色/小動物圖
 let questScrollFrame: SpriteFrame | null = null;    // 任務簿捲軸底板
 let updateFrameArt: SpriteFrame | null = null;      // 更新公告板木框
 
@@ -125,9 +128,10 @@ const SCENE_GROUPS: Record<string, string[]> = {
     shop: ['shop', 'decor', 'villagers'],         // 自己的店：表情、擺出的裝飾、上門的顧客
     brew: ['brew'],                               // 藥水室：鍋爐幀、房間背景
     garden: ['garden', 'villagers'],              // 後花園：土壤/花/澆水姿勢、柵欄外經過的村民
+    candy: ['candy'],                             // 糖果鎮：地圖、鎮上的角色與路人
 };
 /** 保險用：全部區域組（拿不到場景名時退回全載）。 */
-const ALL_AREA_GROUPS = ['portraits', 'decor', 'shop', 'villagers', 'garden', 'brew'];
+const ALL_AREA_GROUPS = ['portraits', 'decor', 'shop', 'villagers', 'garden', 'brew', 'candy'];
 
 const requested: Record<string, boolean> = {};  // 已開始載入的組（idempotent 用）
 let started = false;
@@ -264,6 +268,8 @@ function loadGroup(name: string): void {
     if (name === 'common') {
         for (const key of Object.keys(ITEM_FILES)) loadImg(items, key, `items/${ITEM_FILES[key]}`);
         for (const key of Object.keys(POTION_ITEMS)) loadImg(items, key, `potions/${POTION_ITEMS[key]}`);
+        // 糖果鎮進的貨也要在背包/貨架/顧客那邊看得到圖 → 放 common
+        for (const key of Object.keys(CANDY_ITEMS)) loadImg(items, key, `candy/${CANDY_ITEMS[key]}`);
         for (const file of CLOCK_FILES) loadImg(clockParts, file, `ui/clock/${file}`);
         for (const file of SEASON_FILES) loadImg(seasonIcons, file, `ui/season/${file}`);
         loadSingle('ui/dialogue-box', sf => { dialogueBoxFrame = sf; });
@@ -294,6 +300,10 @@ function loadGroup(name: string): void {
         pick.length = PICK_FRAMES;
         for (let i = 0; i < PICK_FRAMES; i++) loadIndexed(pick, i, `witch/pick${i + 1}`);
         loadSingle('rooms/garden', sf => { gardenFrame = sf; });
+    } else if (name === 'candy') {
+        loadSingle('rooms/candy-town', sf => { candyMapFrame = sf; });
+        for (const n of CANDY_NPCS) loadImg(candyArt, n.art, `candy/${n.art}`);
+        for (const c of CANDY_CRITTERS) loadImg(candyArt, c.art, `candy/${c.art}`);
     } else if (name === 'brew') {
         cauldron.length = CAULDRON_FRAMES;
         for (let i = 0; i < CAULDRON_FRAMES; i++) loadIndexed(cauldron, i, `cauldron/f${i}`);
@@ -431,6 +441,11 @@ export const GameArt = {
 
     /** 後花園背景（未載入回 null）。 */
     garden(): SpriteFrame | null { return gardenFrame; },
+
+    /** 糖果鎮地圖。 */
+    candyMap(): SpriteFrame | null { return candyMapFrame; },
+    /** 糖果鎮的角色/小動物圖（檔名同 resources/candy/）。 */
+    candy(name: string): SpriteFrame | null { return candyArt.get(name) ?? null; },
 
     /** 女巫施法姿勢（正面；未載入回 null）。 */
     cast(): SpriteFrame | null { return oCast ?? castFrame; },

@@ -2,7 +2,7 @@ import { _decorator, Component, Node, UITransform, UIOpacity, Graphics, Color, V
          find, director } from 'cc';
 import { SceneDoor } from './SceneDoor';
 import { UIState } from './UIState';
-import { edgePortalOf, DEFAULT_INSET } from './data';
+import { edgePortalsOf, EdgePortal, DEFAULT_INSET } from './data';
 const { ccclass } = _decorator;
 
 /**
@@ -29,7 +29,7 @@ const { ccclass } = _decorator;
  */
 
 const GLOW = { r: 168, g: 214, b: 255 };          // 冷青色：跟城鎮路燈的暖黃區隔＝「這是通道」
-const SCENE_LABEL: Record<string, string> = { main: '森林', town: '城鎮', shop: '店裡', brew: '房間', garden: '後花園' };
+const SCENE_LABEL: Record<string, string> = { main: '森林', town: '城鎮', shop: '店裡', brew: '房間', garden: '後花園', candy: '糖果鎮' };
 
 const DOOR_RX = 58;          // 門口地上光圈的半徑
 const DOOR_RY = 23;          // 壓扁＝貼在地上（俯視角）
@@ -109,7 +109,14 @@ export class PortalGlow extends Component {
 
         const world = find('Canvas/World');
         if (world) this.collectDoors(world);
-        if (edgeScene) this.buildEdgePortal(edgeScene, edgeSide);
+        // 這張地圖登記的每個邊界出口都畫一圈（森林有兩個：往東城鎮、往北糖果鎮）
+        const gates = edgePortalsOf(director.getScene()?.name ?? '');
+        if (gates.length) {
+            for (const g of gates) this.buildEdgePortal(g);
+        } else if (edgeScene) {
+            // 沒登記的場景沿用節點上的 @property（舊行為）
+            this.buildEdgePortal({ scene: '', side: edgeSide, to: edgeScene, at: 0, span: 80 });
+        }
     }
 
     /** 掃出場景裡所有掛了 SceneDoor 的節點，各給一個門口光暈。 */
@@ -128,12 +135,12 @@ export class PortalGlow extends Component {
      * 邊界上那個唯一能過去的點。位置來自 data/portals.ts（左右側的邊＝y、上下側＝x），
      * 跟 PlayerController.onReachEdge 判定用的是同一份資料，所以光暈一定畫在真的能走的地方。
      */
-    private buildEdgePortal(targetScene: string, side: string) {
+    private buildEdgePortal(gate: EdgePortal) {
         const ground = this.findGround();
         const ut = ground?.getComponent(UITransform);
         if (!ground || !ut) { console.warn('[PortalGlow] 找不到 Ground，略過邊界傳送點'); return; }
 
-        const gate = edgePortalOf(director.getScene()?.name ?? '');
+        const side = gate.side, targetScene = gate.to;
 
         const w = ut.contentSize.width, h = ut.contentSize.height;
         const ax = ut.anchorPoint.x, ay = ut.anchorPoint.y;

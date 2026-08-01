@@ -13,7 +13,9 @@
  * 不用動場景檔（Cocos 開著時改場景會被編輯器存檔蓋掉）。
  */
 export interface EdgePortal {
-    scene: string;   // 場景名
+    scene: string;   // 這一張地圖
+    side: string;    // 走出哪一側：left / right / top / bottom
+    to: string;      // 走出去會到哪個場景
     at: number;      // 傳送點在邊上的位置（左右側＝y、上下側＝x）
     span: number;    // 門的半寬（像素）
     inset?: number;  // 光暈往地圖內縮多少（不填＝DEFAULT_INSET）
@@ -28,17 +30,25 @@ export const DEFAULT_INSET = 26;
 
 export const EDGE_PORTALS: EdgePortal[] = [
     // 森林東側 → 城鎮：玩家出生在 (0,0)，這一段東側沒有樹擋著
-    { scene: 'main', at: 0, span: 80 },
+    { scene: 'main', side: 'right', to: 'town', at: 0, span: 80 },
+    // 森林北側 → 糖果鎮（森林上面那張地圖）
+    { scene: 'main', side: 'top', to: 'candy', at: 0, span: 100 },
     // 城鎮西側 → 森林：對準往西的泥土路 road-dirt-v-a (y=-40)，也是玩家進城的抵達點
-    { scene: 'town', at: -40, span: 80 },
+    { scene: 'town', side: 'left', to: 'main', at: -40, span: 80 },
     // 店內下方 → 城鎮：對準玩家從城鎮進店的抵達點＝店門口
-    { scene: 'shop', at: -83, span: 80 },
+    { scene: 'shop', side: 'bottom', to: 'town', at: -83, span: 80 },
+    // 糖果鎮南側 → 回森林
+    { scene: 'candy', side: 'bottom', to: 'main', at: 0, span: 100 },
 ];
 
-export const DEFAULT_EDGE_PORTAL: EdgePortal = { scene: '', at: 0, span: 80 };
+export const DEFAULT_EDGE_PORTAL: EdgePortal = { scene: '', side: '', to: '', at: 0, span: 80 };
 
-/** 查某個場景的邊界傳送點；沒設定的場景給預設（邊的正中間）。 */
-export function edgePortalOf(scene: string): EdgePortal {
-    const found = EDGE_PORTALS.find(p => p.scene === scene);
-    return found ?? DEFAULT_EDGE_PORTAL;
+/** 某個場景的所有邊界出口（可以有好幾個，例：森林往東到城鎮、往北到糖果鎮）。 */
+export function edgePortalsOf(scene: string): EdgePortal[] {
+    return EDGE_PORTALS.filter(p => p.scene === scene);
+}
+
+/** 某個場景在某一側的出口；沒有就回 null。 */
+export function edgePortalAt(scene: string, side: string): EdgePortal | null {
+    return EDGE_PORTALS.find(p => p.scene === scene && p.side === side) ?? null;
 }

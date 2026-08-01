@@ -39,6 +39,12 @@ export const ITEM_DESC: Record<string, string> = {
     薰衣草: '後花園採下的紫色花串，香得整個店都是味道。',
     毛地黃: '粉紫色的鐘形花，插在瓶裡好看，別拿來煮。',
     星鈴花: '花瓣夜裡會泛著微光，藥水鋪出的價錢最高。',
+    焦糖蘋果棒: '糖果鎮的街邊點心，焦糖裹得厚厚一層。',
+    鱷魚軟糖袋: '一整袋軟糖鱷造型的軟糖，據說是照真的軟糖鱷做的。',
+    永恆彩球糖: '含一整天也不會變小的彩球糖，孩子們的最愛。',
+    糖李礦坑地圖: '標著糖李礦坑通道的羊皮地圖，沒有它的人都繞回原地。',
+    妖精粉小袋: '會自己發光的細粉，據說撒一點就能讓東西浮起來。',
+    時晶法杖: '杖頭是時晶碎片，握著時會聽見很輕的滴答聲。',
     安眠藥水: '薰衣草熬的紫色藥水，睡前一小口，一夜無夢。',
     花香水: '毛地黃蒸餾出的香水。不能喝，但鎮上的姑娘搶著要。',
     星光藥劑: '星鈴花與藍莓調的夜空色藥劑，瓶底沉著會亮的細砂。',
@@ -46,6 +52,15 @@ export const ITEM_DESC: Record<string, string> = {
 
 /** 沒有專屬說明時的預設句。 */
 export const DEFAULT_ITEM_DESC = '一件在森林裡採到的材料。';
+
+/**
+ * 糖果鎮買得到的商品：中文名 → resources/candy 底下的檔名。
+ * 這些是「進貨」用的 —— 在糖果鎮花錢買，回自己店裡上架賣給顧客賺價差。
+ */
+export const CANDY_ITEMS: Record<string, string> = {
+    焦糖蘋果棒: 'item-lollipop', 鱷魚軟糖袋: 'item-treats', 永恆彩球糖: 'item-gobstopper',
+    糖李礦坑地圖: 'item-map', 妖精粉小袋: 'item-pixiedust', 時晶法杖: 'item-staff',
+};
 
 /** 藥水成品：中文名 → resources/potions 底下的檔名。載進 items map，圖示查找同材料。 */
 export const POTION_ITEMS: Record<string, string> = {
