@@ -1,6 +1,7 @@
 import { resources, SpriteFrame, ImageAsset, Rect, director } from 'cc';
 import { ITEM_FILES, POTION_ITEMS } from './data/items';
 import { FLOWERS } from './data/garden';
+import { OUTFITS } from './data/outfits';
 
 /**
  * 遊戲美術的執行期載入器：把 `assets/resources/` 底下的圖用 `resources.load`
@@ -83,6 +84,21 @@ const soil = new Map<string, SpriteFrame>();        // 土壤磚（乾/濕）
 const flowers = new Map<string, SpriteFrame[][]>(); // 花名 → [健康/枯萎][階段]
 let castFrame: SpriteFrame | null = null;           // 女巫施法姿勢（正面）
 let sleepingFrame: SpriteFrame | null = null;       // 女巫睡覺立繪（含床）
+
+/**
+ * 換裝：`resources/witch/<造型 id>/` 底下放的是同一批姿勢的改色版。
+ * 有載入造型時，下面這幾組會蓋掉預設那批（accessor 自己判斷），所以**呼叫端完全不用改**。
+ * 走路/待機原本是 CharacterAnimator 在場景裡用 @property 指定的，因此多開 walk/idle 兩個。
+ */
+const WALK_FRAMES = 5;
+const oWalk: SpriteFrame[] = [];
+const oGather: SpriteFrame[] = [];
+const oWater: SpriteFrame[] = [];
+const oPick: SpriteFrame[] = [];
+let oIdle: SpriteFrame | null = null;
+let oCast: SpriteFrame | null = null;
+let oSleeping: SpriteFrame | null = null;
+let outfitId = '';                                  // ''＝預設造型（用原本那批圖）
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 let brewRoomDayFrame: SpriteFrame | null = null;    // 藥水室背景（白天）
 let brewRoomNightFrame: SpriteFrame | null = null;  // 藥水室背景（夜晚）
@@ -130,6 +146,19 @@ function loadImg(map: Map<string, SpriteFrame>, key: string, path: string): void
     resources.load(path, ImageAsset, (err, img) => {
         if (!err && img) map.set(key, SpriteFrame.createWithImage(img));
         else console.warn(`[GameArt] 載入失敗 ${path}`, err);
+        jobDone();
+    });
+}
+
+/**
+ * 同 loadSingle，但**載不到不當錯**（只留一行提示）。
+ * 造型資料夾是「缺哪張就沿用預設哪張」的設計，之後手繪版只補幾張也不會噴一排紅字。
+ */
+function loadGuarded(path: string, set: (sf: SpriteFrame) => void): void {
+    pending++;
+    resources.load(path, ImageAsset, (err, img) => {
+        if (!err && img) set(SpriteFrame.createWithImage(img));
+        else console.log(`[GameArt] 造型缺圖，沿用預設：${path}`);
         jobDone();
     });
 }
@@ -270,12 +299,46 @@ function loadGroup(name: string): void {
         for (let i = 0; i < CAULDRON_FRAMES; i++) loadIndexed(cauldron, i, `cauldron/f${i}`);
         loadSingle('rooms/brew-room-day', sf => { brewRoomDayFrame = sf; });
         loadSingle('rooms/brew-room-night', sf => { brewRoomNightFrame = sf; });
+        // 造型立繪只有房間裡的衣櫃會用到，所以掛在 brew 組，不佔 common
+        for (const o of OUTFITS) if (o.portrait) loadImg(portraits, o.portrait, `portraits/${o.portrait}`);
     }
 }
 
 export const GameArt = {
     /** 目前已請求的所有組是否都載入完成。 */
     get ready(): boolean { return started && pending === 0; },
+
+    /**
+     * 換上某套造型的圖：id ＝ `resources/witch/<id>/` 的資料夾名，空字串＝回到預設那批。
+     * 載入中舊圖還在（accessor 只在陣列有東西時才用造型版），所以不會閃一下空白。
+     * ⚠️ 載入是非同步的，中途又換一套時要用 outfitId 擋掉晚到的舊回呼。
+     */
+    applyOutfit(id: string): void {
+        if (id === outfitId) return;
+        outfitId = id;
+        oWalk.length = 0; oGather.length = 0; oWater.length = 0; oPick.length = 0;
+        oIdle = oCast = oSleeping = null;
+        if (!id) return;
+
+        started = true;
+        const mine = () => outfitId === id;          // 換過造型就丟掉晚到的結果
+        oWalk.length = WALK_FRAMES;
+        for (let i = 0; i < WALK_FRAMES; i++) loadGuarded(`witch/${id}/walk${i + 1}`, sf => { if (mine()) oWalk[i] = sf; });
+        oGather.length = GATHER_FRAMES;
+        for (let i = 0; i < GATHER_FRAMES; i++) loadGuarded(`witch/${id}/gather${i + 1}`, sf => { if (mine()) oGather[i] = sf; });
+        oWater.length = WATER_FRAMES;
+        for (let i = 0; i < WATER_FRAMES; i++) loadGuarded(`witch/${id}/water${i + 1}`, sf => { if (mine()) oWater[i] = sf; });
+        oPick.length = PICK_FRAMES;
+        for (let i = 0; i < PICK_FRAMES; i++) loadGuarded(`witch/${id}/pick${i + 1}`, sf => { if (mine()) oPick[i] = sf; });
+        loadGuarded(`witch/${id}/idle`, sf => { if (mine()) oIdle = sf; });
+        loadGuarded(`witch/${id}/cast`, sf => { if (mine()) oCast = sf; });
+        loadGuarded(`witch/${id}/sleeping`, sf => { if (mine()) oSleeping = sf; });
+    },
+
+    /** 造型的走路幀（預設造型回空陣列＝沿用場景裡指定的那批）。 */
+    walkFrames(): SpriteFrame[] { return oWalk.filter(Boolean); },
+    /** 造型的待機圖（預設造型回 null）。 */
+    idle(): SpriteFrame | null { return oIdle; },
 
     /**
      * 開始預載（重複呼叫安全）。依「目前場景名」載入 common ＋該場景的區域組；
@@ -338,13 +401,20 @@ export const GameArt = {
     cauldronFrames(): SpriteFrame[] { return cauldron.filter(Boolean); },
 
     /** 女巫採集動畫幀（0..2；未載入回空陣列）。 */
-    gatherFrames(): SpriteFrame[] { return gather.filter(Boolean); },
+    /** 採集三幀。有換造型就用造型版（下面 water/pick/cast/sleeping 同理）。 */
+    gatherFrames(): SpriteFrame[] {
+        return oGather.filter(Boolean).length ? oGather.filter(Boolean) : gather.filter(Boolean);
+    },
 
     /** 女巫澆水動畫幀（0..3；未載入回空陣列）。 */
-    waterFrames(): SpriteFrame[] { return water.filter(Boolean); },
+    waterFrames(): SpriteFrame[] {
+        return oWater.filter(Boolean).length ? oWater.filter(Boolean) : water.filter(Boolean);
+    },
 
     /** 女巫摘花動畫幀（0..3；未載入回空陣列）。 */
-    pickFrames(): SpriteFrame[] { return pick.filter(Boolean); },
+    pickFrames(): SpriteFrame[] {
+        return oPick.filter(Boolean).length ? oPick.filter(Boolean) : pick.filter(Boolean);
+    },
 
     /** 土壤磚（'soil-dry' / 'soil-wet'；未載入回 null）。 */
     soil(wet: boolean): SpriteFrame | null {
@@ -363,10 +433,10 @@ export const GameArt = {
     garden(): SpriteFrame | null { return gardenFrame; },
 
     /** 女巫施法姿勢（正面；未載入回 null）。 */
-    cast(): SpriteFrame | null { return castFrame; },
+    cast(): SpriteFrame | null { return oCast ?? castFrame; },
 
     /** 女巫睡覺立繪（含床，睡覺過場用；未載入回 null）。 */
-    sleeping(): SpriteFrame | null { return sleepingFrame; },
+    sleeping(): SpriteFrame | null { return oSleeping ?? sleepingFrame; },
 
     /** 藥水室背景（night=true 回夜晚版；未載入回 null）。 */
     brewRoom(night: boolean): SpriteFrame | null { return (night ? brewRoomNightFrame : brewRoomDayFrame); },

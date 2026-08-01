@@ -1,10 +1,13 @@
 import { Node, UITransform, find } from 'cc';
 import { SceneDoor } from './SceneDoor';
 import { StorageCabinet } from './StorageCabinet';
+import { Wardrobe } from './Wardrobe';
 import { SHOP_TO_GARDEN } from './data/garden';
 
 /** 藥水室（女巫房間）左邊背景畫好的那口木箱 ＝ 倉庫的位置。 */
 const CHEST = { x: -360, y: -125 };
+/** 同一面牆上那座雕花木櫃 ＝ 衣櫃。離木箱 320px，兩個 E 不會打架。 */
+const WARDROBE = { x: -505, y: 160 };
 
 /**
  * 執行期補上的場景物件（門、倉庫）。
@@ -41,6 +44,16 @@ export const Doorways = {
             node.setPosition(CHEST.x, CHEST.y, 0);
             node.addComponent(UITransform).setContentSize(110, 70);
             node.addComponent(StorageCabinet);
+        }
+
+        // 衣櫃（同一面牆再往上）：木箱感應 150、衣櫃 130，兩者相距 320px 才不會搶同一顆 E
+        if (scene === 'brew' && !props.getChildByName('Wardrobe')) {
+            const node = new Node('Wardrobe');
+            node.layer = props.layer;
+            props.addChild(node);
+            node.setPosition(WARDROBE.x, WARDROBE.y, 0);
+            node.addComponent(UITransform).setContentSize(110, 120);
+            node.addComponent(Wardrobe).interactRange = 130;
         }
     },
 };

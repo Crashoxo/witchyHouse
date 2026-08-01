@@ -20,6 +20,7 @@ import { PortalGlow } from './PortalGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
 import { PlayerInfoPanel } from './PlayerInfoPanel';
 import { BagPanel } from './BagPanel';
+import { Outfits } from './Outfits';
 import { Storage } from './Storage';
 import { Toast } from './Toast';
 import { SleepOverlay } from './SleepOverlay';
@@ -84,6 +85,7 @@ export class PlayerController extends Component {
         const put = this.node.getComponent(UITransform);
         if (put) ShadowLayer.follow(this.node, put.contentSize.width * Math.abs(this.node.scale.x));
         Clock.ensure();           // 右上角時鐘（其 update 同時驅動 TimeSystem 時間流動）
+        Outfits.apply();          // 換裝：把存檔裡那套的圖套用到女巫身上（每個場景都要）
         DaySummaryPanel.arm();    // 換日時備妥每日結算（整個遊戲只註冊一次）
         SleepOverlay.arm();       // 昏倒時也演睡覺過場，並把人送回房間
         // 戶外天色色板：只在森林/城鎮裝（室內 brew/shop 各自有背景，不套）。

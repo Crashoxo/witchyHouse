@@ -35,7 +35,8 @@ export const SAVE_KEYS: string[] = [
     'witch.reputation',      // Reputation：名聲點數
     'witch.friendship',      // Friendship：村民友誼度
     'witch.garden',          // Garden：後花園每一格種了什麼、澆水時間
-    'witch.storage',         // Storage：店裡倉庫的存貨
+    'witch.storage',         // Storage：房間倉庫的存貨
+    'witch.outfit',          // Outfits：現在穿哪一套造型
 ];
 
 /**

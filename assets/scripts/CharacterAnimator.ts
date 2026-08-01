@@ -88,11 +88,14 @@ export class CharacterAnimator extends Component {
         }
 
         const s = this.node.scale;
+        // 換過造型就用造型那批（GameArt 沒載到造型時回空／null，自動退回場景指定的圖）
+        const walk = GameArt.walkFrames().length ? GameArt.walkFrames() : this.walk;
+        const idle = GameArt.idle() ?? this.idle;
 
-        if (!moving || this.walk.length === 0) {
+        if (!moving || walk.length === 0) {
             this.timer = 0;
             this.frame = 0;
-            if (this.idle) this.sprite.spriteFrame = this.idle;
+            if (idle) this.sprite.spriteFrame = idle;
             if (s.x < 0) this.node.setScale(-s.x, s.y, s.z);   // 正面圖不翻面
             return;
         }
@@ -106,8 +109,8 @@ export class CharacterAnimator extends Component {
         const step = 1 / Math.max(1, this.walkFps);
         while (this.timer >= step) {
             this.timer -= step;
-            this.frame = (this.frame + 1) % this.walk.length;
+            this.frame = (this.frame + 1) % walk.length;
         }
-        this.sprite.spriteFrame = this.walk[this.frame];
+        this.sprite.spriteFrame = walk[this.frame % walk.length];
     }
 }
