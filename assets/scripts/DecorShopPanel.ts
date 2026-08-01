@@ -1,16 +1,23 @@
 import { _decorator, Component, Node, UITransform, Widget, Label, Color,
          Graphics, Sprite, SpriteFrame, BlockInputEvents, find, input, Input,
-         EventKeyboard, KeyCode, UIOpacity } from 'cc';
+         EventKeyboard, KeyCode, UIOpacity, view } from 'cc';
 import { UIState } from './UIState';
 import { Wallet } from './Wallet';
-import { DecorCatalog, DecorDef } from './DecorCatalog';
+import { DecorCatalog } from './DecorCatalog';
+import { Inventory } from './Inventory';
+import { Garden } from './Garden';
 import { GameArt } from './GameArt';
+import { FLOWERS } from './data/garden';
+import { BASE_PRICE } from './data/prices';
 const { ccclass } = _decorator;
 
+type Mode = 'decor' | 'seed';
+
 /**
- * 花店的裝飾品購買面板（modal，ensure 自動生，仿 ShopPanel）。
- * 格狀列出目錄，點格子花金幣買一個（DecorCatalog.buy → Wallet 扣款）。
- * 買來的裝飾進「擁有數」，之後回自己店裡佈置時從托盤取用。
+ * 花店的購買面板（modal，ensure 自動生，仿 ShopPanel），兩個分頁：
+ *   裝飾品 —— 買回去擺在自己店裡（DecorCatalog.buy → Wallet 扣款）。
+ *   花種子 —— 買回去種在後花園（Garden.buySeed → 扣款 ＋ 進背包）。
+ * 兩頁都是「點格子就買一個」，內容每次 refresh 重畫，數量/金幣直接反映最新狀態。
  */
 @ccclass('DecorShopPanel')
 export class DecorShopPanel extends Component {
@@ -27,13 +34,22 @@ export class DecorShopPanel extends Component {
     }
 
     private root: Node | null = null;
+    private tabBox: Node | null = null;
+    private contentBox: Node | null = null;
+    private titleLabel: Label | null = null;
     private goldLabel: Label | null = null;
-    private ownLabels: Record<string, Label> = {};
+    private hintLabel: Label | null = null;
+    private mode: Mode = 'decor';
+    private waitingArt = false;
 
     private readonly cols = 4;
-    private readonly cell = 158;
+    private readonly maxCell = 158;
+    private readonly minCell = 100;
     private readonly pad = 24;
-    private readonly headerH = 78;
+    private readonly headerH = 128;      // 標題列 ＋ 分頁按鈕列
+    private cell = 158;                  // 實際格子大小（build 時依畫面高度算）
+    private panelW = 0;
+    private gridW = 0;
 
     onLoad() {
         DecorShopPanel.instance = this;
@@ -50,10 +66,18 @@ export class DecorShopPanel extends Component {
     }
 
     open() {
+        Inventory.ensure();          // 買種子要進背包，先確定背包在
         if (!this.root) this.build();
         this.root!.active = true;
         UIState.modalOpen = true;
-        if (!GameArt.ready) GameArt.onReady(() => this.refreshIcons());
+        // 圖示可能還在載，載完補畫一次（重複註冊沒意義，用旗標擋掉）
+        if (!GameArt.ready && !this.waitingArt) {
+            this.waitingArt = true;
+            GameArt.onReady(() => {
+                this.waitingArt = false;
+                if (this.isValid && this.root?.active) this.refresh();
+            });
+        }
         this.refresh();
     }
 
@@ -62,30 +86,42 @@ export class DecorShopPanel extends Component {
         UIState.modalOpen = false;
     }
 
+    private setMode(m: Mode) { this.mode = m; this.refresh(); }
+
     private refresh() {
         if (this.goldLabel) this.goldLabel.string = `金幣 ${Wallet.gold}`;
-        for (const d of DecorCatalog.catalog) {
-            const lb = this.ownLabels[d.id];
-            if (lb) lb.string = DecorCatalog.ownedCount(d.id) > 0 ? `擁有 ${DecorCatalog.ownedCount(d.id)}` : '';
+        if (this.titleLabel) {
+            this.titleLabel.string = this.mode === 'decor' ? '花店 · 裝飾品' : '花店 · 花種子';
         }
+        if (this.hintLabel) {
+            this.hintLabel.string = this.mode === 'decor'
+                ? 'Esc 關閉 · 點裝飾品購買（回自己店裡按「佈置房間」擺出來）'
+                : 'Esc 關閉 · 點種子購買（回後花園走到花圃按 E 種下）';
+        }
+        this.buildTabs();
+        const box = this.contentBox;
+        if (!box) return;
+        box.removeAllChildren();
+        if (this.mode === 'decor') this.renderDecor(box);
+        else this.renderSeeds(box);
     }
 
-    private refreshIcons() {
-        // 圖示載好後補上（build 時可能還沒 ready）
-        this.iconSprites.forEach(({ sp, id }) => {
-            const f = GameArt.decor(id);
-            if (f) this.fit(sp, f, this.cell - 54, this.cell - 78);
-        });
-    }
-
-    private iconSprites: Array<{ sp: Sprite; id: string }> = [];
+    // ---- 骨架 ----
 
     private build() {
         const layer = this.node.layer;
         const rows = Math.ceil(DecorCatalog.catalog.length / this.cols);
-        const gridW = this.cols * this.cell;
+
+        // ⚠️ 16 個裝飾排成 4×4，格子若用滿 158px 整張面板會有 784 高 —— 比 640 的畫面
+        // 還高，標題與底下那行提示就被切在畫面外。改成依實際畫面高度回推格子大小。
+        const visH = view.getVisibleSize().height || 640;
+        const room = Math.min(visH, 640) - 24 - this.headerH - this.pad;
+        this.cell = Math.round(Math.max(this.minCell, Math.min(this.maxCell, room / rows)));
+
+        this.gridW = this.cols * this.cell;
         const gridH = rows * this.cell;
-        const panelW = gridW + this.pad * 2;
+        this.panelW = this.gridW + this.pad * 2;
+        const panelW = this.panelW;
         const panelH = gridH + this.headerH + this.pad;
 
         // 半透明背板
@@ -115,71 +151,138 @@ export class DecorShopPanel extends Component {
         pg.fill(); pg.stroke();
 
         const topY = panelH / 2;
-        this.makeLabel(panel, '花店 · 裝飾品', 26, new Color(245, 235, 255, 255),
+        this.titleLabel = this.makeLabel(panel, '', 26, new Color(245, 235, 255, 255),
             -panelW / 2 + 26, topY - 40, 300, Label.HorizontalAlign.LEFT);
+        // 靠右擺在 ✕ 左邊（面板寬度會隨格子大小變，所以位置從右緣回推）
         this.goldLabel = this.makeLabel(panel, '', 24, new Color(255, 224, 130, 255),
-            panelW / 2 - 244, topY - 40, 200, Label.HorizontalAlign.RIGHT);
+            panelW / 2 - 64, topY - 40, 200, Label.HorizontalAlign.RIGHT);
         this.makeButton(panel, '✕', 40, 40, panelW / 2 - 34, topY - 34,
             new Color(120, 60, 70, 255), () => this.close());
-        this.makeLabel(panel, 'Esc 關閉 · 點裝飾品購買', 15, new Color(180, 174, 190, 255),
-            -panelW / 2 + 26, -panelH / 2 + 16, 400, Label.HorizontalAlign.LEFT);
+        this.hintLabel = this.makeLabel(panel, '', 15, new Color(180, 174, 190, 255),
+            -panelW / 2 + 26, -panelH / 2 + 16, 560, Label.HorizontalAlign.LEFT);
 
-        // 格子
-        const gridLeft = -gridW / 2;
-        const gridTop = topY - this.headerH;
+        const tabBox = new Node('Tabs');
+        tabBox.layer = layer;
+        panel.addChild(tabBox);
+        tabBox.addComponent(UITransform);
+        tabBox.setPosition(0, topY - 90, 0);
+        this.tabBox = tabBox;
+
+        const content = new Node('Content');
+        content.layer = layer;
+        panel.addChild(content);
+        content.addComponent(UITransform);
+        content.setPosition(0, topY - this.headerH, 0);
+        this.contentBox = content;
+    }
+
+    private buildTabs() {
+        const box = this.tabBox;
+        if (!box) return;
+        box.removeAllChildren();
+        const active = new Color(96, 74, 128, 255);
+        const idle = new Color(54, 46, 68, 255);
+        this.makeButton(box, '裝飾品', 150, 40, -84, 0,
+            this.mode === 'decor' ? active : idle, () => this.setMode('decor'));
+        this.makeButton(box, '花種子', 150, 40, 84, 0,
+            this.mode === 'seed' ? active : idle, () => this.setMode('seed'));
+    }
+
+    // ---- 裝飾品分頁 ----
+
+    private renderDecor(box: Node) {
+        const left = -this.gridW / 2;
         DecorCatalog.catalog.forEach((d, i) => {
-            const cx = gridLeft + (i % this.cols) * this.cell + this.cell / 2;
-            const cy = gridTop - Math.floor(i / this.cols) * this.cell - this.cell / 2;
-            this.buildCell(panel, d, cx, cy);
+            const cx = left + (i % this.cols) * this.cell + this.cell / 2;
+            const cy = -Math.floor(i / this.cols) * this.cell - this.cell / 2;
+            const owned = DecorCatalog.ownedCount(d.id);
+            this.buildCell(box, cx, cy, {
+                icon: () => GameArt.decor(d.id),
+                name: d.name,
+                price: d.price,
+                owned: owned > 0 ? `擁有 ${owned}` : '',
+                onBuy: () => { if (DecorCatalog.buy(d.id)) this.refresh(); },
+            });
         });
     }
 
-    private buildCell(parent: Node, d: DecorDef, cx: number, cy: number) {
+    // ---- 花種子分頁 ----
+
+    private renderSeeds(box: Node) {
+        const left = -(FLOWERS.length * this.cell) / 2;
+        FLOWERS.forEach((f, i) => {
+            const cx = left + i * this.cell + this.cell / 2;
+            const bag = Inventory.countOf(f.seed);
+            this.buildCell(box, cx, -this.cell / 2, {
+                icon: () => GameArt.item(f.seed),
+                name: f.seed,
+                price: f.seedPrice,
+                owned: bag > 0 ? `背包 ${bag}` : '',
+                onBuy: () => { if (Garden.buySeed(f.seed)) this.refresh(); },
+            });
+        });
+
+        // 種子頁下面補一段說明：種出來是什麼、收幾朵、賣多少
+        FLOWERS.forEach((f, i) => {
+            const worth = BASE_PRICE[f.flower] ?? 0;
+            this.makeLabel(box, `${f.flower} ×${f.yield}（一朵 ${worth} 金）`, 16,
+                new Color(206, 226, 200, 255),
+                -(FLOWERS.length * this.cell) / 2 + i * this.cell + this.cell / 2,
+                -this.cell - 18, this.cell, Label.HorizontalAlign.CENTER, true);
+            this.makeLabel(box, `${f.flower}：${f.desc}`, 15, new Color(170, 164, 182, 255),
+                0, -this.cell - 56 - i * 26, this.panelW - 80, Label.HorizontalAlign.CENTER, true);
+        });
+    }
+
+    // ---- 一格商品 ----
+
+    private buildCell(parent: Node, cx: number, cy: number, opt: {
+        icon: () => SpriteFrame | null; name: string; price: number;
+        owned: string; onBuy: () => void;
+    }) {
         const layer = this.node.layer;
         const s = this.cell - 12;
-        const cell = new Node('cell-' + d.id);
+        const cell = new Node('cell-' + opt.name);
         cell.layer = layer;
         parent.addChild(cell);
         cell.addComponent(UITransform).setContentSize(s, s);
         cell.setPosition(cx, cy, 0);
+        const afford = Wallet.gold >= opt.price;
         const g = cell.addComponent(Graphics);
         g.lineWidth = 2;
         g.fillColor = new Color(58, 48, 74, 255);
-        g.strokeColor = new Color(150, 130, 170, 200);
+        g.strokeColor = afford ? new Color(150, 130, 170, 200) : new Color(96, 88, 104, 160);
         this.roundRect(g, -s / 2, -s / 2, s, s, 10);
         g.fill(); g.stroke();
 
-        // 圖示
+        // 圖示（格子會依畫面縮，所以內部排版都用比例）
+        const iw = Math.round(s * 0.68), ih = Math.round(s * 0.5);
         const icon = new Node('icon');
         icon.layer = layer;
         cell.addChild(icon);
-        icon.addComponent(UITransform).setContentSize(this.cell - 54, this.cell - 78);
-        icon.setPosition(0, 18, 0);
+        icon.addComponent(UITransform).setContentSize(iw, ih);
+        icon.setPosition(0, Math.round(s * 0.12), 0);
         const sp = icon.addComponent(Sprite);
         sp.sizeMode = Sprite.SizeMode.CUSTOM;
         sp.trim = false;
-        const f = GameArt.decor(d.id);
-        if (f) this.fit(sp, f, this.cell - 54, this.cell - 78);
-        this.iconSprites.push({ sp, id: d.id });
+        const f = opt.icon();
+        if (f) this.fit(sp, f, iw, ih);
 
-        // 名稱、售價、擁有數
-        this.makeLabel(cell, d.name, 18, new Color(240, 236, 248, 255),
-            0, -s / 2 + 44, s - 12, Label.HorizontalAlign.CENTER);
-        this.makeLabel(cell, `${d.price} 金`, 17, new Color(255, 224, 130, 255),
-            0, -s / 2 + 22, s - 12, Label.HorizontalAlign.CENTER);
-        this.ownLabels[d.id] = this.makeLabel(cell, '', 14, new Color(150, 220, 160, 255),
-            0, s / 2 - 16, s - 12, Label.HorizontalAlign.CENTER);
+        // 名稱、售價、已有的數量
+        const fs = Math.max(13, Math.round(s * 0.123));
+        this.makeLabel(cell, opt.name, fs, new Color(240, 236, 248, 255),
+            0, -s / 2 + Math.round(s * 0.3), s - 12, Label.HorizontalAlign.CENTER, true);
+        this.makeLabel(cell, `${opt.price} 金`, fs - 1,
+            afford ? new Color(255, 224, 130, 255) : new Color(150, 130, 110, 255),
+            0, -s / 2 + Math.round(s * 0.15), s - 12, Label.HorizontalAlign.CENTER, true);
+        this.makeLabel(cell, opt.owned, Math.max(12, fs - 4), new Color(150, 220, 160, 255),
+            0, s / 2 - Math.round(s * 0.11), s - 12, Label.HorizontalAlign.CENTER, true);
 
         // 整格可點＝買一個
         const op = cell.addComponent(UIOpacity);
         cell.on(Node.EventType.TOUCH_START, () => { op.opacity = 180; });
-        cell.on(Node.EventType.TOUCH_END, () => { op.opacity = 255; this.tryBuy(d); });
+        cell.on(Node.EventType.TOUCH_END, () => { op.opacity = 255; opt.onBuy(); });
         cell.on(Node.EventType.TOUCH_CANCEL, () => { op.opacity = 255; });
-    }
-
-    private tryBuy(d: DecorDef) {
-        if (DecorCatalog.buy(d.id)) this.refresh();
-        // 金幣不夠就不動作（refresh 也無妨）
     }
 
     // ---- 小工具（比照 ShopPanel）----
@@ -193,13 +296,14 @@ export class DecorShopPanel extends Component {
     }
 
     private makeLabel(parent: Node, text: string, size: number, color: Color,
-                      x: number, y: number, width: number, align: number): Label {
+                      x: number, y: number, width: number, align: number,
+                      centered = false): Label {
         const n = new Node('label');
         n.layer = this.node.layer;
         parent.addChild(n);
         const ut = n.addComponent(UITransform);
         ut.setContentSize(width, size + 8);
-        ut.setAnchorPoint(align === Label.HorizontalAlign.CENTER ? 0.5
+        ut.setAnchorPoint(centered || align === Label.HorizontalAlign.CENTER ? 0.5
                         : align === Label.HorizontalAlign.RIGHT ? 1 : 0, 0.5);
         n.setPosition(x, y, 0);
         const lb = n.addComponent(Label);

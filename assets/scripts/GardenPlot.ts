@@ -18,6 +18,7 @@ export class GardenPlot extends Component {
     private plantSprite: Sprite | null = null;
     private hint: Node | null = null;
     private hintLabel: Label | null = null;
+    private dryMark: Node | null = null;
     private lastKey = '';
 
     onLoad() {
@@ -38,6 +39,7 @@ export class GardenPlot extends Component {
         this.plantSprite.type = Sprite.Type.SIMPLE;
 
         this.buildHint();
+        this.buildDryMark();
         GameArt.onReady(() => { if (this.isValid) this.refresh(true); });
         this.refresh(true);
     }
@@ -49,9 +51,13 @@ export class GardenPlot extends Component {
     /** 依 Garden 的狀態重畫。狀態沒變就什麼都不做。 */
     refresh(force = false) {
         const v = Garden.view(this.index);
-        const key = `${v.art}|${v.stage}|${v.wilting}|${v.wet}|${v.empty}`;
+        const thirsty = Garden.needsWater(this.index);
+        const key = `${v.art}|${v.stage}|${v.wilting}|${v.wet}|${v.empty}|${thirsty}`;
         if (key === this.lastKey && !force) return;
         this.lastKey = key;
+
+        // 快沒水了就在花圃上冒個小標，不用走近也看得到哪一塊該澆
+        if (this.dryMark) this.dryMark.active = thirsty;
 
         const soilFrame = GameArt.soil(v.wet);
         if (this.soil && soilFrame) {
@@ -98,6 +104,31 @@ export class GardenPlot extends Component {
         const op = n.addComponent(UIOpacity);
         tween(n).by(1.0, { position: new Vec3(0, 34, 0) }).start();
         tween(op).delay(0.35).to(0.65, { opacity: 0 }).call(() => n.destroy()).start();
+    }
+
+    /** 「缺水」小標（枯萎前的警告，離很遠也看得到）。 */
+    private buildDryMark() {
+        const n = new Node('dry');
+        n.layer = this.node.layer;
+        this.node.addChild(n);
+        n.setPosition(0, 32, 0);
+        n.addComponent(UITransform).setContentSize(58, 22);
+        const g = n.addComponent(Graphics);
+        g.fillColor = new Color(122, 74, 32, 210);
+        g.rect(-29, -11, 58, 22);
+        g.fill();
+        const t = new Node('t');
+        t.layer = this.node.layer;
+        n.addChild(t);
+        t.addComponent(UITransform).setContentSize(56, 20);
+        const lb = t.addComponent(Label);
+        lb.string = '缺水';
+        lb.fontSize = 14;
+        lb.color = new Color(255, 226, 168, 255);
+        lb.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lb.verticalAlign = Label.VerticalAlign.CENTER;
+        n.active = false;
+        this.dryMark = n;
     }
 
     private buildHint() {

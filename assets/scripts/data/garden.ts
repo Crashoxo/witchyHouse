@@ -13,16 +13,22 @@ export interface FlowerDef {
     flower: string;
     /** 收成幾朵。 */
     yield: number;
+    /**
+     * 花店賣這包種子的價錢。
+     * 抓法：一包種子要比「收成後拿去雜貨鋪賣」便宜一點（種了才划算），
+     * 但星鈴花刻意訂在雜貨鋪收購價上下 —— 稀有花要自己開店賣給顧客才有賺頭。
+     */
+    seedPrice: number;
     /** 圖鑑說明。 */
     desc: string;
 }
 
 export const FLOWERS: FlowerDef[] = [
-    { art: 'lavender', seed: '薰衣草種子', flower: '薰衣草', yield: 2,
+    { art: 'lavender', seed: '薰衣草種子', flower: '薰衣草', yield: 2, seedPrice: 25,
       desc: '一串串的紫色小花，香味安神，藥水鋪常來收。' },
-    { art: 'foxglove', seed: '毛地黃種子', flower: '毛地黃', yield: 2,
+    { art: 'foxglove', seed: '毛地黃種子', flower: '毛地黃', yield: 2, seedPrice: 35,
       desc: '粉紫色的鐘形花，開得又高又艷，但別亂入藥。' },
-    { art: 'starbell', seed: '星鈴花種子', flower: '星鈴花', yield: 1,
+    { art: 'starbell', seed: '星鈴花種子', flower: '星鈴花', yield: 1, seedPrice: 60,
       desc: '夜裡會泛著微光的藍白鈴花，稀少而值錢。' },
 ];
 
@@ -74,6 +80,13 @@ export function plotPos(i: number): { x: number; y: number } {
 }
 
 export const PLOT_COUNT = PLOT_COLS * PLOT_ROWS;
+
+/**
+ * 花圃的開墾順序（在店裡升級「花圃」會一次多開幾塊）。
+ * 刻意不是 0,1,2,3… —— 那樣會先開滿第一排，剩下的變成缺一角的形狀。
+ * 照這個順序開出來的是完整的小菱形：6 塊＝3×2、9 塊＝3×3、12 塊＝整片 4×3。
+ */
+export const PLOT_ORDER: number[] = [0, 1, 2, 4, 5, 6, 8, 9, 10, 3, 7, 11];
 
 /**
  * 柵欄「外面」那條石板路上的路點 —— 村民沿著這條路經過花園，不會走進來。

@@ -9,8 +9,7 @@ import { SceneDoor } from './SceneDoor';
 import { GardenPlot } from './GardenPlot';
 import { TownFolk } from './TownFolk';
 import { Quests } from './Quests';
-import { FLOWERS, PLOT_COUNT, plotPos,
-         FENCE_WALK, GARDEN_TO_SHOP } from './data/garden';
+import { FLOWERS, plotPos, FENCE_WALK, GARDEN_TO_SHOP } from './data/garden';
 const { ccclass } = _decorator;
 
 /**
@@ -91,7 +90,9 @@ export class GardenRoom extends Component {
     }
 
     private buildPlots() {
-        for (let i = 0; i < PLOT_COUNT; i++) {
+        // 只做出已開墾的那幾塊；其餘是荒地，要在店裡升級「花圃」才開得出來。
+        // （升級在店裡進行，再走進花園時這裡就會重建，所以不用即時刷新。）
+        for (const i of Garden.unlockedPlots()) {
             const node = new Node('Plot' + i);
             node.layer = this.node.layer;
             this.node.addChild(node);
@@ -148,12 +149,20 @@ export class GardenRoom extends Component {
                 plot.popup(`＋${got.name} ×${got.count}`);
             }
         } else {
-            if (Garden.water(plot.index)) {
+            // 澆水壺升級後一次澆得到旁邊幾塊（Garden.waterTargets 算範圍）。
+            // 空地也會被澆濕（土變深色），但只有「有種東西」的才算進訊息裡。
+            let n = 0;
+            for (const i of Garden.waterTargets(plot.index)) {
+                const planted = !Garden.view(i).empty;
+                if (Garden.water(i) && planted) n++;
+            }
+            if (n > 0) {
                 anim?.playOneShot(GameArt.waterFrames(), 0.9, faceX, true);
-                plot.popup('澆好水了');
+                plot.popup(n > 1 ? `澆了 ${n} 塊` : '澆好水了');
             } else {
                 plot.popup('救不回來了…');
             }
+            for (const p of this.plots) p.refresh();   // 波及到的花圃也要跟著換濕土
         }
         plot.refresh();
     }

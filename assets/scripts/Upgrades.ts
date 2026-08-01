@@ -9,7 +9,7 @@ import { DailyLog } from './DailyLog';
  *   CustomerManager 生成 ← customerInterval() / customerMax()
  *   ShopStock 展示上限 ← shelfCap()
  */
-export type Track = 'signboard' | 'bag' | 'shelf';
+export type Track = 'signboard' | 'bag' | 'shelf' | 'plot' | 'can';
 
 /** 每項升級的定義：名稱、各級費用（長度＝最高等級）、每級效果文字。 */
 interface Def {
@@ -24,6 +24,10 @@ function intervalAt(lv: number): number { return [6, 5, 4, 3, 2.5][Math.min(lv, 
 function maxAt(lv: number): number { return [2, 3, 3, 4, 5][Math.min(lv, 4)]; }
 function bagAt(lv: number): number { return 8 + lv * 2; }        // 8,10,12,14
 function shelfAt(lv: number): number { return 3 + lv * 2; }      // 3,5,7
+// 6,9,12 —— 一次開三塊，剛好每一級都是完整的菱形區塊（見 data/garden 的 PLOT_ORDER）
+function plotAt(lv: number): number { return 6 + lv * 3; }
+const CAN_TEXT = ['一次一塊', '十字四周', '整片花園'];
+function canAt(lv: number): string { return CAN_TEXT[Math.min(lv, 2)]; }
 
 const DEFS: Record<Track, Def> = {
     signboard: {
@@ -41,12 +45,22 @@ const DEFS: Record<Track, Def> = {
         costs: [120, 300],
         effect: lv => `${shelfAt(lv)} 種`,
     },
+    plot: {
+        name: '花圃', desc: '把後花園的荒地開墾成花圃',
+        costs: [200, 500],
+        effect: lv => `${plotAt(lv)} 塊`,
+    },
+    can: {
+        name: '澆水壺', desc: '一次澆得到更多塊花圃',
+        costs: [180, 500],
+        effect: lv => canAt(lv),
+    },
 };
 
 const KEY = 'witch.upgrades';
 
 function load(): Record<Track, number> {
-    const base: Record<Track, number> = { signboard: 0, bag: 0, shelf: 0 };
+    const base: Record<Track, number> = { signboard: 0, bag: 0, shelf: 0, plot: 0, can: 0 };
     try {
         const v = SaveManager.getString(KEY);
         if (v) {
@@ -64,7 +78,7 @@ const levels = load();
 function save() { SaveManager.setString(KEY, JSON.stringify(levels)); }
 
 export const Upgrades = {
-    tracks(): Track[] { return ['signboard', 'bag', 'shelf']; },
+    tracks(): Track[] { return ['signboard', 'bag', 'shelf', 'plot', 'can']; },
     def(t: Track): Def { return DEFS[t]; },
 
     level(t: Track): number { return levels[t]; },
@@ -97,4 +111,8 @@ export const Upgrades = {
     shelfCap(): number { return shelfAt(levels.shelf); },
     customerInterval(): number { return intervalAt(levels.signboard); },
     customerMax(): number { return maxAt(levels.signboard); },
+    /** 後花園開墾了幾塊花圃（Garden.unlockedCount 讀這個）。 */
+    gardenPlots(): number { return plotAt(levels.plot); },
+    /** 澆水波及範圍：0＝只有腳下那塊、1＝十字相鄰、2＝整片花園。 */
+    waterSpread(): number { return levels.can; },
 };

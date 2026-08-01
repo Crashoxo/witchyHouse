@@ -1,7 +1,12 @@
 import { SaveManager } from './SaveManager';
 import { TimeSystem } from './TimeSystem';
+import { Wallet } from './Wallet';
+import { Inventory } from './Inventory';
+import { DailyLog } from './DailyLog';
+import { Upgrades } from './Upgrades';
 import { FLOWERS, flowerBySeed, GROW_MINUTES, DRY_MINUTES, WILT_MINUTES,
-         GROW_STAGES, WILT_STAGES, WILT_RESCUABLE, PLOT_COUNT } from './data/garden';
+         GROW_STAGES, WILT_STAGES, WILT_RESCUABLE,
+         PLOT_COUNT, PLOT_COLS, PLOT_ROWS, PLOT_ORDER } from './data/garden';
 
 /**
  * 後花園的種植狀態（純資料，仿 Wallet / ShopStock）。
@@ -144,10 +149,50 @@ export const Garden = {
         return true;
     },
 
-    /** 花圃有沒有需要澆水（給之後做提示用）。 */
+    /** 花圃快沒水了（花圃上會冒「缺水」提醒）。 */
     needsWater(i: number): boolean {
         const p = plots[i];
         return !!p && !!p.seed && now() - p.watered >= DRY_MINUTES * 0.75;
+    },
+
+    /**
+     * 現在開墾了幾塊花圃（其餘的還是荒地，要在店裡升級「花圃」才開得出來）。
+     * GardenRoom 只會把這麼多塊做出來。
+     */
+    unlockedCount(): number { return Math.min(PLOT_COUNT, Upgrades.gardenPlots()); },
+
+    /** 已開墾的花圃 index（照 PLOT_ORDER 的開墾順序）。 */
+    unlockedPlots(): number[] { return PLOT_ORDER.slice(0, Garden.unlockedCount()); },
+
+    /**
+     * 澆一塊花圃時，跟著一起澆到的格子（澆水壺升級後一次澆得更多）。
+     * 0＝只有自己；1＝十字相鄰；2＝整片花園。回傳的 index 都是已開墾的。
+     */
+    waterTargets(i: number): number[] {
+        const open = Garden.unlockedPlots();
+        const spread = Upgrades.waterSpread();
+        if (spread >= 2) return open;
+        if (spread <= 0) return [i];
+        const col = i % PLOT_COLS, row = Math.floor(i / PLOT_COLS);
+        const out = [i];
+        const push = (c: number, r: number) => {
+            if (c < 0 || c >= PLOT_COLS || r < 0 || r >= PLOT_ROWS) return;
+            const k = r * PLOT_COLS + c;
+            if (open.indexOf(k) >= 0) out.push(k);      // 還沒開墾的鄰居不算
+        };
+        push(col - 1, row); push(col + 1, row); push(col, row - 1); push(col, row + 1);
+        return out;
+    },
+
+    /** 在花店買一包種子：扣金幣、進背包。金幣不夠或認不得的種子回 false。 */
+    buySeed(seed: string): boolean {
+        const f = flowerBySeed(seed);
+        if (!f || Wallet.gold < f.seedPrice) return false;
+        const inv = Inventory.ensure();
+        if (!inv || !inv.add(seed, 1)) return false;     // 背包滿了就不扣錢
+        Wallet.add(-f.seedPrice);
+        DailyLog.recordSpend(f.seedPrice);
+        return true;
     },
 
     /** 所有可以種的花（給面板/圖鑑用）。 */
