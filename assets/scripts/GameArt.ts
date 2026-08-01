@@ -2,7 +2,7 @@ import { resources, SpriteFrame, ImageAsset, Rect, director } from 'cc';
 import { ITEM_FILES, POTION_ITEMS, CANDY_ITEMS } from './data/items';
 import { FLOWERS } from './data/garden';
 import { OUTFITS } from './data/outfits';
-import { CANDY_NPCS, CANDY_CRITTERS } from './data/candy';
+import { CANDY_CRITTERS } from './data/candy';
 
 /**
  * 遊戲美術的執行期載入器：把 `assets/resources/` 底下的圖用 `resources.load`
@@ -302,7 +302,6 @@ function loadGroup(name: string): void {
     } else if (name === 'candy') {
         // ⚠️ 地圖與房子/裝飾**已經是 candy.scene 裡的節點**（圖在 assets/art/candy，
         //    由場景用 uuid 參照），所以這裡不載 —— 只載執行期才生成的 NPC 與路人。
-        for (const n of CANDY_NPCS) loadImg(candyArt, n.art, `candy/${n.art}`);
         for (const c of CANDY_CRITTERS) loadImg(candyArt, c.art, `candy/${c.art}`);
     } else if (name === 'brew') {
         cauldron.length = CAULDRON_FRAMES;

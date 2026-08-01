@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0021-4a00-8b00-a40000000021",
+  "uuid": "a4000000-0024-4a00-8b00-a40000000024",
   "files": [
     ".json",
     ".png"
@@ -10,8 +10,8 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0021-4a00-8b00-a40000000021@6c48a",
-      "displayName": "p-rock",
+      "uuid": "a4000000-0024-4a00-8b00-a40000000024@6c48a",
+      "displayName": "sproutling",
       "id": "6c48a",
       "name": "texture",
       "userData": {
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0021-4a00-8b00-a40000000021",
+        "imageUuidOrDatabaseUri": "a4000000-0024-4a00-8b00-a40000000024",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,8 +34,8 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0021-4a00-8b00-a40000000021@f9941",
-      "displayName": "p-rock",
+      "uuid": "a4000000-0024-4a00-8b00-a40000000024@f9941",
+      "displayName": "sproutling",
       "id": "f9941",
       "name": "spriteFrame",
       "userData": {
@@ -45,10 +45,10 @@
         "offsetY": 0,
         "trimX": 0,
         "trimY": 0,
-        "width": 70,
-        "height": 55,
-        "rawWidth": 70,
-        "rawHeight": 55,
+        "width": 105,
+        "height": 185,
+        "rawWidth": 105,
+        "rawHeight": 185,
         "borderTop": 0,
         "borderBottom": 0,
         "borderLeft": 0,
@@ -60,17 +60,17 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -35.0,
-            -27.5,
+            -52.5,
+            -92.5,
             0,
-            35.0,
-            -27.5,
+            52.5,
+            -92.5,
             0,
-            -35.0,
-            27.5,
+            -52.5,
+            92.5,
             0,
-            35.0,
-            27.5,
+            52.5,
+            92.5,
             0
           ],
           "indexes": [
@@ -83,12 +83,12 @@
           ],
           "uv": [
             0,
-            55,
-            70,
-            55,
+            185,
+            105,
+            185,
             0,
             0,
-            70,
+            105,
             0
           ],
           "nuv": [
@@ -102,18 +102,18 @@
             1
           ],
           "minPos": [
-            -35.0,
-            -27.5,
+            -52.5,
+            -92.5,
             0
           ],
           "maxPos": [
-            35.0,
-            27.5,
+            52.5,
+            92.5,
             0
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0021-4a00-8b00-a40000000021@6c48a",
+        "imageUuidOrDatabaseUri": "a4000000-0024-4a00-8b00-a40000000024@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },

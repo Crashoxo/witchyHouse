@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0011-4a00-8b00-a40000000011",
+  "uuid": "a4000000-0012-4a00-8b00-a40000000012",
   "files": [
     ".json",
     ".png"
@@ -10,7 +10,7 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0011-4a00-8b00-a40000000011@6c48a",
+      "uuid": "a4000000-0012-4a00-8b00-a40000000012@6c48a",
       "displayName": "p-cherries",
       "id": "6c48a",
       "name": "texture",
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0011-4a00-8b00-a40000000011",
+        "imageUuidOrDatabaseUri": "a4000000-0012-4a00-8b00-a40000000012",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,7 +34,7 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0011-4a00-8b00-a40000000011@f9941",
+      "uuid": "a4000000-0012-4a00-8b00-a40000000012@f9941",
       "displayName": "p-cherries",
       "id": "f9941",
       "name": "spriteFrame",
@@ -113,7 +113,7 @@
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0011-4a00-8b00-a40000000011@6c48a",
+        "imageUuidOrDatabaseUri": "a4000000-0012-4a00-8b00-a40000000012@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },

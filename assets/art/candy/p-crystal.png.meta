@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0014-4a00-8b00-a40000000014",
+  "uuid": "a4000000-0015-4a00-8b00-a40000000015",
   "files": [
     ".json",
     ".png"
@@ -10,7 +10,7 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0014-4a00-8b00-a40000000014@6c48a",
+      "uuid": "a4000000-0015-4a00-8b00-a40000000015@6c48a",
       "displayName": "p-crystal",
       "id": "6c48a",
       "name": "texture",
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0014-4a00-8b00-a40000000014",
+        "imageUuidOrDatabaseUri": "a4000000-0015-4a00-8b00-a40000000015",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,7 +34,7 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0014-4a00-8b00-a40000000014@f9941",
+      "uuid": "a4000000-0015-4a00-8b00-a40000000015@f9941",
       "displayName": "p-crystal",
       "id": "f9941",
       "name": "spriteFrame",
@@ -113,7 +113,7 @@
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0014-4a00-8b00-a40000000014@6c48a",
+        "imageUuidOrDatabaseUri": "a4000000-0015-4a00-8b00-a40000000015@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },

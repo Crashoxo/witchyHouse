@@ -1,18 +1,17 @@
-import { _decorator, Component, Node, UITransform, Sprite, find } from 'cc';
+import { _decorator, Component, find } from 'cc';
 import { GameArt } from './GameArt';
-import { TalkNpc } from './TalkNpc';
 import { GoodsShop } from './GoodsShop';
 import { CandyFolk } from './CandyFolk';
-import { ShadowLayer } from './ShadowLayer';
-import { CANDY_NPCS, CANDY_GOODS } from './data/candy';
+import { CANDY_GOODS } from './data/candy';
 const { ccclass } = _decorator;
 
 /**
  * 糖果鎮（candy.scene）：森林北邊那張地圖。
  *
- * 場景檔只有 Canvas/World/Ground/Props/Player 這棵空樹，地圖背景、鎮上的角色、
- * 街上的小東西全部在這裡執行期裝起來（同 GardenRoom / BrewRoom 的作法）——
- * 不用改場景檔，也不用替每張圖手工做 spriteFrame 的 meta。
+ * ⚠️ 地圖、房子、裝飾、NPC **都是 candy.scene 裡的真節點**（使用者要能在 Cocos 裡
+ * 自己拖），所以這支不再生成任何東西。它只做兩件執行期才做得到的事：
+ *   ① 把貨品清單交給場景裡那個商店節點（清單是 TS 資料，不適合序列化進場景）
+ *   ② 叫出街上晃來晃去的路人（那些會動，必須執行期生成）
  *
  * 進出是「走到地圖邊界」：森林北側 → 糖果鎮、糖果鎮南側 → 森林，兩邊都登記在
  * data/portals.ts，PortalGlow 會在那個點畫光圈。
@@ -29,59 +28,22 @@ export class CandyTown extends Component {
         return props.getComponent(CandyTown) ?? props.addComponent(CandyTown);
     }
 
-    private built = false;
-
     onLoad() {
         CandyTown.instance = this;
         GameArt.preload();
-        GameArt.onReady(() => { if (this.isValid) this.build(); });
-        this.build();
-        CandyFolk.ensure();          // 街上晃來晃去的軟糖鱷與芽苗
+        this.wireShop();
+        CandyFolk.ensure();          // 街上晃來晃去的軟糖鱷與薑餅人
     }
 
     onDestroy() {
         if (CandyTown.instance === this) CandyTown.instance = null;
     }
 
-    private build() {
-        if (this.built) return;
-        if (!GameArt.candy(CANDY_NPCS[0].art)) return;   // 美術還沒好，等 onReady 再來
-        this.built = true;
-        // ⚠️ 地面與房子/裝飾現在是 candy.scene 裡的真節點（可以在 Cocos 裡直接拖），
-        //    這裡只負責會動的東西：NPC 與街上的路人。
-        for (const def of CANDY_NPCS) this.buildNpc(def);
-    }
-
-    private buildNpc(def: typeof CANDY_NPCS[0]) {
-        const frame = GameArt.candy(def.art);
-        if (!frame) return;
-        const n = new Node(def.id);
-        n.layer = this.node.layer;
-        this.node.addChild(n);
-        n.setPosition(def.x, def.y, 0);
-
-        const ut = n.addComponent(UITransform);
-        ut.setAnchorPoint(0.5, 0);                       // 錨點在腳底 → 吃 YSort 遮擋
-        const w = (frame.rect.width || frame.originalSize.width) * def.scale;
-        const h = (frame.rect.height || frame.originalSize.height) * def.scale;
-        ut.setContentSize(w, h);
-        const sp = n.addComponent(Sprite);
-        sp.sizeMode = Sprite.SizeMode.CUSTOM;
-        sp.trim = false;
-        sp.spriteFrame = frame;
-        ShadowLayer.follow(n, w);
-
-        if (def.shopTitle) {
-            // 商店：按 E 開購買面板（貨品清單在 data/candy）
-            const shop = n.addComponent(GoodsShop);
-            shop.shopTitle = def.shopTitle;
-            shop.goods = CANDY_GOODS.slice();
-            shop.interactRange = 150;
-        } else {
-            const talk = n.addComponent(TalkNpc);
-            talk.npcName = def.name;
-            talk.lines = def.lines.slice();
-            talk.interactRange = 150;
-        }
+    /** 場景裡的商店節點只存了店名與感應範圍，貨品清單在這裡補上。 */
+    private wireShop() {
+        const node = this.node.getChildByName('tamer');
+        const shop = node?.getComponent(GoodsShop);
+        if (shop) shop.goods = CANDY_GOODS.slice();
+        else console.warn('[CandyTown] 場景裡找不到掛著 GoodsShop 的 tamer 節點');
     }
 }
