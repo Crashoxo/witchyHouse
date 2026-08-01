@@ -99,14 +99,24 @@ export const Garden = {
         // 土的深淺只看「有沒有真的澆過水、澆多久了」；枯不枯則從 lastWet 算
         const wet = p.watered > 0 && now() - p.watered < WET_MINUTES;
         const dry = now() - lastWet(p);
-        const grown = Math.min(1, (now() - p.planted) / GROW_MINUTES);
+        // ⚠️ 還沒澆過水就不會長 —— 乾土裡的種子不發芽（澆下去的那一刻才開始計時，見 water()）
+        const grown = p.watered === 0 ? 0
+                                      : Math.min(1, (now() - p.planted) / GROW_MINUTES);
         if (dry >= DRY_MINUTES) {
             const t = (dry - DRY_MINUTES) / WILT_MINUTES;
             const stage = Math.min(WILT_STAGES - 1, Math.floor(t * WILT_STAGES));
+            // 水乾的那一刻長到哪就凍在哪。**已經開花的還是摘得到**（只要還沒枯過頭）——
+            // 花開了卻晚幾分鐘回來就整株報銷，太苛了。
+            const frozen = p.watered === 0 ? 0
+                : Math.min(1, (lastWet(p) + DRY_MINUTES - p.planted) / GROW_MINUTES);
             return { empty: false, art: f.art, stage, wilting: true,
-                     dead: stage >= WILT_STAGES - 1, ripe: false, wet };
+                     dead: stage >= WILT_STAGES - 1,
+                     ripe: frozen >= 1 && stage <= WILT_RESCUABLE, wet };
         }
-        const stage = Math.min(GROW_STAGES - 1, Math.floor(grown * GROW_STAGES));
+        // 前面幾階平均分配在成長時間裡，**最後一階（完全開花）剛好落在時間到的那一刻** ——
+        // 這樣「種下一小時後開花可以摘」才是字面上的一小時，而不是 80% 就先開了。
+        const stage = grown >= 1 ? GROW_STAGES - 1
+                                 : Math.floor(grown * (GROW_STAGES - 1));
         return { empty: false, art: f.art, stage, wilting: false, dead: false,
                  ripe: stage >= GROW_STAGES - 1, wet };
     },
@@ -131,7 +141,10 @@ export const Garden = {
         if (!p) return false;
         const v = Garden.view(i);
         if (v.dead) return false;
-        if (v.wilting) {
+        if (p.seed && p.watered === 0) {
+            // 第一次澆水＝成長開始計時（種下到現在乾等的那段不算）
+            p.planted = now();
+        } else if (v.wilting) {
             if (v.stage > WILT_RESCUABLE) return false;    // 枯太久了，救不回來
             // 救回來：把「已經長到哪」保留下來，重新開始算成長時間
             const grown = Math.min(1, (lastWet(p) + DRY_MINUTES - p.planted) / GROW_MINUTES);
