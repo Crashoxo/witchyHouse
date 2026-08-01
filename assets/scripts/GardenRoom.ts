@@ -26,6 +26,9 @@ const { ccclass } = _decorator;
  */
 
 const REACH = 90;              // 玩家離花圃多近才能操作（像素）
+/** 澆花器壺口相對女巫腳底的位置（見 spoutPos 的算法；未翻面時壺在她左手邊）。 */
+const SPOUT_DX = (22 - 110.5) * 0.35;      // ≈ -31
+const SPOUT_DY = (196 - 166) * 0.35;       // ≈ +10.5
 
 @ccclass('GardenRoom')
 export class GardenRoom extends Component {
@@ -156,10 +159,16 @@ export class GardenRoom extends Component {
                 if (Garden.water(i)) { watered.push(i); if (planted) n++; }
             }
             if (n > 0) {
-                anim?.playOneShot(GameArt.waterFrames(), 0.9, faceX, true);
+                // ⚠️ 澆水這段要翻面（front=false）：圖裡的澆花器畫在她左手邊，朝右邊的
+                // 花圃澆時整張翻過來，壺口才會對著花圃（施法那種正面圖才不翻）。
+                anim?.playOneShot(GameArt.waterFrames(), 0.9, faceX, false);
                 plot.popup(n > 1 ? `澆了 ${n} 塊` : '澆好水了');
-                // 灑水特效：澆到的每一塊都來一份，看得出水是從女巫那一側潑過去的
-                for (const i of watered) this.plotAt(i)?.playWater(faceX);
+                // 灑水特效：水從她手上澆花器的壺口出來，澆到的每一塊都來一份
+                const spout = this.spoutPos();
+                for (const i of watered) {
+                    const p = this.plotAt(i);
+                    p?.playWater(spout.x - p.node.position.x, spout.y - p.node.position.y);
+                }
             } else {
                 plot.popup('救不回來了…');
             }
@@ -181,6 +190,20 @@ export class GardenRoom extends Component {
         anim?.playOneShot(GameArt.pickFrames(), 0.7, faceX, true);
         plot.popup(`種下 ${seed}`);
         plot.refresh();
+    }
+
+    /**
+     * 澆花器壺口現在在哪（Props 座標，跟花圃同一層）。
+     *
+     * 女巫的圖是 221×196 的畫布、錨點在腳底正中、節點 scale 0.35。澆水第 3 幀（把壺
+     * 傾倒的那格）壺嘴量到在畫布的 (22, 166) → 距離腳底 ((22-110.5), (196-166)) 像素，
+     * 乘上 0.35 就是節點座標的偏移。朝右時整個節點是翻面的（scale.x < 0），x 要跟著鏡射。
+     */
+    private spoutPos(): Vec3 {
+        const p = this.player;
+        if (!p) return new Vec3();
+        const flip = p.scale.x < 0 ? -1 : 1;
+        return new Vec3(p.position.x + flip * SPOUT_DX, p.position.y + SPOUT_DY, 0);
     }
 
     private plotAt(index: number): GardenPlot | null {

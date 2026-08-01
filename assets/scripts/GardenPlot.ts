@@ -94,12 +94,13 @@ export class GardenPlot extends Component {
      * 全部是程式畫的（Graphics ＋ tween），不需要美術。
      * faceX ＝ 花圃相對玩家的方向（>0 代表玩家在左邊，水就從左邊過來）。
      */
-    playWater(faceX = 0) {
+    playWater(sx: number, sy: number) {
         const layer = this.node.layer;
-        const side = faceX >= 0 ? -1 : 1;          // 女巫在花圃的哪一側
-        const sx = side * 42, sy = 54;             // 壺口：拉開一點，水才是「潑過去」的斜弧
-        const DROPS = 18;
-        const GAP = 0.035;                         // 一滴接一滴，整段約 0.9 秒（同澆水動畫）
+        const side = sx >= 0 ? 1 : -1;             // 壺口在花圃的哪一側
+        const DROPS = 14;
+        const GAP = 0.028;
+        // 澆水動畫第 3 幀（0.45~0.675 秒）才是把壺傾倒的那格，水要那時候才出來
+        const START = 0.32;
 
         for (let i = 0; i < DROPS; i++) {
             const t = i / (DROPS - 1);
@@ -116,21 +117,27 @@ export class GardenPlot extends Component {
             g.rect(-w / 2, -h / 2, w, h);
             g.fill();
             const op = n.addComponent(UIOpacity);
+            op.opacity = 0;                        // 輪到它之前先藏著，不然會在壺口疊成一坨
 
             // 落點從近到遠鋪滿土面 —— 水柱像掃過去一樣
             const ex = side * 22 - side * t * 46 + (Math.random() - 0.5) * 6;
             const ey = -6 - Math.random() * 7;
             const midX = sx + (ex - sx) * 0.45;
-            const midY = sy - 12;                  // 先往上拋一點，弧線才明顯
+            const midY = Math.max(sy, ey) + 10;    // 拋物線頂點略高於壺口（拋太高會變噴泉）
 
             tween(n)
-                .delay(i * GAP)
-                .to(0.17, { position: new Vec3(midX, midY, 0) }, { easing: 'sineOut' })
-                .to(0.17, { position: new Vec3(ex, ey, 0) }, { easing: 'sineIn' })
+                .delay(START + i * GAP)
+                .to(0.15, { position: new Vec3(midX, midY, 0) }, { easing: 'sineOut' })
+                .to(0.15, { position: new Vec3(ex, ey, 0) }, { easing: 'sineIn' })
                 .call(() => { if (i % 2 === 0) this.splash(ex, ey); })   // 每兩滴濺一次就夠熱鬧
                 .start();
-            tween(op).delay(i * GAP + 0.28).to(0.09, { opacity: 0 })
-                .call(() => n.destroy()).start();
+            tween(op)
+                .delay(START + i * GAP)
+                .to(0.04, { opacity: 255 })
+                .delay(0.22)
+                .to(0.08, { opacity: 0 })
+                .call(() => n.destroy())
+                .start();
         }
     }
 
