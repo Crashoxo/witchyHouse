@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0008-4a00-8b00-a40000000008",
+  "uuid": "47314cc9-0ce4-475c-87c2-c1898944d3fb",
   "files": [
     ".json",
     ".png"
@@ -10,7 +10,7 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0008-4a00-8b00-a40000000008@6c48a",
+      "uuid": "47314cc9-0ce4-475c-87c2-c1898944d3fb@6c48a",
       "displayName": "guard",
       "id": "6c48a",
       "name": "texture",
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0008-4a00-8b00-a40000000008",
+        "imageUuidOrDatabaseUri": "47314cc9-0ce4-475c-87c2-c1898944d3fb",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,7 +34,7 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0008-4a00-8b00-a40000000008@f9941",
+      "uuid": "47314cc9-0ce4-475c-87c2-c1898944d3fb@f9941",
       "displayName": "guard",
       "id": "f9941",
       "name": "spriteFrame",
@@ -60,17 +60,17 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -90.0,
-            -113.0,
+            -90,
+            -113,
             0,
-            90.0,
-            -113.0,
+            90,
+            -113,
             0,
-            -90.0,
-            113.0,
+            -90,
+            113,
             0,
-            90.0,
-            113.0,
+            90,
+            113,
             0
           ],
           "indexes": [
@@ -102,18 +102,18 @@
             1
           ],
           "minPos": [
-            -90.0,
-            -113.0,
+            -90,
+            -113,
             0
           ],
           "maxPos": [
-            90.0,
-            113.0,
+            90,
+            113,
             0
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0008-4a00-8b00-a40000000008@6c48a",
+        "imageUuidOrDatabaseUri": "47314cc9-0ce4-475c-87c2-c1898944d3fb@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },
@@ -129,6 +129,6 @@
     "type": "sprite-frame",
     "hasAlpha": true,
     "fixAlphaTransparencyArtifacts": false,
-    "redirect": "9d08f677-294f-4152-90b8-cca0a14b8bfb@6c48a"
+    "redirect": "47314cc9-0ce4-475c-87c2-c1898944d3fb@6c48a"
   }
 }

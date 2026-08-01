@@ -39,11 +39,20 @@ export class CandyTown extends Component {
         if (CandyTown.instance === this) CandyTown.instance = null;
     }
 
-    /** 場景裡的商店節點只存了店名與感應範圍，貨品清單在這裡補上。 */
+    /**
+     * 場景裡的商店節點只存了店名與感應範圍（`goods` 不是 @property，不會序列化），
+     * 所以貨品清單在這裡補上。
+     * ⚠️ 用「掃描子節點上的 GoodsShop 元件」而不是找特定節點名 —— 使用者在 Cocos 裡
+     * 把節點改名或搬位置都不會讓商店變成空的。
+     */
     private wireShop() {
-        const node = this.node.getChildByName('tamer');
-        const shop = node?.getComponent(GoodsShop);
-        if (shop) shop.goods = CANDY_GOODS.slice();
-        else console.warn('[CandyTown] 場景裡找不到掛著 GoodsShop 的 tamer 節點');
+        const shops = this.node.getComponentsInChildren(GoodsShop);
+        if (shops.length === 0) {
+            console.warn('[CandyTown] 場景裡沒有任何 GoodsShop 元件 —— 商店按 E 不會有反應');
+            return;
+        }
+        for (const shop of shops) {
+            if (shop.goods.length === 0) shop.goods = CANDY_GOODS.slice();
+        }
     }
 }

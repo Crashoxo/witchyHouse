@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0022-4a00-8b00-a40000000022",
+  "uuid": "4d6581d4-76fa-4321-a82d-251ab5c9f682",
   "files": [
     ".json",
     ".png"
@@ -10,7 +10,7 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0022-4a00-8b00-a40000000022@6c48a",
+      "uuid": "4d6581d4-76fa-4321-a82d-251ab5c9f682@6c48a",
       "displayName": "p-stump",
       "id": "6c48a",
       "name": "texture",
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0022-4a00-8b00-a40000000022",
+        "imageUuidOrDatabaseUri": "4d6581d4-76fa-4321-a82d-251ab5c9f682",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,7 +34,7 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0022-4a00-8b00-a40000000022@f9941",
+      "uuid": "4d6581d4-76fa-4321-a82d-251ab5c9f682@f9941",
       "displayName": "p-stump",
       "id": "f9941",
       "name": "spriteFrame",
@@ -60,16 +60,16 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -18.0,
+            -18,
             -19.5,
             0,
-            18.0,
+            18,
             -19.5,
             0,
-            -18.0,
+            -18,
             19.5,
             0,
-            18.0,
+            18,
             19.5,
             0
           ],
@@ -102,18 +102,18 @@
             1
           ],
           "minPos": [
-            -18.0,
+            -18,
             -19.5,
             0
           ],
           "maxPos": [
-            18.0,
+            18,
             19.5,
             0
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0022-4a00-8b00-a40000000022@6c48a",
+        "imageUuidOrDatabaseUri": "4d6581d4-76fa-4321-a82d-251ab5c9f682@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },
@@ -129,6 +129,6 @@
     "type": "sprite-frame",
     "hasAlpha": true,
     "fixAlphaTransparencyArtifacts": false,
-    "redirect": "9d08f677-294f-4152-90b8-cca0a14b8bfb@6c48a"
+    "redirect": "4d6581d4-76fa-4321-a82d-251ab5c9f682@6c48a"
   }
 }

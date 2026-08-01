@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0018-4a00-8b00-a40000000018",
+  "uuid": "aef34090-c1db-41c5-99a6-d7656a4a55da",
   "files": [
     ".json",
     ".png"
@@ -10,7 +10,7 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0018-4a00-8b00-a40000000018@6c48a",
+      "uuid": "aef34090-c1db-41c5-99a6-d7656a4a55da@6c48a",
       "displayName": "p-lollitree",
       "id": "6c48a",
       "name": "texture",
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0018-4a00-8b00-a40000000018",
+        "imageUuidOrDatabaseUri": "aef34090-c1db-41c5-99a6-d7656a4a55da",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,7 +34,7 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0018-4a00-8b00-a40000000018@f9941",
+      "uuid": "aef34090-c1db-41c5-99a6-d7656a4a55da@f9941",
       "displayName": "p-lollitree",
       "id": "f9941",
       "name": "spriteFrame",
@@ -60,16 +60,16 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -45.0,
+            -45,
             -67.5,
             0,
-            45.0,
+            45,
             -67.5,
             0,
-            -45.0,
+            -45,
             67.5,
             0,
-            45.0,
+            45,
             67.5,
             0
           ],
@@ -102,18 +102,18 @@
             1
           ],
           "minPos": [
-            -45.0,
+            -45,
             -67.5,
             0
           ],
           "maxPos": [
-            45.0,
+            45,
             67.5,
             0
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0018-4a00-8b00-a40000000018@6c48a",
+        "imageUuidOrDatabaseUri": "aef34090-c1db-41c5-99a6-d7656a4a55da@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },
@@ -129,6 +129,6 @@
     "type": "sprite-frame",
     "hasAlpha": true,
     "fixAlphaTransparencyArtifacts": false,
-    "redirect": "9d08f677-294f-4152-90b8-cca0a14b8bfb@6c48a"
+    "redirect": "aef34090-c1db-41c5-99a6-d7656a4a55da@6c48a"
   }
 }

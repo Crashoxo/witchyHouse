@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0017-4a00-8b00-a40000000017",
+  "uuid": "7781c2ae-840f-43ba-80bb-7299ec404176",
   "files": [
     ".json",
     ".png"
@@ -10,7 +10,7 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0017-4a00-8b00-a40000000017@6c48a",
+      "uuid": "7781c2ae-840f-43ba-80bb-7299ec404176@6c48a",
       "displayName": "p-grove",
       "id": "6c48a",
       "name": "texture",
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0017-4a00-8b00-a40000000017",
+        "imageUuidOrDatabaseUri": "7781c2ae-840f-43ba-80bb-7299ec404176",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,7 +34,7 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0017-4a00-8b00-a40000000017@f9941",
+      "uuid": "7781c2ae-840f-43ba-80bb-7299ec404176@f9941",
       "displayName": "p-grove",
       "id": "f9941",
       "name": "spriteFrame",
@@ -61,16 +61,16 @@
         "vertices": {
           "rawPosition": [
             -151.5,
-            -117.0,
+            -117,
             0,
             151.5,
-            -117.0,
+            -117,
             0,
             -151.5,
-            117.0,
+            117,
             0,
             151.5,
-            117.0,
+            117,
             0
           ],
           "indexes": [
@@ -103,17 +103,17 @@
           ],
           "minPos": [
             -151.5,
-            -117.0,
+            -117,
             0
           ],
           "maxPos": [
             151.5,
-            117.0,
+            117,
             0
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0017-4a00-8b00-a40000000017@6c48a",
+        "imageUuidOrDatabaseUri": "7781c2ae-840f-43ba-80bb-7299ec404176@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },
@@ -129,6 +129,6 @@
     "type": "sprite-frame",
     "hasAlpha": true,
     "fixAlphaTransparencyArtifacts": false,
-    "redirect": "9d08f677-294f-4152-90b8-cca0a14b8bfb@6c48a"
+    "redirect": "7781c2ae-840f-43ba-80bb-7299ec404176@6c48a"
   }
 }

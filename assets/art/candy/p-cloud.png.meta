@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0014-4a00-8b00-a40000000014",
+  "uuid": "448f6002-3430-460c-a526-a4c559afb13e",
   "files": [
     ".json",
     ".png"
@@ -10,7 +10,7 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0014-4a00-8b00-a40000000014@6c48a",
+      "uuid": "448f6002-3430-460c-a526-a4c559afb13e@6c48a",
       "displayName": "p-cloud",
       "id": "6c48a",
       "name": "texture",
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0014-4a00-8b00-a40000000014",
+        "imageUuidOrDatabaseUri": "448f6002-3430-460c-a526-a4c559afb13e",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,7 +34,7 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0014-4a00-8b00-a40000000014@f9941",
+      "uuid": "448f6002-3430-460c-a526-a4c559afb13e@f9941",
       "displayName": "p-cloud",
       "id": "f9941",
       "name": "spriteFrame",
@@ -60,17 +60,17 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -130.0,
-            -45.0,
+            -130,
+            -45,
             0,
-            130.0,
-            -45.0,
+            130,
+            -45,
             0,
-            -130.0,
-            45.0,
+            -130,
+            45,
             0,
-            130.0,
-            45.0,
+            130,
+            45,
             0
           ],
           "indexes": [
@@ -102,18 +102,18 @@
             1
           ],
           "minPos": [
-            -130.0,
-            -45.0,
+            -130,
+            -45,
             0
           ],
           "maxPos": [
-            130.0,
-            45.0,
+            130,
+            45,
             0
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0014-4a00-8b00-a40000000014@6c48a",
+        "imageUuidOrDatabaseUri": "448f6002-3430-460c-a526-a4c559afb13e@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },
@@ -129,6 +129,6 @@
     "type": "sprite-frame",
     "hasAlpha": true,
     "fixAlphaTransparencyArtifacts": false,
-    "redirect": "9d08f677-294f-4152-90b8-cca0a14b8bfb@6c48a"
+    "redirect": "448f6002-3430-460c-a526-a4c559afb13e@6c48a"
   }
 }

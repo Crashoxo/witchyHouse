@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0011-4a00-8b00-a40000000011",
+  "uuid": "5e5de53b-759c-4ce1-88d3-19e25f6629f4",
   "files": [
     ".json",
     ".png"
@@ -10,7 +10,7 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0011-4a00-8b00-a40000000011@6c48a",
+      "uuid": "5e5de53b-759c-4ce1-88d3-19e25f6629f4@6c48a",
       "displayName": "p-candycane",
       "id": "6c48a",
       "name": "texture",
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0011-4a00-8b00-a40000000011",
+        "imageUuidOrDatabaseUri": "5e5de53b-759c-4ce1-88d3-19e25f6629f4",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,7 +34,7 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0011-4a00-8b00-a40000000011@f9941",
+      "uuid": "5e5de53b-759c-4ce1-88d3-19e25f6629f4@f9941",
       "displayName": "p-candycane",
       "id": "f9941",
       "name": "spriteFrame",
@@ -60,17 +60,17 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -16.0,
-            -18.0,
+            -16,
+            -18,
             0,
-            16.0,
-            -18.0,
+            16,
+            -18,
             0,
-            -16.0,
-            18.0,
+            -16,
+            18,
             0,
-            16.0,
-            18.0,
+            16,
+            18,
             0
           ],
           "indexes": [
@@ -102,18 +102,18 @@
             1
           ],
           "minPos": [
-            -16.0,
-            -18.0,
+            -16,
+            -18,
             0
           ],
           "maxPos": [
-            16.0,
-            18.0,
+            16,
+            18,
             0
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0011-4a00-8b00-a40000000011@6c48a",
+        "imageUuidOrDatabaseUri": "5e5de53b-759c-4ce1-88d3-19e25f6629f4@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },
@@ -129,6 +129,6 @@
     "type": "sprite-frame",
     "hasAlpha": true,
     "fixAlphaTransparencyArtifacts": false,
-    "redirect": "9d08f677-294f-4152-90b8-cca0a14b8bfb@6c48a"
+    "redirect": "5e5de53b-759c-4ce1-88d3-19e25f6629f4@6c48a"
   }
 }

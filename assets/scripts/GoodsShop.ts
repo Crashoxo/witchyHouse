@@ -33,7 +33,12 @@ export class GoodsShop extends Component {
 
     private onKeyDown(e: EventKeyboard) {
         if (e.keyCode !== KeyCode.KEY_E) return;
-        if (!this.inRange || UIState.modalOpen || this.goods.length === 0) return;
+        if (!this.inRange || UIState.modalOpen) return;
+        if (this.goods.length === 0) {
+            // 走到這裡代表安裝的人沒把貨品清單交進來（見 CandyTown.wireShop）
+            console.warn(`[GoodsShop] ${this.shopTitle} 沒有貨品清單，開不了`);
+            return;
+        }
         BuyPanel.ensure()?.open(this.shopTitle, this.goods);
     }
 

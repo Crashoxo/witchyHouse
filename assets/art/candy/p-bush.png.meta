@@ -2,7 +2,7 @@
   "ver": "1.0.27",
   "importer": "image",
   "imported": true,
-  "uuid": "a4000000-0009-4a00-8b00-a40000000009",
+  "uuid": "8a4d7c5f-ed1d-4d53-ab45-1d5918a7c9ef",
   "files": [
     ".json",
     ".png"
@@ -10,7 +10,7 @@
   "subMetas": {
     "6c48a": {
       "importer": "texture",
-      "uuid": "a4000000-0009-4a00-8b00-a40000000009@6c48a",
+      "uuid": "8a4d7c5f-ed1d-4d53-ab45-1d5918a7c9ef@6c48a",
       "displayName": "p-bush",
       "id": "6c48a",
       "name": "texture",
@@ -22,7 +22,7 @@
         "mipfilter": "none",
         "anisotropy": 0,
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0009-4a00-8b00-a40000000009",
+        "imageUuidOrDatabaseUri": "8a4d7c5f-ed1d-4d53-ab45-1d5918a7c9ef",
         "visible": false
       },
       "ver": "1.0.22",
@@ -34,7 +34,7 @@
     },
     "f9941": {
       "importer": "sprite-frame",
-      "uuid": "a4000000-0009-4a00-8b00-a40000000009@f9941",
+      "uuid": "8a4d7c5f-ed1d-4d53-ab45-1d5918a7c9ef@f9941",
       "displayName": "p-bush",
       "id": "f9941",
       "name": "spriteFrame",
@@ -61,16 +61,16 @@
         "vertices": {
           "rawPosition": [
             -40.5,
-            -31.0,
+            -31,
             0,
             40.5,
-            -31.0,
+            -31,
             0,
             -40.5,
-            31.0,
+            31,
             0,
             40.5,
-            31.0,
+            31,
             0
           ],
           "indexes": [
@@ -103,17 +103,17 @@
           ],
           "minPos": [
             -40.5,
-            -31.0,
+            -31,
             0
           ],
           "maxPos": [
             40.5,
-            31.0,
+            31,
             0
           ]
         },
         "isUuid": true,
-        "imageUuidOrDatabaseUri": "a4000000-0009-4a00-8b00-a40000000009@6c48a",
+        "imageUuidOrDatabaseUri": "8a4d7c5f-ed1d-4d53-ab45-1d5918a7c9ef@6c48a",
         "atlasUuid": "",
         "trimType": "none"
       },
@@ -129,6 +129,6 @@
     "type": "sprite-frame",
     "hasAlpha": true,
     "fixAlphaTransparencyArtifacts": false,
-    "redirect": "9d08f677-294f-4152-90b8-cca0a14b8bfb@6c48a"
+    "redirect": "8a4d7c5f-ed1d-4d53-ab45-1d5918a7c9ef@6c48a"
   }
 }
