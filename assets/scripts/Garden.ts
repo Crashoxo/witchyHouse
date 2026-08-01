@@ -4,7 +4,7 @@ import { Wallet } from './Wallet';
 import { Inventory } from './Inventory';
 import { DailyLog } from './DailyLog';
 import { Upgrades } from './Upgrades';
-import { FLOWERS, flowerBySeed, GROW_MINUTES, DRY_MINUTES, WILT_MINUTES,
+import { FLOWERS, flowerBySeed, GROW_MINUTES, DRY_MINUTES, WET_MINUTES, WILT_MINUTES,
          GROW_STAGES, WILT_STAGES, WILT_RESCUABLE,
          PLOT_COUNT, PLOT_COLS, PLOT_ROWS, PLOT_ORDER } from './data/garden';
 
@@ -21,7 +21,7 @@ import { FLOWERS, flowerBySeed, GROW_MINUTES, DRY_MINUTES, WILT_MINUTES,
 export interface Plot {
     seed: string;     // 種下的種子名（''＝空地）
     planted: number;  // 種下時的遊戲總分鐘
-    watered: number;  // 最後一次澆水的遊戲總分鐘
+    watered: number;  // 最後一次澆水的遊戲總分鐘（0＝種下後還沒澆過）
 }
 
 /** 一格花圃現在的樣子（給畫面用）。 */
@@ -73,6 +73,15 @@ function save(): void { SaveManager.setJSON(KEY, plots); }
 
 load();
 
+/**
+ * 這格「上一次有水」是什麼時候 —— 沒澆過就算種下的那一刻。
+ * ⚠️ 這跟「土看起來濕不濕」是兩回事：種下去土是**乾的**（要自己澆才會變深色），
+ * 但枯萎的倒數還是從種下開始算，不然沒澆過的 watered=0 會被當成幾百天沒澆、種下就枯。
+ */
+function lastWet(p: Plot): number {
+    return Math.max(p.watered, p.planted);
+}
+
 export const Garden = {
     /** 這格的狀態（給 GardenPlot 畫圖用）。 */
     view(i: number): PlotView {
@@ -80,33 +89,38 @@ export const Garden = {
         const blank: PlotView = { empty: true, art: '', stage: 0, wilting: false,
                                   dead: false, ripe: false, wet: false };
         if (!p || !p.seed) {
-            // 空地也會濕：先澆水再種，土是深色的
-            blank.wet = !!p && now() - p.watered < DRY_MINUTES;
+            // 空地澆了水也會是深色的（先澆再種也行）
+            blank.wet = !!p && p.watered > 0 && now() - p.watered < WET_MINUTES;
             return blank;
         }
         const f = flowerBySeed(p.seed);
         if (!f) return blank;
 
-        const dry = now() - p.watered;
+        // 土的深淺只看「有沒有真的澆過水、澆多久了」；枯不枯則從 lastWet 算
+        const wet = p.watered > 0 && now() - p.watered < WET_MINUTES;
+        const dry = now() - lastWet(p);
         const grown = Math.min(1, (now() - p.planted) / GROW_MINUTES);
         if (dry >= DRY_MINUTES) {
             const t = (dry - DRY_MINUTES) / WILT_MINUTES;
             const stage = Math.min(WILT_STAGES - 1, Math.floor(t * WILT_STAGES));
             return { empty: false, art: f.art, stage, wilting: true,
-                     dead: stage >= WILT_STAGES - 1, ripe: false, wet: false };
+                     dead: stage >= WILT_STAGES - 1, ripe: false, wet };
         }
         const stage = Math.min(GROW_STAGES - 1, Math.floor(grown * GROW_STAGES));
         return { empty: false, art: f.art, stage, wilting: false, dead: false,
-                 ripe: stage >= GROW_STAGES - 1, wet: true };
+                 ripe: stage >= GROW_STAGES - 1, wet };
     },
 
-    /** 種下一顆種子；回傳是否成功（格子要是空的、種子要認得）。 */
+    /**
+     * 種下一顆種子；回傳是否成功（格子要是空的、種子要認得）。
+     * **不會順手澆水** —— 剛種下的土是乾的，玩家自己澆過才變成濕土。
+     */
     plant(i: number, seed: string): boolean {
         const p = plots[i];
         if (!p || p.seed || !flowerBySeed(seed)) return false;
         p.seed = seed;
         p.planted = now();
-        p.watered = now();      // 種下時順手澆一次
+        p.watered = 0;
         save();
         return true;
     },
@@ -120,7 +134,7 @@ export const Garden = {
         if (v.wilting) {
             if (v.stage > WILT_RESCUABLE) return false;    // 枯太久了，救不回來
             // 救回來：把「已經長到哪」保留下來，重新開始算成長時間
-            const grown = Math.min(1, (p.watered + DRY_MINUTES - p.planted) / GROW_MINUTES);
+            const grown = Math.min(1, (lastWet(p) + DRY_MINUTES - p.planted) / GROW_MINUTES);
             p.planted = now() - grown * GROW_MINUTES;
         }
         p.watered = now();
@@ -152,7 +166,7 @@ export const Garden = {
     /** 花圃快沒水了（花圃上會冒「缺水」提醒）。 */
     needsWater(i: number): boolean {
         const p = plots[i];
-        return !!p && !!p.seed && now() - p.watered >= DRY_MINUTES * 0.75;
+        return !!p && !!p.seed && now() - lastWet(p) >= DRY_MINUTES * 0.75;
     },
 
     /**

@@ -89,6 +89,68 @@ export class GardenPlot extends Component {
         if (this.hint) this.hint.active = on;
     }
 
+    /**
+     * 澆水特效：水從女巫那一側的壺口潑成一道弧線灑到土上，落點濺開一圈水花。
+     * 全部是程式畫的（Graphics ＋ tween），不需要美術。
+     * faceX ＝ 花圃相對玩家的方向（>0 代表玩家在左邊，水就從左邊過來）。
+     */
+    playWater(faceX = 0) {
+        const layer = this.node.layer;
+        const side = faceX >= 0 ? -1 : 1;          // 女巫在花圃的哪一側
+        const sx = side * 42, sy = 54;             // 壺口：拉開一點，水才是「潑過去」的斜弧
+        const DROPS = 18;
+        const GAP = 0.035;                         // 一滴接一滴，整段約 0.9 秒（同澆水動畫）
+
+        for (let i = 0; i < DROPS; i++) {
+            const t = i / (DROPS - 1);
+            const long = i % 3 === 1;              // 每三滴拉長一條，看起來才像連續的水柱
+
+            const n = new Node('drop');
+            n.layer = layer;
+            this.node.addChild(n);
+            n.setPosition(sx, sy, 0);
+            const w = 4, h = long ? 18 : 9;
+            n.addComponent(UITransform).setContentSize(w, h);
+            const g = n.addComponent(Graphics);
+            g.fillColor = long ? new Color(176, 220, 246, 170) : new Color(158, 210, 240, 235);
+            g.rect(-w / 2, -h / 2, w, h);
+            g.fill();
+            const op = n.addComponent(UIOpacity);
+
+            // 落點從近到遠鋪滿土面 —— 水柱像掃過去一樣
+            const ex = side * 22 - side * t * 46 + (Math.random() - 0.5) * 6;
+            const ey = -6 - Math.random() * 7;
+            const midX = sx + (ex - sx) * 0.45;
+            const midY = sy - 12;                  // 先往上拋一點，弧線才明顯
+
+            tween(n)
+                .delay(i * GAP)
+                .to(0.17, { position: new Vec3(midX, midY, 0) }, { easing: 'sineOut' })
+                .to(0.17, { position: new Vec3(ex, ey, 0) }, { easing: 'sineIn' })
+                .call(() => { if (i % 2 === 0) this.splash(ex, ey); })   // 每兩滴濺一次就夠熱鬧
+                .start();
+            tween(op).delay(i * GAP + 0.28).to(0.09, { opacity: 0 })
+                .call(() => n.destroy()).start();
+        }
+    }
+
+    /** 落點的一圈小水花，擴散後淡出。 */
+    private splash(x: number, y: number) {
+        const n = new Node('splash');
+        n.layer = this.node.layer;
+        this.node.addChild(n);
+        n.setPosition(x, y, 0);
+        n.addComponent(UITransform).setContentSize(20, 12);
+        const g = n.addComponent(Graphics);
+        g.lineWidth = 2;
+        g.strokeColor = new Color(186, 224, 246, 220);
+        g.ellipse(0, 0, 5, 2.5);
+        g.stroke();
+        const op = n.addComponent(UIOpacity);
+        tween(n).to(0.3, { scale: new Vec3(1.9, 1.9, 1) }, { easing: 'quadOut' }).start();
+        tween(op).to(0.3, { opacity: 0 }).call(() => n.destroy()).start();
+    }
+
     /** 操作完在花圃上方冒一行字，往上飄再淡出。 */
     popup(text: string) {
         const n = new Node('pop');

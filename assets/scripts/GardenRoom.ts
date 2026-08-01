@@ -7,9 +7,10 @@ import { UIState } from './UIState';
 import { CharacterAnimator } from './CharacterAnimator';
 import { SceneDoor } from './SceneDoor';
 import { GardenPlot } from './GardenPlot';
+import { SeedPicker } from './SeedPicker';
 import { TownFolk } from './TownFolk';
 import { Quests } from './Quests';
-import { FLOWERS, plotPos, FENCE_WALK, GARDEN_TO_SHOP } from './data/garden';
+import { plotPos, FENCE_WALK, GARDEN_TO_SHOP } from './data/garden';
 const { ccclass } = _decorator;
 
 /**
@@ -134,12 +135,9 @@ export class GardenRoom extends Component {
         if (v.dead) {
             if (Garden.clear(plot.index)) plot.popup('清掉了枯枝');
         } else if (v.empty) {
-            const seed = this.firstSeedInBag();
-            if (!seed) { plot.popup('沒有種子…'); return; }
-            if (Inventory.ensure()?.remove(seed, 1) && Garden.plant(plot.index, seed)) {
-                anim?.playOneShot(GameArt.pickFrames(), 0.7, faceX, true);
-                plot.popup(`種下 ${seed}`);
-            }
+            // 有哪幾種種子讓玩家自己挑（面板是 modal，挑完才回來種）
+            if (SeedPicker.seedsInBag().length === 0) { plot.popup('沒有種子…'); return; }
+            SeedPicker.ensure()?.open(seed => this.plantSeed(plot, seed));
         } else if (v.ripe) {
             const got = Garden.harvest(plot.index);
             if (got) {
@@ -152,13 +150,16 @@ export class GardenRoom extends Component {
             // 澆水壺升級後一次澆得到旁邊幾塊（Garden.waterTargets 算範圍）。
             // 空地也會被澆濕（土變深色），但只有「有種東西」的才算進訊息裡。
             let n = 0;
+            const watered: number[] = [];
             for (const i of Garden.waterTargets(plot.index)) {
                 const planted = !Garden.view(i).empty;
-                if (Garden.water(i) && planted) n++;
+                if (Garden.water(i)) { watered.push(i); if (planted) n++; }
             }
             if (n > 0) {
                 anim?.playOneShot(GameArt.waterFrames(), 0.9, faceX, true);
                 plot.popup(n > 1 ? `澆了 ${n} 塊` : '澆好水了');
+                // 灑水特效：澆到的每一塊都來一份，看得出水是從女巫那一側潑過去的
+                for (const i of watered) this.plotAt(i)?.playWater(faceX);
             } else {
                 plot.popup('救不回來了…');
             }
@@ -167,11 +168,23 @@ export class GardenRoom extends Component {
         plot.refresh();
     }
 
-    /** 背包裡第一種有的花種子。 */
-    private firstSeedInBag(): string {
-        for (const f of FLOWERS) {
-            if (Inventory.countOf(f.seed) > 0) return f.seed;
+    /** 挑好種子之後真的種下去（面板已經關掉了）。 */
+    private plantSeed(plot: GardenPlot, seed: string) {
+        if (!Garden.view(plot.index).empty) return;        // 挑的時候狀態變了就算了
+        if (!Inventory.ensure()?.remove(seed, 1)) return;
+        if (!Garden.plant(plot.index, seed)) {
+            Inventory.ensure()?.add(seed, 1);              // 種不下去要把種子還回去
+            return;
         }
-        return '';
+        const anim = this.player?.getComponent(CharacterAnimator);
+        const faceX = this.player ? plot.node.position.x - this.player.position.x : 0;
+        anim?.playOneShot(GameArt.pickFrames(), 0.7, faceX, true);
+        plot.popup(`種下 ${seed}`);
+        plot.refresh();
+    }
+
+    private plotAt(index: number): GardenPlot | null {
+        for (const p of this.plots) if (p.index === index) return p;
+        return null;
     }
 }
