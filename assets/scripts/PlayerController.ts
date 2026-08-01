@@ -19,6 +19,7 @@ import { Doorways } from './Doorways';
 import { PortalGlow } from './PortalGlow';
 import { DaySummaryPanel } from './DaySummaryPanel';
 import { PlayerInfoPanel } from './PlayerInfoPanel';
+import { BagPanel } from './BagPanel';
 import { SleepOverlay } from './SleepOverlay';
 import { edgePortalOf } from './data';
 const { ccclass, property } = _decorator;
@@ -129,6 +130,7 @@ export class PlayerController extends Component {
         this.keys.add(e.keyCode);
         if (UIState.modalOpen) return;                       // 開著視窗時不施法、不開任務簿
         if (e.keyCode === KeyCode.KEY_Q) { QuestLog.ensure()?.open(); return; }   // Q 開任務簿
+        if (e.keyCode === KeyCode.KEY_B) { BagPanel.ensure()?.open(); return; }   // B 開背包
         // Tab 開玩家資訊（物品／村民／日曆）。瀏覽器有時會把 Tab 拿去切換焦點，
         // 所以 I 也能開，兩個鍵等價。
         if (e.keyCode === KeyCode.TAB || e.keyCode === KeyCode.KEY_I) {

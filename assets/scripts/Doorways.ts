@@ -1,6 +1,10 @@
 import { Node, UITransform, find } from 'cc';
 import { SceneDoor } from './SceneDoor';
+import { StorageCabinet } from './StorageCabinet';
 import { SHOP_TO_GARDEN } from './data/garden';
+
+/** 店裡左邊書櫃下方那排櫥櫃（背景畫好的）＝倉庫的位置。 */
+const CABINET = { x: -500, y: -110 };
 
 /**
  * 執行期補上的場景門。
@@ -15,14 +19,27 @@ export const Doorways = {
     /** 在目前場景補上該有的門（重複呼叫安全）。 */
     install(): void {
         const props = find('Canvas/World/Props');
-        if (!props || props.getChildByName('GardenDoor')) return;
-        const node = new Node('GardenDoor');
-        node.layer = props.layer;
-        props.addChild(node);
-        node.setPosition(SHOP_TO_GARDEN.x, SHOP_TO_GARDEN.y, 0);
-        node.addComponent(UITransform).setContentSize(80, 40);
-        const door = node.addComponent(SceneDoor);
-        door.targetScene = 'garden';
-        door.hintText = '到後花園';
+        if (!props) return;
+
+        if (!props.getChildByName('GardenDoor')) {
+            const node = new Node('GardenDoor');
+            node.layer = props.layer;
+            props.addChild(node);
+            node.setPosition(SHOP_TO_GARDEN.x, SHOP_TO_GARDEN.y, 0);
+            node.addComponent(UITransform).setContentSize(80, 40);
+            const door = node.addComponent(SceneDoor);
+            door.targetScene = 'garden';
+            door.hintText = '到後花園';
+        }
+
+        // 倉庫：背景左邊那排櫥櫃上放一個隱形觸發（同 brew.scene 的床）
+        if (!props.getChildByName('StorageCabinet')) {
+            const node = new Node('StorageCabinet');
+            node.layer = props.layer;
+            props.addChild(node);
+            node.setPosition(CABINET.x, CABINET.y, 0);
+            node.addComponent(UITransform).setContentSize(120, 60);
+            node.addComponent(StorageCabinet);
+        }
     },
 };

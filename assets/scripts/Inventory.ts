@@ -13,6 +13,8 @@ const { ccclass, property } = _decorator;
 export interface Stack { name: string; count: number; }
 
 const STOCK_KEY = 'witch.stock';
+/** 下排一列最多幾格（超過往上換行，見 layoutSlots）。 */
+const PER_ROW = 12;
 
 function loadStock(): Stack[] {
     try {
@@ -156,27 +158,39 @@ export class Inventory extends Component {
         this.layoutSlots();
     }
 
-    /** 依目前背包容量（Upgrades.bagSlots）重排格子。 */
+    /**
+     * 依目前背包容量（Upgrades.bagSlots）重排格子。
+     * ⚠️ 一排最多 12 格 —— 升級到 21 格時排成一列會有 1500px 寬，比 960 的畫面還寬，
+     * 所以超過就往上換行（第一排在上面，最後一排貼著畫面底部）。
+     */
     private layoutSlots() {
         const n = Upgrades.bagSlots();
         this.curCap = n;
         this.node.removeAllChildren();
         this.cells = [];
 
-        const totalW = n * this.slotSize + (n - 1) * this.gap;
+        const perRow = Math.min(n, PER_ROW);
+        const rows = Math.ceil(n / PER_ROW);
+        const step = this.slotSize + this.gap;
+        const totalW = perRow * this.slotSize + (perRow - 1) * this.gap;
+        const totalH = rows * this.slotSize + (rows - 1) * this.gap;
         const ut = this.getComponent(UITransform) ?? this.addComponent(UITransform)!;
         ut.setAnchorPoint(0.5, 0.5);
-        ut.setContentSize(totalW, this.slotSize);
+        ut.setContentSize(totalW, totalH);
         this.getComponent(Widget)?.updateAlignment();
 
-        const startX = -(totalW - this.slotSize) / 2;   // 第一格中心的 x
         for (let i = 0; i < n; i++) {
-            this.cells.push(this.buildCell(i, startX + i * (this.slotSize + this.gap)));
+            const r = Math.floor(i / PER_ROW), c = i % PER_ROW;
+            const inRow = Math.min(n - r * PER_ROW, PER_ROW);       // 最後一排可能不滿，各排自己置中
+            const rowW = inRow * this.slotSize + (inRow - 1) * this.gap;
+            const x = -(rowW - this.slotSize) / 2 + c * step;
+            const y = (totalH - this.slotSize) / 2 - r * step;
+            this.cells.push(this.buildCell(i, x, y));
         }
         this.renderAll();
     }
 
-    private buildCell(index: number, x: number): Cell {
+    private buildCell(index: number, x: number, y: number): Cell {
         const s = this.slotSize;
         const layer = this.node.layer;
 
@@ -186,7 +200,7 @@ export class Inventory extends Component {
         const sut = slotNode.addComponent(UITransform);
         sut.setAnchorPoint(0.5, 0.5);
         sut.setContentSize(s, s);
-        slotNode.setPosition(x, 0, 0);
+        slotNode.setPosition(x, y, 0);
 
         // 格子外框（圓角方框）
         const g = slotNode.addComponent(Graphics);

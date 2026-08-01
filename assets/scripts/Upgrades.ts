@@ -22,7 +22,9 @@ interface Def {
 // 各級數值（index = 等級，0 = 未升級）
 function intervalAt(lv: number): number { return [6, 5, 4, 3, 2.5][Math.min(lv, 4)]; }
 function maxAt(lv: number): number { return [2, 3, 3, 4, 5][Math.min(lv, 4)]; }
-function bagAt(lv: number): number { return 8 + lv * 2; }        // 8,10,12,14
+// 12,15,18,21 —— 上限算的是「能放幾**種**東西」，而遊戲裡的道具有二十幾種，
+// 所以起手就給 12 種；真的帶不完的東西丟店裡的倉庫（Storage）。
+function bagAt(lv: number): number { return 12 + lv * 3; }
 function shelfAt(lv: number): number { return 3 + lv * 2; }      // 3,5,7
 // 6,9,12 —— 一次開三塊，剛好每一級都是完整的菱形區塊（見 data/garden 的 PLOT_ORDER）
 function plotAt(lv: number): number { return 6 + lv * 3; }

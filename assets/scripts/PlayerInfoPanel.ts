@@ -10,6 +10,7 @@ import { Friendship } from './Friendship';
 import { Reputation } from './Reputation';
 import { MATERIALS, ITEM_DESC, DEFAULT_ITEM_DESC, POTION_ITEMS } from './data/items';
 import { DEFAULT_BUY, BASE_PRICE } from './data/prices';
+import { FLOWERS } from './data/garden';
 import { SEASONS } from './data/seasons';
 const { ccclass } = _decorator;
 
@@ -21,9 +22,15 @@ const { ccclass } = _decorator;
  * 仿 ShopPanel/QuestLog 的 ensure() 自動生 UI，完全不需要場景改動。
  */
 
-/** 物品頁的完整清單：材料在前、藥水在後（同 ShopManagePanel 的順序慣例）。 */
+/** 物品頁的完整清單：材料 → 花與種子 → 藥水（同 ShopManagePanel 的順序慣例）。 */
 const POTIONS: string[] = Object.keys(POTION_ITEMS);
-const ALL_ITEMS: string[] = MATERIALS.concat(POTIONS);
+/** 後花園的種子與花本來漏掉了，圖鑑說明明明有寫（data/items 的 ITEM_DESC）。 */
+const GARDEN_ITEMS: string[] = (() => {
+    const out: string[] = [];
+    for (const f of FLOWERS) { out.push(f.seed); out.push(f.flower); }
+    return out;
+})();
+const ALL_ITEMS: string[] = MATERIALS.concat(GARDEN_ITEMS).concat(POTIONS);
 
 /** 物品頁一頁幾列。 */
 const PER_PAGE = 5;
