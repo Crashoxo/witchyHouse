@@ -1,7 +1,7 @@
 /**
  * 糖果鎮（森林北邊那張地圖）的「內容」資料：住在鎮上的角色、他們賣什麼、路人怎麼晃。
  *
- * 座標是 candy.scene 的世界座標（Ground 1408×768、原點在地圖正中央的噴泉）。
+ * 座標是 candy.scene 的世界座標（Ground 3200×1745、原點在地圖正中央的噴泉）。
  * 場景檔只有骨架，這裡的東西全部由 CandyTown.ts 在執行期擺出來 —— 不用改場景檔，
  * 也不用替每張圖做 spriteFrame 的 meta。
  */
@@ -26,7 +26,7 @@ export interface CandyNpc {
 
 export const CANDY_NPCS: CandyNpc[] = [
     {
-        id: 'tamer', name: '軟糖鱷馴養師', art: 'tamer', x: -210, y: 55, scale: 0.37,
+        id: 'tamer', name: '軟糖鱷馴養師', art: 'tamer', x: -477, y: 125, scale: 0.37,
         shopTitle: '軟糖鱷商行',
         lines: [
             '歡迎來到糖果鎮！這些軟糖鱷是我養的，別怕，牠們只咬糖。',
@@ -34,7 +34,7 @@ export const CANDY_NPCS: CandyNpc[] = [
         ],
     },
     {
-        id: 'guard', name: '時晶守衛', art: 'guard', x: 150, y: -10, scale: 0.45,
+        id: 'guard', name: '時晶守衛', art: 'guard', x: 341, y: -23, scale: 0.45,
         lines: [
             '止步……不，抱歉，看你不像來搗亂的。',
             '我守著這座噴泉，它下面就是糖李礦坑的入口。',
@@ -42,7 +42,7 @@ export const CANDY_NPCS: CandyNpc[] = [
         ],
     },
     {
-        id: 'sproutling', name: '小芽苗', art: 'sproutling', x: -80, y: -150, scale: 0.30,
+        id: 'sproutling', name: '小芽苗', art: 'sproutling', x: -182, y: -341, scale: 0.30,
         lines: [
             '（它輕輕晃了晃頭上的花。）',
             '……嗯？你是森林來的女巫嗎？我聞得到藥草的味道。',
@@ -73,8 +73,8 @@ export const CANDY_CRITTERS: Array<{ art: string; scale: number }> = [
 
 /** 路人的路線（繞著中央廣場走，都落在鋪面上）。 */
 export const CANDY_WALK: Array<{ x: number; y: number }> = [
-    { x: -260, y: 130 }, { x: 0, y: 165 }, { x: 260, y: 130 },
-    { x: 265, y: -110 }, { x: 0, y: -170 }, { x: -265, y: -110 },
+    { x: -591, y: 295 }, { x: 0, y: 375 }, { x: 591, y: 295 },
+    { x: 602, y: -250 }, { x: 0, y: -386 }, { x: -602, y: -250 },
 ];
 
 /** 同時最多幾隻路人。 */

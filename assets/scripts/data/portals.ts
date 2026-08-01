@@ -38,7 +38,7 @@ export const EDGE_PORTALS: EdgePortal[] = [
     // 店內下方 → 城鎮：對準玩家從城鎮進店的抵達點＝店門口
     { scene: 'shop', side: 'bottom', to: 'town', at: -83, span: 80 },
     // 糖果鎮南側 → 回森林
-    { scene: 'candy', side: 'bottom', to: 'main', at: 0, span: 100 },
+    { scene: 'candy', side: 'bottom', to: 'main', at: 0, span: 160 },
 ];
 
 export const DEFAULT_EDGE_PORTAL: EdgePortal = { scene: '', side: '', to: '', at: 0, span: 80 };
