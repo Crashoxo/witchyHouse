@@ -23,7 +23,8 @@ import { FLOWERS } from './data/garden';
  * 單格大小由圖檔尺寸算出（寬/4、高/3），所以每位角色可以有自己的畫布大小。
  */
 const VILLAGER_FILES = ['frog', 'fox', 'rabbit', 'hedgehog', 'witch',
-                        'deer', 'broomwitch', 'fairy', 'traveler', 'mage'];
+                        'deer', 'broomwitch', 'fairy', 'traveler', 'mage',
+                        'rabbitwitch'];
 
 /** 村民走路表的列（＝面向）。 */
 export const VillagerDir = { DOWN: 0, SIDE: 1, UP: 2 };
