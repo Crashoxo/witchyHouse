@@ -2,7 +2,7 @@ import { resources, SpriteFrame, ImageAsset, Rect, director } from 'cc';
 import { ITEM_FILES, POTION_ITEMS, CANDY_ITEMS } from './data/items';
 import { FLOWERS } from './data/garden';
 import { OUTFITS } from './data/outfits';
-import { CANDY_NPCS, CANDY_CRITTERS, CANDY_BUILDINGS, CANDY_PROPS } from './data/candy';
+import { CANDY_NPCS, CANDY_CRITTERS } from './data/candy';
 
 /**
  * 遊戲美術的執行期載入器：把 `assets/resources/` 底下的圖用 `resources.load`
@@ -104,7 +104,6 @@ let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 let brewRoomDayFrame: SpriteFrame | null = null;    // 藥水室背景（白天）
 let brewRoomNightFrame: SpriteFrame | null = null;  // 藥水室背景（夜晚）
 let gardenFrame: SpriteFrame | null = null;         // 後花園背景（草地＋柵欄）
-let candyMapFrame: SpriteFrame | null = null;       // 糖果鎮地圖
 const candyArt = new Map<string, SpriteFrame>();    // 糖果鎮的角色/小動物圖
 let questScrollFrame: SpriteFrame | null = null;    // 任務簿捲軸底板
 let updateFrameArt: SpriteFrame | null = null;      // 更新公告板木框
@@ -301,16 +300,10 @@ function loadGroup(name: string): void {
         for (let i = 0; i < PICK_FRAMES; i++) loadIndexed(pick, i, `witch/pick${i + 1}`);
         loadSingle('rooms/garden', sf => { gardenFrame = sf; });
     } else if (name === 'candy') {
-        loadSingle('rooms/candy-town', sf => { candyMapFrame = sf; });
+        // ⚠️ 地圖與房子/裝飾**已經是 candy.scene 裡的節點**（圖在 assets/art/candy，
+        //    由場景用 uuid 參照），所以這裡不載 —— 只載執行期才生成的 NPC 與路人。
         for (const n of CANDY_NPCS) loadImg(candyArt, n.art, `candy/${n.art}`);
         for (const c of CANDY_CRITTERS) loadImg(candyArt, c.art, `candy/${c.art}`);
-        // 建築與裝飾（同名只載一次：requested 那層擋不到重複的 art，這裡自己去重）
-        const seen: Record<string, boolean> = {};
-        for (const b of CANDY_BUILDINGS.concat(CANDY_PROPS)) {
-            if (seen[b.art]) continue;
-            seen[b.art] = true;
-            loadImg(candyArt, b.art, `candy/${b.art}`);
-        }
     } else if (name === 'brew') {
         cauldron.length = CAULDRON_FRAMES;
         for (let i = 0; i < CAULDRON_FRAMES; i++) loadIndexed(cauldron, i, `cauldron/f${i}`);
@@ -449,8 +442,6 @@ export const GameArt = {
     /** 後花園背景（未載入回 null）。 */
     garden(): SpriteFrame | null { return gardenFrame; },
 
-    /** 糖果鎮地圖。 */
-    candyMap(): SpriteFrame | null { return candyMapFrame; },
     /** 糖果鎮的角色/小動物圖（檔名同 resources/candy/）。 */
     candy(name: string): SpriteFrame | null { return candyArt.get(name) ?? null; },
 
