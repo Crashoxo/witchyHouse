@@ -7244,7 +7244,23 @@
     "__prefab": null,
     "shopTitle": "軟糖鱷商行",
     "interactRange": 150,
-    "_id": "ygAAAAAAAAAAAAAAAAAAAA"
+    "_id": "ygAAAAAAAAAAAAAAAAAAAA",
+    "itemNames": [
+      "焦糖蘋果棒",
+      "鱷魚軟糖袋",
+      "永恆彩球糖",
+      "糖李礦坑地圖",
+      "妖精粉小袋",
+      "時晶法杖"
+    ],
+    "itemPrices": [
+      45,
+      60,
+      90,
+      150,
+      200,
+      400
+    ]
   },
   {
     "__type__": "cc.Node",

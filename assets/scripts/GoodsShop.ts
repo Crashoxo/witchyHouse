@@ -1,5 +1,5 @@
 import { _decorator, Component, Node, UITransform, Color, Graphics,
-         input, Input, EventKeyboard, KeyCode, Vec3, Label } from 'cc';
+         input, Input, EventKeyboard, KeyCode, Vec3, Label, CCString, CCInteger } from 'cc';
 import { BuyPanel, Goods } from './BuyPanel';
 import { UIState } from './UIState';
 const { ccclass, property } = _decorator;
@@ -15,7 +15,17 @@ export class GoodsShop extends Component {
     @property({ tooltip: '玩家離多近才能互動（像素）' })
     interactRange = 150;
 
-    /** 賣什麼（由 CandyTown 之類的安裝者填）。 */
+    /**
+     * 賣什麼。**存在場景裡**（兩個平行陣列，同雜貨鋪 ShopBuilding 的作法）——
+     * ⚠️ 早期是由安裝者在執行期塞一個 Goods[] 進來，但那樣一旦安裝的那支沒跑到，
+     * 商店就會變成「提示冒得出來、按 E 卻沒反應」，而且在 Cocos 裡也改不了價錢。
+     */
+    @property({ type: [CCString], tooltip: '賣哪些東西（與售價一一對應）' })
+    itemNames: string[] = [];
+    @property({ type: [CCInteger], tooltip: '售價（與上面一一對應）' })
+    itemPrices: number[] = [];
+
+    /** 執行期用的清單；沒填 itemNames 時才由安裝者塞（保留舊用法）。 */
     goods: Goods[] = [];
 
     private player: Node | null = null;
@@ -23,6 +33,10 @@ export class GoodsShop extends Component {
     private inRange = false;
 
     onLoad() {
+        // 場景裡填了就以它為準
+        if (this.itemNames.length) {
+            this.goods = this.itemNames.map((n, i) => ({ name: n, price: this.itemPrices[i] ?? 0 }));
+        }
         this.player = this.node.parent?.getChildByName('Player') ?? null;
         this.buildHint();
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
