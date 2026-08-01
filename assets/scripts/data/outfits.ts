@@ -23,8 +23,8 @@ export interface OutfitDef {
 }
 
 export const OUTFITS: OutfitDef[] = [
-    { id: 'default', name: '旅裝', art: '', portrait: '',
-      desc: '藍帽配酒紅披風，出門採集最順手的一套。' },
+    { id: 'default', name: '旅裝', art: '', portrait: 'outfit-default',
+      desc: '綴著星月的藍帽配紅紋披風，出門採集最順手的一套。' },
     { id: 'green', name: '綠洋裝', art: 'green', portrait: 'outfit-green',
       desc: '綴滿金線與蕾絲的深綠洋裝，鎮上的節慶穿它最體面。' },
     { id: 'brown', name: '褐色大衣', art: 'brown', portrait: 'outfit-brown',
