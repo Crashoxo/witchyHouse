@@ -81,21 +81,21 @@ export class Hud extends Component {
         this.roundRect(g, 0, -h, w, h, 12);
         g.fill(); g.stroke();
 
+        // ⚠️ 圓點不要再 addComponent(Graphics) —— 一個節點只能有一個會繪製的元件，
+        // 多加的會被拒絕並在 Console 噴「Can't add renderable component…」。
+        // 同一個 Graphics 可以連續畫很多形狀，中間換顏色就好。
         // 金幣圓點（上排左側）
-        const coin = this.addComponent(Graphics)!;
-        coin.fillColor = new Color(255, 208, 92, 255);
-        coin.strokeColor = new Color(180, 130, 40, 255);
-        coin.lineWidth = 2;
-        coin.circle(24, -rowH / 2, 11);
-        coin.fill(); coin.stroke();
+        g.fillColor = new Color(255, 208, 92, 255);
+        g.strokeColor = new Color(180, 130, 40, 255);
+        g.lineWidth = 2;
+        g.circle(24, -rowH / 2, 11);
+        g.fill(); g.stroke();
 
         // 名聲星點（下排左側）
-        const star = this.addComponent(Graphics)!;
-        star.fillColor = new Color(150, 205, 255, 255);
-        star.strokeColor = new Color(70, 120, 175, 255);
-        star.lineWidth = 2;
-        star.circle(24, -rowH - rowH / 2, 8);
-        star.fill(); star.stroke();
+        g.fillColor = new Color(150, 205, 255, 255);
+        g.strokeColor = new Color(70, 120, 175, 255);
+        g.circle(24, -rowH - rowH / 2, 8);
+        g.fill(); g.stroke();
 
         // 金幣文字（上排）
         this.goldLabel = this.makeRow(layer, 'goldText', `金幣 ${Wallet.gold}`, 22,
