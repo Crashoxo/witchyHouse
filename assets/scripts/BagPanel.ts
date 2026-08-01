@@ -6,6 +6,7 @@ import { Inventory } from './Inventory';
 import { Storage } from './Storage';
 import { Upgrades } from './Upgrades';
 import { GameArt } from './GameArt';
+import { Toast } from './Toast';
 import { MATERIALS, POTION_ITEMS } from './data/items';
 import { FLOWERS } from './data/garden';
 const { ccclass } = _decorator;
@@ -144,7 +145,7 @@ export class BagPanel extends Component {
         }
         if (this.hintLabel) {
             this.hintLabel.string = this.mode === 'storage'
-                ? 'Esc 關閉 · 存入／取回會整批搬動，[1] 只搬一個'
+                ? 'Esc 關閉 · 存入／取回整疊搬，[1] 只搬一個 · 全部存入＝把這一頁的東西都放進去'
                 : 'Esc 關閉 · 背包裝不下時，把東西放進店裡左邊的櫥櫃';
         }
         this.buildTabs();
@@ -323,10 +324,34 @@ export class BagPanel extends Component {
         });
     }
 
+    /**
+     * 把「目前分頁裡、背包有的」東西一次全部存進倉庫。
+     * 吃分頁是刻意的：在「全部」頁就是整個背包倒進去，切到「材料」頁就只倒材料，
+     * 不必為了「只想存材料」再多做一顆按鈕。
+     */
+    private stashAllInTab() {
+        let moved = 0;
+        for (const name of this.items()) {
+            const qty = Inventory.countOf(name);
+            if (qty <= 0 || !Storage.canAdd(name)) continue;      // 倉庫種類滿了就跳過
+            if (!Inventory.instance?.remove(name, qty)) continue;
+            Storage.add(name, qty);
+            moved++;
+        }
+        Toast.show(moved > 0 ? `已存入 ${moved} 種` : '沒有可以存入的東西');
+        this.refresh();
+    }
+
     private buildPager(pages: number) {
         const box = this.pageBox;
         if (!box) return;
         box.removeAllChildren();
+
+        // 「全部存入」擺在翻頁列左邊（翻頁鈕在正中央 ±96，不會打架）
+        if (this.mode === 'storage') {
+            this.makeButton(box, '全部存入', 130, 34, -this.panelW / 2 + 95, 0,
+                new Color(78, 108, 122, 255), () => this.stashAllInTab());
+        }
         if (pages <= 1) return;
         if (this.page > 0) {
             this.makeButton(box, '<', 46, 32, -96, 0, new Color(72, 62, 54, 255),
