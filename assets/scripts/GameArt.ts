@@ -2,7 +2,7 @@ import { resources, SpriteFrame, ImageAsset, Rect, director } from 'cc';
 import { ITEM_FILES, POTION_ITEMS, CANDY_ITEMS } from './data/items';
 import { FLOWERS } from './data/garden';
 import { OUTFITS } from './data/outfits';
-import { CANDY_NPCS, CANDY_CRITTERS } from './data/candy';
+import { CANDY_NPCS, CANDY_CRITTERS, CANDY_BUILDINGS, CANDY_PROPS } from './data/candy';
 
 /**
  * 遊戲美術的執行期載入器：把 `assets/resources/` 底下的圖用 `resources.load`
@@ -304,6 +304,13 @@ function loadGroup(name: string): void {
         loadSingle('rooms/candy-town', sf => { candyMapFrame = sf; });
         for (const n of CANDY_NPCS) loadImg(candyArt, n.art, `candy/${n.art}`);
         for (const c of CANDY_CRITTERS) loadImg(candyArt, c.art, `candy/${c.art}`);
+        // 建築與裝飾（同名只載一次：requested 那層擋不到重複的 art，這裡自己去重）
+        const seen: Record<string, boolean> = {};
+        for (const b of CANDY_BUILDINGS.concat(CANDY_PROPS)) {
+            if (seen[b.art]) continue;
+            seen[b.art] = true;
+            loadImg(candyArt, b.art, `candy/${b.art}`);
+        }
     } else if (name === 'brew') {
         cauldron.length = CAULDRON_FRAMES;
         for (let i = 0; i < CAULDRON_FRAMES; i++) loadIndexed(cauldron, i, `cauldron/f${i}`);

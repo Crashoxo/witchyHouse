@@ -4,7 +4,7 @@ import { TalkNpc } from './TalkNpc';
 import { GoodsShop } from './GoodsShop';
 import { CandyFolk } from './CandyFolk';
 import { ShadowLayer } from './ShadowLayer';
-import { CANDY_NPCS, CANDY_GOODS } from './data/candy';
+import { CANDY_NPCS, CANDY_GOODS, CANDY_BUILDINGS, CANDY_PROPS, CandyProp } from './data/candy';
 const { ccclass } = _decorator;
 
 /**
@@ -48,6 +48,9 @@ export class CandyTown extends Component {
         if (this.built) return;
         if (!GameArt.candy(CANDY_NPCS[0].art)) return;   // 美術還沒好，等 onReady 再來
         this.built = true;
+        // 房子與裝飾都是一件件擺上去的節點（不是烤進地圖），所以吃 YSort、也不會糊
+        for (const b of CANDY_BUILDINGS) this.buildProp(b, 'house');
+        for (const b of CANDY_PROPS) this.buildProp(b, 'prop');
         for (const def of CANDY_NPCS) this.buildNpc(def);
     }
 
@@ -59,6 +62,25 @@ export class CandyTown extends Component {
         const sp = ground.getComponent(Sprite);
         if (sp && sp.spriteFrame !== frame) sp.spriteFrame = frame;
         ground.getComponent(UITransform)?.setContentSize(frame.rect.width, frame.rect.height);
+    }
+
+    /** 一棟房子／一件裝飾：純圖片節點，錨點在腳底 → 吃 YSortLayer 的前後遮擋。 */
+    private buildProp(def: CandyProp, kind: string) {
+        const frame = GameArt.candy(def.art);
+        if (!frame) return;
+        const n = new Node(kind + '-' + def.art);
+        n.layer = this.node.layer;
+        this.node.addChild(n);
+        n.setPosition(def.x, def.y, 0);
+        const ut = n.addComponent(UITransform);
+        ut.setAnchorPoint(0.5, 0);
+        const w = (frame.rect.width || frame.originalSize.width) * def.scale;
+        const h = (frame.rect.height || frame.originalSize.height) * def.scale;
+        ut.setContentSize(w, h);
+        const sp = n.addComponent(Sprite);
+        sp.sizeMode = Sprite.SizeMode.CUSTOM;
+        sp.trim = false;
+        sp.spriteFrame = frame;
     }
 
     private buildNpc(def: typeof CANDY_NPCS[0]) {
