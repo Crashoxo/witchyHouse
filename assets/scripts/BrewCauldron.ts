@@ -30,6 +30,7 @@ export class BrewCauldron extends Component {
     private timer = 0;
     private brewDur = 1;
     private pending: Recipe | null = null;
+    private pendingQty = 1;              // 這一批要做幾份
 
     onLoad() {
         this.player = this.node.parent?.getChildByName('Player') ?? null;
@@ -61,10 +62,15 @@ export class BrewCauldron extends Component {
     }
 
     /** 由 BrewPanel 呼叫：開始熬煮（先扣料，播動畫，結束產出）。 */
-    startBrew(r: Recipe) {
+    /**
+     * 開始熬煮 qty 份。**一批只播一次動畫**（做 10 份不會讓玩家看 10 遍），
+     * 只把時間拉長一點點，感覺得出份量多而已。
+     */
+    startBrew(r: Recipe, qty = 1) {
         if (this.brewing) return;
-        if (!PotionRecipes.consume(r)) return;   // 保險：材料不足不做
-        this.brewing = true; this.pending = r; this.timer = 0; this.brewDur = Math.max(0.4, r.brewSeconds);
+        if (!PotionRecipes.consume(r, qty)) return;   // 保險：材料不足不做
+        this.brewing = true; this.pending = r; this.pendingQty = qty; this.timer = 0;
+        this.brewDur = Math.max(0.4, r.brewSeconds * (1 + qty / 10));
     }
 
     isBrewing(): boolean { return this.brewing; }
@@ -81,11 +87,12 @@ export class BrewCauldron extends Component {
             if (this.timer >= this.brewDur) {
                 this.brewing = false;
                 const r = this.pending; this.pending = null;
+                const qty = Math.max(1, this.pendingQty); this.pendingQty = 1;
                 if (r) {
-                    PotionRecipes.produce(r);
-                    Quests.record('brew', r.name, 1);
-                    DailyLog.recordBrew(1);              // 記進今日煉製量
-                    this.popup(`＋${r.name}`);
+                    PotionRecipes.produce(r, qty);
+                    Quests.record('brew', r.name, qty);
+                    DailyLog.recordBrew(qty);            // 記進今日煉製量
+                    this.popup(qty > 1 ? `＋${r.name} ×${qty}` : `＋${r.name}`);
                 }
                 this.showFrame(0);
             }

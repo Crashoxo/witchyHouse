@@ -5,12 +5,15 @@ import { UIState } from './UIState';
 import { GameArt } from './GameArt';
 import { PotionRecipes, Recipe } from './PotionRecipes';
 import { Inventory } from './Inventory';
+import { Storage } from './Storage';
 import { BrewCauldron } from './BrewCauldron';
 const { ccclass } = _decorator;
 
 /**
  * 調配藥水面板（modal，ensure 自動生，仿 ShopPanel）。列出所有配方：成品圖示、名稱、
- * 售價、所需材料（夠＝綠、不夠＝紅），材料足夠才能按「製作」。按下＝關面板、鍋爐開始熬煮動畫。
+ * 售價、所需材料（夠＝綠、不夠＝紅），以及 ×1／×5／最大 三顆份量鈕。按下＝關面板、
+ * 鍋爐熬**一次**動畫、結束時一口氣產出那一批（做 10 份不用看 10 遍動畫）。
+ * 「有幾個」與扣料都算**背包＋倉庫**（材料進城鎮會自動歸位到倉庫）。
  */
 @ccclass('BrewPanel')
 export class BrewPanel extends Component {
@@ -28,7 +31,12 @@ export class BrewPanel extends Component {
 
     private root: Node | null = null;
     private cauldron: BrewCauldron | null = null;
-    private rows: Array<{ r: Recipe; inputLbl: Label; btn: Node; btnG: Graphics; btnLbl: Label }> = [];
+    /** 一列：材料需求文字 ＋ 三顆份量鈕（×1／×5／最大）。 */
+    private rows: Array<{
+        r: Recipe;
+        inputLbl: Label;
+        btns: Array<{ batch: 1 | 5 | 0; g: Graphics; lbl: Label; w: number; h: number }>;
+    }> = [];
 
     private readonly panelW = 660;
     private readonly headerH = 74;
@@ -73,21 +81,28 @@ export class BrewPanel extends Component {
         UIState.modalOpen = false;
     }
 
-    // ---- 依背包材料更新每列（材料夠不夠、製作鈕亮不亮）----
+    // ---- 依現有材料更新每列（夠不夠、哪幾顆份量鈕亮得起來）----
     private refresh() {
-        const inv = Inventory.ensure();
+        Inventory.ensure();
         for (const row of this.rows) {
-            const ok = PotionRecipes.canCraft(row.r);
-            const parts = Object.keys(row.r.inputs).map(m => {
-                const have = inv?.countOf(m) ?? 0;
-                return `${m}×${row.r.inputs[m]}(有${have})`;
-            });
+            const max = PotionRecipes.maxCraftable(row.r);
+            // ⚠️「有幾個」要算背包＋倉庫 —— 材料進城鎮會自動歸位到倉庫，只報背包的話
+            // 會出現「明明做得出來卻寫材料不夠」。
+            const parts = Object.keys(row.r.inputs).map(m =>
+                `${m}×${row.r.inputs[m]}(有${Storage.availableOf(m)})`);
             row.inputLbl.string = parts.join('  ');
-            row.inputLbl.color = ok ? new Color(150, 220, 160, 255) : new Color(224, 150, 150, 255);
-            row.btnG.fillColor = ok ? new Color(78, 118, 92, 255) : new Color(70, 66, 78, 255);
-            row.btnG.clear();
-            this.roundRect(row.btnG, -46, -18, 92, 36, 8); row.btnG.fill(); row.btnG.stroke();
-            row.btnLbl.color = ok ? new Color(245, 245, 250, 255) : new Color(150, 145, 158, 255);
+            row.inputLbl.color = max > 0 ? new Color(150, 220, 160, 255) : new Color(224, 150, 150, 255);
+
+            for (const b of row.btns) {
+                const qty = b.batch === 0 ? max : b.batch;      // batch 0 ＝「最大」那顆
+                const ok = qty > 0 && PotionRecipes.canCraft(row.r, qty);
+                b.lbl.string = b.batch === 0 ? `×${Math.max(1, max)}` : `×${b.batch}`;
+                b.lbl.color = ok ? new Color(245, 245, 250, 255) : new Color(150, 145, 158, 255);
+                b.g.fillColor = ok ? new Color(78, 118, 92, 255) : new Color(70, 66, 78, 255);
+                b.g.clear();
+                this.roundRect(b.g, -b.w / 2, -b.h / 2, b.w, b.h, 8);
+                b.g.fill(); b.g.stroke();
+            }
         }
     }
 
@@ -168,7 +183,7 @@ export class BrewPanel extends Component {
             -this.panelW / 2 + 26, topY - 40, 260, Label.HorizontalAlign.LEFT);
         this.makeButton(panel, '✕', 40, 40, this.panelW / 2 - 34, topY - 34,
             new Color(120, 60, 70, 255), () => this.close());
-        this.makeLabel(panel, 'Esc 關閉 · 材料足夠才能製作', 15, new Color(180, 174, 190, 255),
+        this.makeLabel(panel, 'Esc 關閉 · 材料夠才按得動；×N 是一次熬幾份（材料算背包＋倉庫）', 15, new Color(180, 174, 190, 255),
             -this.panelW / 2 + 26, -panelH / 2 + 15, 400, Label.HorizontalAlign.LEFT);
 
         const rowsBox = new Node('Rows');
@@ -207,39 +222,57 @@ export class BrewPanel extends Component {
 
         // 名稱 + 售價
         this.makeLabel(row, r.name, 20, new Color(240, 238, 246, 255),
-            leftX + 58, 11, 150, Label.HorizontalAlign.LEFT);
+            leftX + 58, 11, 112, Label.HorizontalAlign.LEFT);
         this.makeLabel(row, `售價 ${r.sellPrice} 金`, 15, new Color(255, 224, 130, 255),
-            leftX + 58, -13, 150, Label.HorizontalAlign.LEFT);
+            leftX + 58, -13, 112, Label.HorizontalAlign.LEFT);
 
-        // 材料需求（refresh 填字/上色）
+        // 材料需求（refresh 填字/上色）。寬度縮到 200，右邊要留給三顆份量鈕。
         const inputLbl = this.makeLabel(row, '', 16, new Color(200, 200, 210, 255),
-            leftX + 214, 0, 280, Label.HorizontalAlign.LEFT);
+            leftX + 176, 0, 264, Label.HorizontalAlign.LEFT);
 
-        // 製作鈕
-        const btn = new Node('btn'); btn.layer = layer; row.addChild(btn);
-        btn.addComponent(UITransform).setContentSize(92, 36);
-        btn.setPosition(this.panelW / 2 - 66, 0, 0);
-        const btnG = btn.addComponent(Graphics);
-        btnG.lineWidth = 2; btnG.strokeColor = new Color(230, 220, 240, 160);
-        btnG.fillColor = new Color(78, 118, 92, 255);
-        this.roundRect(btnG, -46, -18, 92, 36, 8); btnG.fill(); btnG.stroke();
-        const bt = new Node('t'); bt.layer = layer; btn.addChild(bt);
-        bt.addComponent(UITransform).setContentSize(92, 36);
-        const btnLbl = bt.addComponent(Label);
-        btnLbl.string = '製作'; btnLbl.fontSize = 20; btnLbl.color = new Color(245, 245, 250, 255);
-        btnLbl.horizontalAlign = Label.HorizontalAlign.CENTER; btnLbl.verticalAlign = Label.VerticalAlign.CENTER;
-        const op = btn.addComponent(UIOpacity);
-        btn.on(Node.EventType.TOUCH_START, () => { op.opacity = 180; });
-        btn.on(Node.EventType.TOUCH_END, () => { op.opacity = 255; this.tryCraft(r); });
-        btn.on(Node.EventType.TOUCH_CANCEL, () => { op.opacity = 255; });
+        // 份量鈕：×1／×5／最大（最大那顆的字是實際能做的份數，refresh 時填）
+        const btns = [
+            this.craftButton(row, r, 1, 168, 48),
+            this.craftButton(row, r, 5, 220, 48),
+            this.craftButton(row, r, 0, 280, 58),
+        ];
 
-        this.rows.push({ r, inputLbl, btn, btnG, btnLbl });
+        this.rows.push({ r, inputLbl, btns });
     }
 
-    private tryCraft(r: Recipe) {
-        if (!PotionRecipes.canCraft(r)) { this.refresh(); return; }   // 材料不夠：不動作
+    /** 一顆份量鈕。batch 0 代表「最大」——按下時才去算現在能做幾份。 */
+    private craftButton(row: Node, r: Recipe, batch: 1 | 5 | 0, x: number, w: number) {
+        const layer = this.node.layer;
+        const h = 36;
+        const btn = new Node('btn' + batch); btn.layer = layer; row.addChild(btn);
+        btn.addComponent(UITransform).setContentSize(w, h);
+        btn.setPosition(x, 0, 0);
+        const g = btn.addComponent(Graphics);
+        g.lineWidth = 2; g.strokeColor = new Color(230, 220, 240, 160);
+        g.fillColor = new Color(78, 118, 92, 255);
+        this.roundRect(g, -w / 2, -h / 2, w, h, 8); g.fill(); g.stroke();
+        const bt = new Node('t'); bt.layer = layer; btn.addChild(bt);
+        bt.addComponent(UITransform).setContentSize(w, h);
+        const lbl = bt.addComponent(Label);
+        lbl.string = batch === 0 ? '×1' : `×${batch}`;
+        lbl.fontSize = 19; lbl.color = new Color(245, 245, 250, 255);
+        lbl.horizontalAlign = Label.HorizontalAlign.CENTER;
+        lbl.verticalAlign = Label.VerticalAlign.CENTER;
+        lbl.overflow = Label.Overflow.SHRINK;
+        const op = btn.addComponent(UIOpacity);
+        btn.on(Node.EventType.TOUCH_START, () => { op.opacity = 180; });
+        btn.on(Node.EventType.TOUCH_END, () => {
+            op.opacity = 255;
+            this.tryCraft(r, batch === 0 ? PotionRecipes.maxCraftable(r) : batch);
+        });
+        btn.on(Node.EventType.TOUCH_CANCEL, () => { op.opacity = 255; });
+        return { batch, g, lbl, w, h };
+    }
+
+    private tryCraft(r: Recipe, qty: number) {
+        if (qty <= 0 || !PotionRecipes.canCraft(r, qty)) { this.refresh(); return; }   // 材料不夠：不動作
         this.close();
-        this.cauldron?.startBrew(r);   // 關面板→鍋爐開始熬煮動畫→結束產出
+        this.cauldron?.startBrew(r, qty);   // 關面板→鍋爐熬一次動畫→結束一次產出 qty 份
     }
 
     // ---- 小工具（比照 ShopPanel）----
