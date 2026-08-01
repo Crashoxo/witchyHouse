@@ -20,8 +20,11 @@ const { ccclass } = _decorator;
 export class VillagerAnim extends Component {
     /** 每秒播幾幀（走路循環）。 */
     static readonly FPS = 8;
-    /** 原圖縮到畫面上的比例（0.7 時身高約 60~77px，跟女巫的 69px 差不多）。 */
-    static readonly SCALE = 0.7;
+    /**
+     * 原圖縮到畫面上的比例。0.8 時身高約 69~88px —— 比女巫的 69px 高一點點，
+     * 大人站在小女巫旁邊本來就該高一些（0.7 看起來太小隻）。
+     */
+    static readonly SCALE = 0.8;
 
     private villager = '';
     private scale = VillagerAnim.SCALE;
