@@ -34,6 +34,15 @@ export class BrewPanel extends Component {
     private readonly headerH = 74;
     private readonly rowH = 62;
     private readonly footerH = 28;
+    /**
+     * 一頁最多幾條配方。配方一多，整張面板就會比 640 高的畫面還高（頭尾會被切掉），
+     * 所以固定每頁 7 條、底下加一列翻頁鈕（同任務簿的作法）。
+     */
+    private readonly perPage = 7;
+    private readonly pagerH = 40;
+    private page = 0;
+    private rowsBox: Node | null = null;
+    private pageBox: Node | null = null;
 
     onLoad() {
         BrewPanel.instance = this;
@@ -55,7 +64,8 @@ export class BrewPanel extends Component {
         this.root!.active = true;
         UIState.modalOpen = true;
         if (!GameArt.ready) GameArt.onReady(() => this.refreshIcons());
-        this.refresh();
+        this.page = 0;
+        this.renderPage();
     }
 
     close() {
@@ -89,10 +99,47 @@ export class BrewPanel extends Component {
         });
     }
 
+    /** 換頁：把這一頁的配方重畫出來（列是每頁重建的，refresh 只更新字與按鈕）。 */
+    private renderPage() {
+        const box = this.rowsBox;
+        if (!box) return;
+        box.removeAllChildren();
+        this.rows.length = 0;
+        this.iconSprites.length = 0;
+
+        const all = PotionRecipes.all;
+        const pages = Math.max(1, Math.ceil(all.length / this.perPage));
+        this.page = Math.min(Math.max(0, this.page), pages - 1);
+        const from = this.page * this.perPage;
+        all.slice(from, from + this.perPage).forEach((r, i) =>
+            this.buildRow(box, r, -i * this.rowH - this.rowH / 2 + 6));
+
+        this.buildPager(pages);
+        this.refresh();
+    }
+
+    private buildPager(pages: number) {
+        const box = this.pageBox;
+        if (!box) return;
+        box.removeAllChildren();
+        if (pages <= 1) return;
+        if (this.page > 0) {
+            this.makeButton(box, '<', 46, 32, -96, 0, new Color(72, 60, 88, 255),
+                () => { this.page--; this.renderPage(); });
+        }
+        this.makeLabel(box, `第 ${this.page + 1} / ${pages} 頁`, 17,
+            new Color(214, 206, 226, 255), 0, 0, 160, Label.HorizontalAlign.CENTER);
+        if (this.page < pages - 1) {
+            this.makeButton(box, '>', 46, 32, 96, 0, new Color(72, 60, 88, 255),
+                () => { this.page++; this.renderPage(); });
+        }
+    }
+
     private build() {
         const layer = this.node.layer;
-        const rowsH = PotionRecipes.all.length * this.rowH;
-        const panelH = this.headerH + rowsH + this.footerH;
+        const rowsH = Math.min(PotionRecipes.all.length, this.perPage) * this.rowH;
+        const paged = PotionRecipes.all.length > this.perPage;
+        const panelH = this.headerH + rowsH + (paged ? this.pagerH : 0) + this.footerH;
 
         const root = new Node('Root');
         root.layer = layer;
@@ -124,7 +171,21 @@ export class BrewPanel extends Component {
         this.makeLabel(panel, 'Esc 關閉 · 材料足夠才能製作', 15, new Color(180, 174, 190, 255),
             -this.panelW / 2 + 26, -panelH / 2 + 15, 400, Label.HorizontalAlign.LEFT);
 
-        PotionRecipes.all.forEach((r, i) => this.buildRow(panel, r, topY - this.headerH - i * this.rowH - this.rowH / 2 + 6));
+        const rowsBox = new Node('Rows');
+        rowsBox.layer = layer;
+        panel.addChild(rowsBox);
+        rowsBox.addComponent(UITransform);
+        rowsBox.setPosition(0, topY - this.headerH, 0);
+        this.rowsBox = rowsBox;
+
+        const pageBox = new Node('Pager');
+        pageBox.layer = layer;
+        panel.addChild(pageBox);
+        pageBox.addComponent(UITransform);
+        pageBox.setPosition(0, -panelH / 2 + this.footerH + this.pagerH / 2, 0);
+        this.pageBox = pageBox;
+
+        this.renderPage();
     }
 
     private buildRow(parent: Node, r: Recipe, y: number) {

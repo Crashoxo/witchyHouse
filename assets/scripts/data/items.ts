@@ -39,6 +39,9 @@ export const ITEM_DESC: Record<string, string> = {
     薰衣草: '後花園採下的紫色花串，香得整個店都是味道。',
     毛地黃: '粉紫色的鐘形花，插在瓶裡好看，別拿來煮。',
     星鈴花: '花瓣夜裡會泛著微光，藥水鋪出的價錢最高。',
+    安眠藥水: '薰衣草熬的紫色藥水，睡前一小口，一夜無夢。',
+    花香水: '毛地黃蒸餾出的香水。不能喝，但鎮上的姑娘搶著要。',
+    星光藥劑: '星鈴花與藍莓調的夜空色藥劑，瓶底沉著會亮的細砂。',
 };
 
 /** 沒有專屬說明時的預設句。 */
@@ -50,4 +53,6 @@ export const POTION_ITEMS: Record<string, string> = {
     烈焰藥水: 'potion_red', 溫暖熱可可: 'cocoa_mug', 蜂蜜藥劑: 'amber_jug',
     黃金藥劑: 'gold_bottle', 夜影掃帚: 'broom_purple', 星光掃帚: 'broom_blue',
     羽翼掃帚: 'broom_white',
+    // 花做的藥水（圖是拿既有瓶子調色生的，見 scratchpad/gen_potions.py）
+    安眠藥水: 'potion_lavender', 花香水: 'perfume_rose', 星光藥劑: 'potion_star',
 };

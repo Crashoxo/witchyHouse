@@ -21,4 +21,8 @@ export const RECIPES: Recipe[] = [
     { name: '夜影掃帚',   inputs: { 木材: 3, 樹枝: 2, 黑莓: 1 },   sellPrice: 120, brewSeconds: 3.0 },
     { name: '星光掃帚',   inputs: { 木材: 3, 樹枝: 2, 藍莓: 2 },   sellPrice: 140, brewSeconds: 3.0 },
     { name: '羽翼掃帚',   inputs: { 木材: 3, 樹枝: 3, 金蘋果: 1 }, sellPrice: 160, brewSeconds: 3.2 },
+    // 後花園的花做的三支 —— 花本身就值錢，所以成品價訂得比「材料直接賣」再高一截
+    { name: '安眠藥水',   inputs: { 薰衣草: 2, 藥草: 1 },          sellPrice: 110, brewSeconds: 2.6 },
+    { name: '花香水',     inputs: { 毛地黃: 2, 漿果: 1 },          sellPrice: 125, brewSeconds: 2.6 },
+    { name: '星光藥劑',   inputs: { 星鈴花: 1, 藍莓: 2 },          sellPrice: 175, brewSeconds: 3.0 },
 ];
