@@ -94,7 +94,3 @@ CocosCreator.exe --project <專案路徑> --build "configPath=buildConfig-web-mo
 ## 改完之後
 
 作者的慣例是功能改動要同步更新兩處玩家看得到的說明：`README.md` 的「更新紀錄」章節，以及遊戲內公告板 `UpdatePanel.ts` 的 `UPDATE_LINES`（＋上方的日期）。做了玩家有感的改動時記得一起改。
-
-## Git
-
-`origin` 是 `amux2048/witchyHouse`，這是 `Crashoxo/witchyHouse` 的 fork。要送回上游時 base 選 `Crashoxo/witchyHouse:main`、head 選本 fork 的分支。
