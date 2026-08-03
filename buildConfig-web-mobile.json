@@ -47,7 +47,9 @@
     { "url": "db://assets/brew.scene", "uuid": "d40b5100-0001-4d00-8b00-d40b51000001" },
     { "url": "db://assets/main.scene", "uuid": "b2695186-4bb6-469e-a8a9-eb91568367cf" },
     { "url": "db://assets/town.scene", "uuid": "c2695186-4bb6-469e-a8a9-eb91568367cf" },
-    { "url": "db://assets/shop.scene", "uuid": "d30b5100-0001-4b00-8c00-d30b51000001" }
+    { "url": "db://assets/shop.scene", "uuid": "d30b5100-0001-4b00-8c00-d30b51000001" },
+    { "url": "db://assets/garden.scene", "uuid": "d50b5100-0001-4e00-8a00-d50b51000001" },
+    { "url": "db://assets/candy.scene", "uuid": "d60b5100-0001-4e00-8a00-d60b51000001" }
   ],
   "wasmCompressionMode": false,
   "binGroupConfig": {
