@@ -249,8 +249,8 @@ export class PlayerController extends Component {
         this.node.parent!.addChild(spell);                   // 生在角色的同一層
         spell.setPosition(this.node.position);
         spell.getComponent(SpellProjectile)?.fire(this.facing);
-        // 施法姿勢（正面圖，不翻面）；一移動就自動取消
-        const f = GameArt.cast();
-        if (f) this.getComponent(CharacterAnimator)?.playOneShot([f], 0.4, 0, true);
+        // 施法動畫（新圖 6 幀，舊圖只有一張姿勢）；一移動就自動取消
+        const f = GameArt.castFrames();
+        if (f.length) this.getComponent(CharacterAnimator)?.playOneShot(f, 0.5, 0, true);
     }
 }

@@ -86,20 +86,50 @@ const flowers = new Map<string, SpriteFrame[][]>(); // 花名 → [健康/枯萎
 let castFrame: SpriteFrame | null = null;           // 女巫施法姿勢（正面）
 let sleepingFrame: SpriteFrame | null = null;       // 女巫睡覺立繪（含床）
 
+// ──────────── 女巫本人（chibi 像素圖集）────────────
+
 /**
- * 換裝：`resources/witch/<造型 id>/` 底下放的是同一批姿勢的改色版。
- * 有載入造型時，下面這幾組會蓋掉預設那批（accessor 自己判斷），所以**呼叫端完全不用改**。
- * 走路/待機原本是 CharacterAnimator 在場景裡用 @property 指定的，因此多開 walk/idle 兩個。
+ * `resources/witch8/<造型>.png` 的排法（由 tools/export_witch8.py 產生）：
+ *   列 0      站姿，欄＝方向
+ *   列 1..8   走路，列 1+d ＝方向 d，欄＝動畫幀
+ *   列 9      施法 6 幀（只有正面）
+ *   列 10     蹲下 5 幀（只有正面）＝採集／摘花／澆水共用
+ * 方向索引見 WitchDir。睡覺立繪（含床）是另一張 `witch8/<造型>-sleep.png`。
  */
-const WALK_FRAMES = 5;
-const oWalk: SpriteFrame[] = [];
-const oGather: SpriteFrame[] = [];
-const oWater: SpriteFrame[] = [];
-const oPick: SpriteFrame[] = [];
-let oIdle: SpriteFrame | null = null;
-let oCast: SpriteFrame | null = null;
-let oSleeping: SpriteFrame | null = null;
-let outfitId = '';                                  // ''＝預設造型（用原本那批圖）
+const W8_COLS = 8;
+const W8_ROWS = 11;
+const W8_ROW_WALK = 1;
+const W8_ROW_CAST = 9;
+const W8_ROW_CROUCH = 10;
+const W8_CAST_FRAMES = 6;
+const W8_CROUCH_FRAMES = 5;
+
+/**
+ * 方向索引：0 南（下）起、每 45° 逆時針一格。
+ * 對應圖集的欄：south, south-east, east, north-east, north, north-west, west, south-west。
+ */
+export const WITCH_DIRS = 8;
+export const WitchDir = { SOUTH: 0, EAST: 2, NORTH: 4, WEST: 6 };
+
+/**
+ * 女巫節點的縮放：格子 53px 高、可見身高 46px → 畫面上 69px，跟村民與舊版女巫等高，
+ * 所以場景裡調好的互動半徑/可走範圍都不用重調。**場景檔裡的 scale 由程式覆蓋**
+ * （CharacterAnimator 套用），六個場景一個都不用改。
+ */
+export const WITCH_SCALE = 1.5;
+
+let w8Idle: SpriteFrame[] = [];        // [方向]
+let w8Walk: SpriteFrame[][] = [];      // [方向][幀]
+let w8Cast: SpriteFrame[] = [];        // 施法
+let w8Crouch: SpriteFrame[] = [];      // 蹲下（採集/摘花/澆水）
+let w8Sleep: SpriteFrame | null = null;
+
+/**
+ * 換裝：`resources/witch8/<造型 id>.png` 是同一張圖集的袍子改色版。
+ * 換裝時整張圖集換掉，所以下面的 accessor 一律直接讀 w8*，呼叫端完全不用改。
+ * （舊手繪女巫的三套造型圖 `resources/witch/{green,brown,ivory}/` 已經不再載入。）
+ */
+let outfitId = '';                                  // ''＝預設造型
 let dialogueBoxFrame: SpriteFrame | null = null;    // 對話框外框
 let brewRoomDayFrame: SpriteFrame | null = null;    // 藥水室背景（白天）
 let brewRoomNightFrame: SpriteFrame | null = null;  // 藥水室背景（夜晚）
@@ -153,19 +183,6 @@ function loadImg(map: Map<string, SpriteFrame>, key: string, path: string): void
     });
 }
 
-/**
- * 同 loadSingle，但**載不到不當錯**（只留一行提示）。
- * 造型資料夾是「缺哪張就沿用預設哪張」的設計，之後手繪版只補幾張也不會噴一排紅字。
- */
-function loadGuarded(path: string, set: (sf: SpriteFrame) => void): void {
-    pending++;
-    resources.load(path, ImageAsset, (err, img) => {
-        if (!err && img) set(SpriteFrame.createWithImage(img));
-        else console.log(`[GameArt] 造型缺圖，沿用預設：${path}`);
-        jobDone();
-    });
-}
-
 /** 載入單張圖，用 setter 收（給 castFrame 等單一 frame 用）。 */
 function loadSingle(path: string, set: (sf: SpriteFrame) => void): void {
     pending++;
@@ -203,6 +220,53 @@ function loadEmote(name: string): void {
             }
             emotes.set(name, arr);
         } else console.warn(`[GameArt] 載入失敗 emotes/${name}`, err);
+        jobDone();
+    });
+}
+
+/**
+ * 載入女巫圖集，依 W8_* 的排法切成站姿/走路/施法/蹲下。
+ * @param id 造型 id（''＝預設那張 base.png）
+ *
+ * ⚠️ 用 w8Seq 擋掉晚到的回呼：預載（base）與換裝（造型）可能同時在飛，
+ * 沒擋的話先發後到的 base 會把剛換好的造型蓋回去。
+ */
+let w8Seq = 0;
+function loadWitch8(id: string): void {
+    const file = id || 'base';
+    const seq = ++w8Seq;
+    const mine = () => w8Seq === seq;
+    pending++;
+    resources.load(`witch8/${file}`, ImageAsset, (err, img) => {
+        if (!err && img && mine()) {
+            const tex = SpriteFrame.createWithImage(img).texture;
+            const cw = img.width / W8_COLS, ch = img.height / W8_ROWS;
+            const cut = (c: number, r: number) => {
+                const sf = new SpriteFrame();
+                sf.texture = tex;
+                sf.rect = new Rect(c * cw, r * ch, cw, ch);
+                return sf;
+            };
+            const idle: SpriteFrame[] = [], walk: SpriteFrame[][] = [];
+            for (let d = 0; d < WITCH_DIRS; d++) {
+                idle.push(cut(d, 0));
+                const fr: SpriteFrame[] = [];
+                for (let c = 0; c < W8_COLS; c++) fr.push(cut(c, W8_ROW_WALK + d));
+                walk.push(fr);
+            }
+            const cast: SpriteFrame[] = [], crouch: SpriteFrame[] = [];
+            for (let c = 0; c < W8_CAST_FRAMES; c++) cast.push(cut(c, W8_ROW_CAST));
+            for (let c = 0; c < W8_CROUCH_FRAMES; c++) crouch.push(cut(c, W8_ROW_CROUCH));
+            w8Idle = idle; w8Walk = walk; w8Cast = cast; w8Crouch = crouch;
+        } else if (err) console.warn(`[GameArt] 載入失敗 witch8/${file}`, err);
+        jobDone();
+    });
+    // 睡覺立繪是另一張（含床，裁切框跟角色不一樣）
+    const sleepFile = id ? `${id}-sleep` : 'sleep';
+    pending++;
+    resources.load(`witch8/${sleepFile}`, ImageAsset, (err, img) => {
+        if (!err && img && mine()) w8Sleep = SpriteFrame.createWithImage(img);
+        else if (err) console.warn(`[GameArt] 載入失敗 witch8/${sleepFile}`, err);
         jobDone();
     });
 }
@@ -274,6 +338,11 @@ function loadGroup(name: string): void {
         loadSingle('ui/dialogue-box', sf => { dialogueBoxFrame = sf; });
         loadSingle('ui/quest-scroll', sf => { questScrollFrame = sf; });
         loadSingle('ui/update-frame', sf => { updateFrameArt = sf; });
+        // 女巫本人：站姿/走路/施法/蹲下/睡覺，一張圖集。
+        // ⚠️ 要看 w8Seq —— PlayerController.onLoad 的 Outfits.apply() 比 CharacterAnimator
+        //    的 preload() **早**跑（元件順序），造型已經在載了就不能再發一次 base 把它蓋掉。
+        if (w8Seq === 0) loadWitch8(outfitId);
+        // 舊手繪女巫的施法/睡覺/採集姿勢：只在圖集載不到時墊底
         loadSingle('witch/cast', sf => { castFrame = sf; });
         loadSingle('witch/sleeping', sf => { sleepingFrame = sf; });
         gather.length = GATHER_FRAMES;
@@ -325,29 +394,30 @@ export const GameArt = {
     applyOutfit(id: string): void {
         if (id === outfitId) return;
         outfitId = id;
-        oWalk.length = 0; oGather.length = 0; oWater.length = 0; oPick.length = 0;
-        oIdle = oCast = oSleeping = null;
-        if (!id) return;
-
         started = true;
-        const mine = () => outfitId === id;          // 換過造型就丟掉晚到的結果
-        oWalk.length = WALK_FRAMES;
-        for (let i = 0; i < WALK_FRAMES; i++) loadGuarded(`witch/${id}/walk${i + 1}`, sf => { if (mine()) oWalk[i] = sf; });
-        oGather.length = GATHER_FRAMES;
-        for (let i = 0; i < GATHER_FRAMES; i++) loadGuarded(`witch/${id}/gather${i + 1}`, sf => { if (mine()) oGather[i] = sf; });
-        oWater.length = WATER_FRAMES;
-        for (let i = 0; i < WATER_FRAMES; i++) loadGuarded(`witch/${id}/water${i + 1}`, sf => { if (mine()) oWater[i] = sf; });
-        oPick.length = PICK_FRAMES;
-        for (let i = 0; i < PICK_FRAMES; i++) loadGuarded(`witch/${id}/pick${i + 1}`, sf => { if (mine()) oPick[i] = sf; });
-        loadGuarded(`witch/${id}/idle`, sf => { if (mine()) oIdle = sf; });
-        loadGuarded(`witch/${id}/cast`, sf => { if (mine()) oCast = sf; });
-        loadGuarded(`witch/${id}/sleeping`, sf => { if (mine()) oSleeping = sf; });
+        loadWitch8(id);          // 造型＝同一張圖集的改色版，整張換掉
     },
 
-    /** 造型的走路幀（預設造型回空陣列＝沿用場景裡指定的那批）。 */
-    walkFrames(): SpriteFrame[] { return oWalk.filter(Boolean); },
-    /** 造型的待機圖（預設造型回 null）。 */
-    idle(): SpriteFrame | null { return oIdle; },
+    /** 女巫圖集載好了沒（沒好的話 CharacterAnimator 會先用場景指定的舊圖）。 */
+    witchReady(): boolean { return w8Idle.length > 0; },
+
+    /** 某個方向的站姿（dir 見 WitchDir；未載入回 null）。 */
+    witchIdle(dir: number): SpriteFrame | null {
+        return w8Idle[((dir % WITCH_DIRS) + WITCH_DIRS) % WITCH_DIRS] ?? null;
+    },
+
+    /** 某個方向的走路幀（未載入回空陣列）。 */
+    witchWalk(dir: number): SpriteFrame[] {
+        return w8Walk[((dir % WITCH_DIRS) + WITCH_DIRS) % WITCH_DIRS] ?? [];
+    },
+
+    /** 施法動畫幀（新圖 6 幀；沒有圖集時退回舊的單張姿勢）。 */
+    castFrames(): SpriteFrame[] {
+        if (w8Cast.length) return w8Cast;
+        const f = castFrame;
+        return f ? [f] : [];
+    },
+
 
     /**
      * 開始預載（重複呼叫安全）。依「目前場景名」載入 common ＋該場景的區域組；
@@ -373,7 +443,8 @@ export const GameArt = {
 
     /**
      * 村民某個面向的走路幀（VillagerDir.DOWN / SIDE / UP；未載入回空陣列）。
-     * 側面一律朝左，往右走請把節點 scale.x 取負（同女巫的作法）。
+     * 側面一律朝左，往右走請把節點 scale.x 取負。
+     * （女巫本人已改用八方向圖集，不再翻面 —— 村民這批仍是三向＋翻面。）
      */
     villagerFrames(name: string, dir: number): SpriteFrame[] {
         const rows = villagers.get(name);
@@ -409,20 +480,22 @@ export const GameArt = {
     /** 鍋爐熬煮動畫幀（0..5；未載入回空陣列）。 */
     cauldronFrames(): SpriteFrame[] { return cauldron.filter(Boolean); },
 
-    /** 女巫採集動畫幀（0..2；未載入回空陣列）。 */
-    /** 採集三幀。有換造型就用造型版（下面 water/pick/cast/sleeping 同理）。 */
+    /**
+     * 採集動畫幀。新圖的「蹲下」5 幀是採集／摘花／澆水共用的
+     * （下面 water/pick 都回同一批）；沒有圖集時才退回各自的舊手繪幀。
+     */
     gatherFrames(): SpriteFrame[] {
-        return oGather.filter(Boolean).length ? oGather.filter(Boolean) : gather.filter(Boolean);
+        return w8Crouch.length ? w8Crouch : gather.filter(Boolean);
     },
 
-    /** 女巫澆水動畫幀（0..3；未載入回空陣列）。 */
+    /** 女巫澆水動畫幀。 */
     waterFrames(): SpriteFrame[] {
-        return oWater.filter(Boolean).length ? oWater.filter(Boolean) : water.filter(Boolean);
+        return w8Crouch.length ? w8Crouch : water.filter(Boolean);
     },
 
-    /** 女巫摘花動畫幀（0..3；未載入回空陣列）。 */
+    /** 女巫摘花動畫幀。 */
     pickFrames(): SpriteFrame[] {
-        return oPick.filter(Boolean).length ? oPick.filter(Boolean) : pick.filter(Boolean);
+        return w8Crouch.length ? w8Crouch : pick.filter(Boolean);
     },
 
     /** 土壤磚（'soil-dry' / 'soil-wet'；未載入回 null）。 */
@@ -444,11 +517,11 @@ export const GameArt = {
     /** 糖果鎮的角色/小動物圖（檔名同 resources/candy/）。 */
     candy(name: string): SpriteFrame | null { return candyArt.get(name) ?? null; },
 
-    /** 女巫施法姿勢（正面；未載入回 null）。 */
-    cast(): SpriteFrame | null { return oCast ?? castFrame; },
+    /** 女巫施法姿勢（第一幀；未載入回 null）。動畫請用 castFrames()。 */
+    cast(): SpriteFrame | null { return w8Cast[0] ?? castFrame; },
 
     /** 女巫睡覺立繪（含床，睡覺過場用；未載入回 null）。 */
-    sleeping(): SpriteFrame | null { return oSleeping ?? sleepingFrame; },
+    sleeping(): SpriteFrame | null { return w8Sleep ?? sleepingFrame; },
 
     /** 藥水室背景（night=true 回夜晚版；未載入回 null）。 */
     brewRoom(night: boolean): SpriteFrame | null { return (night ? brewRoomNightFrame : brewRoomDayFrame); },

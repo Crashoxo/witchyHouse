@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, UITransform, Label, Sprite, Color, Graphics,
+import { _decorator, Component, Node, UITransform, Label, Sprite, SpriteFrame, Color, Graphics,
          UIOpacity, BlockInputEvents, director, view, tween, find } from 'cc';
 import { GameArt } from './GameArt';
 import { UIState } from './UIState';
@@ -85,21 +85,27 @@ export class SleepOverlay extends Component {
         g.fillColor = new Color(8, 6, 16, 255);
         g.rect(-W / 2, -H / 2, W, H); g.fill();
 
-        // 睡覺立繪（等比縮到約 55% 螢幕高）
+        // 睡覺立繪。**高度先定死**（約半個螢幕）再把圖等比塞進去 —— 美術是非同步載入的，
+        // 晚到才換圖時尺寸也要跟著換（新舊兩張的長寬比不一樣，只換圖會被拉扁）。
+        const dispH = Math.round(H * 0.5);
         const wn = new Node('witch'); wn.layer = layer; this.node.addChild(wn);
         const wut = wn.addComponent(UITransform);
         const sp = wn.addComponent(Sprite); sp.sizeMode = Sprite.SizeMode.CUSTOM;
-        const wf = GameArt.sleeping();
-        let ww = 242, wh = 254;
-        if (wf) { ww = wf.rect.width; wh = wf.rect.height; sp.spriteFrame = wf; }
-        const scale = Math.min(W * 0.5 / ww, H * 0.55 / wh);
-        const dispH = wh * scale;
-        wut.setContentSize(ww * scale, dispH);
+        const fit = (f: SpriteFrame | null) => {
+            if (!f || !sp.isValid) return;
+            sp.spriteFrame = f;
+            // 像素畫（小圖）只用整數倍放大，不然會有的像素 1px、有的 2px
+            let k = dispH / f.rect.height;
+            if (f.rect.height <= 96) k = Math.max(1, Math.floor(k));
+            wut.setContentSize(f.rect.width * k, f.rect.height * k);
+        };
+        wut.setContentSize(dispH, dispH);
+        fit(GameArt.sleeping());
         wn.setPosition(0, 20, 0);
-        GameArt.onReady(() => { const f = GameArt.sleeping(); if (f && sp.isValid) sp.spriteFrame = f; });
+        GameArt.onReady(() => fit(GameArt.sleeping()));
 
         // Zzz（女巫上方）＋ 昏倒說明（上方）＋ 醒來訊息（下方）
-        this.makeLabel('Zzz…', 40, new Color(225, 225, 255, 255), -ww * scale * 0.28, 20 + dispH / 2 + 4);
+        this.makeLabel('Zzz…', 40, new Color(225, 225, 255, 255), -dispH * 0.28, 20 + dispH / 2 + 4);
         if (collapsed) {
             this.makeLabel('你撐到半夜，就這樣睡著了…', 24, new Color(232, 170, 160, 255),
                 0, H * 0.30);

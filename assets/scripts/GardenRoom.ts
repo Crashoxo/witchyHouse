@@ -1,6 +1,6 @@
 import { _decorator, Component, Node, UITransform, Sprite,
          Vec3, input, Input, EventKeyboard, KeyCode, find } from 'cc';
-import { GameArt } from './GameArt';
+import { GameArt, WITCH_SCALE } from './GameArt';
 import { Garden } from './Garden';
 import { Inventory } from './Inventory';
 import { UIState } from './UIState';
@@ -26,9 +26,11 @@ const { ccclass } = _decorator;
  */
 
 const REACH = 90;              // 玩家離花圃多近才能操作（像素）
-/** 澆花器壺口相對女巫腳底的位置（見 spoutPos 的算法；未翻面時壺在她左手邊）。 */
+/** 舊手繪圖：澆花器壺口相對女巫腳底的位置（見 spoutPos 的算法；未翻面時壺在她左手邊）。 */
 const SPOUT_DX = (22 - 110.5) * 0.35;      // ≈ -31
 const SPOUT_DY = (196 - 166) * 0.35;       // ≈ +10.5
+/** 新 chibi 圖：蹲下那幾幀兩手伸在身體正前方，離腳底約 15px（格子座標）。 */
+const SPOUT8_DY = 15 * WITCH_SCALE;        // ≈ 22
 
 @ccclass('GardenRoom')
 export class GardenRoom extends Component {
@@ -193,15 +195,19 @@ export class GardenRoom extends Component {
     }
 
     /**
-     * 澆花器壺口現在在哪（Props 座標，跟花圃同一層）。
+     * 水從哪裡出來（Props 座標，跟花圃同一層）。
      *
-     * 女巫的圖是 221×196 的畫布、錨點在腳底正中、節點 scale 0.35。澆水第 3 幀（把壺
-     * 傾倒的那格）壺嘴量到在畫布的 (22, 166) → 距離腳底 ((22-110.5), (196-166)) 像素，
-     * 乘上 0.35 就是節點座標的偏移。朝右時整個節點是翻面的（scale.x < 0），x 要跟著鏡射。
+     * 新的 chibi 圖沒有澆花器，蹲下那幾幀是兩手伸在身體正前方 → 水就從她身體中線
+     * 稍高的位置灑出去，八個方向都成立（新圖不翻面）。
+     *
+     * 舊手繪圖：畫布 221×196、錨點在腳底正中、節點 scale 0.35。澆水第 3 幀（把壺傾倒
+     * 的那格）壺嘴量到在畫布的 (22, 166) → 距離腳底 ((22-110.5), (196-166)) 像素，乘上
+     * 0.35 就是節點座標的偏移；朝右時整個節點是翻面的（scale.x < 0），x 要跟著鏡射。
      */
     private spoutPos(): Vec3 {
         const p = this.player;
         if (!p) return new Vec3();
+        if (GameArt.witchReady()) return new Vec3(p.position.x, p.position.y + SPOUT8_DY, 0);
         const flip = p.scale.x < 0 ? -1 : 1;
         return new Vec3(p.position.x + flip * SPOUT_DX, p.position.y + SPOUT_DY, 0);
     }
