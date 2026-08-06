@@ -150,7 +150,8 @@ export class GardenRoom extends Component {
             if (got) {
                 Inventory.ensure()?.add(got.name, got.count);
                 Quests.record('gather', got.name, got.count);
-                anim?.playOneShot(GameArt.pickFrames(), 0.9, faceX, true);
+                const dir = this.dirTo(plot);
+                anim?.playOneShot(GameArt.pickFrames(dir), 0.9, faceX, true, dir);
                 plot.popup(`＋${got.name} ×${got.count}`);
             }
         } else {
@@ -192,7 +193,8 @@ export class GardenRoom extends Component {
         }
         const anim = this.player?.getComponent(CharacterAnimator);
         const faceX = this.player ? plot.node.position.x - this.player.position.x : 0;
-        anim?.playOneShot(GameArt.pickFrames(), 0.7, faceX, true);
+        const dir = this.dirTo(plot);
+        anim?.playOneShot(GameArt.pickFrames(dir), 0.7, faceX, true, dir);
         plot.popup(`種下 ${seed}`);
         plot.refresh();
     }

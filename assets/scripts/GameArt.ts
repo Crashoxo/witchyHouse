@@ -93,21 +93,19 @@ let sleepingFrame: SpriteFrame | null = null;       // 女巫睡覺立繪（含�
  *   列 0       站姿，欄＝方向
  *   列 1..8    走路，列 1+d ＝方向 d，欄＝動畫幀
  *   列 9..16   跑步，列 9+d ＝方向 d，欄＝動畫幀
- *   列 17..24  施法，列 17+d ＝方向 d，欄＝動畫幀（6 幀）＝施法／澆水共用
- *   列 25      蹲下 5 幀（只有正面）＝採集／摘花／種花共用
+ *   列 17..24  施法，列 17+d ＝方向 d，欄＝動畫幀（6 幀）
  * 方向索引見 WitchDir。睡覺立繪（含床）是另一張 `witch8/<造型>-sleep.png`。
  *
- * ⚠️ 蹲下那一列還是**前一位（紫袍）女巫**的動畫 —— 新角色還沒做這段，
- * 等新圖進來再換（見 tools/export_witch8.py 的 legacy_pose 那段）。
+ * ⚠️ **施法那組是所有「動作」共用的**：施法、澆水、採集、摘花、種花。新角色沒有蹲下
+ * 的圖（使用者指定就用這組），所以圖集裡不再有前一位紫袍女巫的任何一格。
+ * 之後真的做了蹲下的八方向圖，再加回一段列並讓 gather/pick 改讀那組即可。
  */
 const W8_COLS = 8;
-const W8_ROWS = 26;
+const W8_ROWS = 25;
 const W8_ROW_WALK = 1;
 const W8_ROW_RUN = 9;
 const W8_ROW_CAST = 17;
-const W8_ROW_CROUCH = 25;
 const W8_CAST_FRAMES = 6;
-const W8_CROUCH_FRAMES = 5;
 
 /**
  * 方向索引：0 南（下）起、每 45° 逆時針一格。
@@ -127,9 +125,14 @@ export const WITCH_SCALE = 1.0;
 let w8Idle: SpriteFrame[] = [];        // [方向]
 let w8Walk: SpriteFrame[][] = [];      // [方向][幀]
 let w8Run: SpriteFrame[][] = [];       // [方向][幀]（衝刺）
-let w8Cast: SpriteFrame[][] = [];      // [方向][幀]（施法／澆水）
-let w8Crouch: SpriteFrame[] = [];      // 蹲下（採集/摘花/種花）
+let w8Cast: SpriteFrame[][] = [];      // [方向][幀]（施法／澆水／採集／摘花／種花共用）
+
 let w8Sleep: SpriteFrame | null = null;
+
+/** 動作動畫：某個方向那 6 幀（方向會夾回 0..7；還沒載入回空陣列）。 */
+function actionOf(dir: number): SpriteFrame[] {
+    return w8Cast[((dir % WITCH_DIRS) + WITCH_DIRS) % WITCH_DIRS] ?? [];
+}
 
 /**
  * 換裝：`resources/witch8/<造型 id>.png` 是同一張圖集的袍子改色版。
@@ -232,7 +235,7 @@ function loadEmote(name: string): void {
 }
 
 /**
- * 載入女巫圖集，依 W8_* 的排法切成站姿/走路/施法/蹲下。
+ * 載入女巫圖集，依 W8_* 的排法切成站姿/走路/跑步/施法。
  * @param id 造型 id（''＝預設那張 base.png）
  *
  * ⚠️ 用 w8Seq 擋掉晚到的回呼：預載（base）與換裝（造型）可能同時在飛，
@@ -266,9 +269,7 @@ function loadWitch8(id: string): void {
                 run.push(rn);
                 cast.push(ca);
             }
-            const crouch: SpriteFrame[] = [];
-            for (let c = 0; c < W8_CROUCH_FRAMES; c++) crouch.push(cut(c, W8_ROW_CROUCH));
-            w8Idle = idle; w8Walk = walk; w8Run = run; w8Cast = cast; w8Crouch = crouch;
+            w8Idle = idle; w8Walk = walk; w8Run = run; w8Cast = cast;
         } else if (err) console.warn(`[GameArt] 載入失敗 witch8/${file}`, err);
         jobDone();
     });
@@ -349,7 +350,7 @@ function loadGroup(name: string): void {
         loadSingle('ui/dialogue-box', sf => { dialogueBoxFrame = sf; });
         loadSingle('ui/quest-scroll', sf => { questScrollFrame = sf; });
         loadSingle('ui/update-frame', sf => { updateFrameArt = sf; });
-        // 女巫本人：站姿/走路/施法/蹲下/睡覺，一張圖集。
+        // 女巫本人：站姿/走路/跑步/施法/睡覺，一張圖集。
         // ⚠️ 要看 w8Seq —— PlayerController.onLoad 的 Outfits.apply() 比 CharacterAnimator
         //    的 preload() **早**跑（元件順序），造型已經在載了就不能再發一次 base 把它蓋掉。
         if (w8Seq === 0) loadWitch8(outfitId);
@@ -428,12 +429,19 @@ export const GameArt = {
     },
 
     /**
-     * 某個方向的施法動畫幀（新圖 8 方向各 6 幀；沒有圖集時退回舊的單張姿勢）。
+     * 某個方向的動作動畫幀（新圖 8 方向各 6 幀）。**施法／澆水／採集／摘花／種花共用**
+     * 這一組 —— 新角色只做了這一段動作動畫。
+     * @param dir 面向（見 WitchDir）
+     */
+    actionFrames(dir = WitchDir.SOUTH): SpriteFrame[] { return actionOf(dir); },
+
+    /**
+     * 某個方向的施法動畫幀（沒有圖集時退回舊的單張姿勢）。
      * @param dir 面向（見 WitchDir）
      */
     castFrames(dir = WitchDir.SOUTH): SpriteFrame[] {
-        const v = w8Cast[((dir % WITCH_DIRS) + WITCH_DIRS) % WITCH_DIRS];
-        if (v && v.length) return v;
+        const v = actionOf(dir);
+        if (v.length) return v;
         const f = castFrame;
         return f ? [f] : [];
     },
@@ -501,27 +509,30 @@ export const GameArt = {
     cauldronFrames(): SpriteFrame[] { return cauldron.filter(Boolean); },
 
     /**
-     * 採集動畫幀。「蹲下」5 幀是採集／摘花／種花共用的（pick 回同一批）；
-     * 沒有圖集時才退回各自的舊手繪幀。
-     * ⚠️ 這 5 幀還是前一位（紫袍）女巫 —— 新角色的蹲下圖還沒做。
+     * 採集動畫幀 ＝ 動作那一組（沒有圖集時退回舊手繪的蹲下幀）。
+     * @param dir 面向（見 WitchDir）
      */
-    gatherFrames(): SpriteFrame[] {
-        return w8Crouch.length ? w8Crouch : gather.filter(Boolean);
+    gatherFrames(dir = WitchDir.SOUTH): SpriteFrame[] {
+        const v = actionOf(dir);
+        return v.length ? v : gather.filter(Boolean);
     },
 
     /**
-     * 女巫澆水動畫幀 ＝ **借施法那組**（使用者指定：兩個動作共用一套八方向的圖）。
+     * 女巫澆水動畫幀 ＝ 動作那一組。
      * @param dir 面向（見 WitchDir）
      */
     waterFrames(dir = WitchDir.SOUTH): SpriteFrame[] {
-        const v = w8Cast[((dir % WITCH_DIRS) + WITCH_DIRS) % WITCH_DIRS];
-        if (v && v.length) return v;
-        return water.filter(Boolean);
+        const v = actionOf(dir);
+        return v.length ? v : water.filter(Boolean);
     },
 
-    /** 女巫摘花動畫幀。 */
-    pickFrames(): SpriteFrame[] {
-        return w8Crouch.length ? w8Crouch : pick.filter(Boolean);
+    /**
+     * 女巫摘花／種花動畫幀 ＝ 動作那一組。
+     * @param dir 面向（見 WitchDir）
+     */
+    pickFrames(dir = WitchDir.SOUTH): SpriteFrame[] {
+        const v = actionOf(dir);
+        return v.length ? v : pick.filter(Boolean);
     },
 
     /** 土壤磚（'soil-dry' / 'soil-wet'；未載入回 null）。 */

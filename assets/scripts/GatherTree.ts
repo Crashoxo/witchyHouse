@@ -105,13 +105,15 @@ export class GatherTree extends Component {
 
     // ---- 採集特效 ----
 
-    /** 女巫彎腰採集 + 樹搖晃 + 星星 + 材料飄出來。 */
+    /** 女巫伸手採集 + 樹搖晃 + 星星 + 材料飄出來。 */
     private playFx(item: string, qty: number) {
-        // 女巫：彎腰伸手 → 捏起 → 起身舉起（面向這棵樹）
+        // 女巫：轉向這棵樹伸手（新圖八個方向都有；舊圖只有正面，靠 dirX 翻面）
         const anim = this.player?.getComponent(CharacterAnimator);
         if (anim) {
             const dirX = this.node.position.x - (this.player?.position.x ?? 0);
-            anim.playOneShot(GameArt.gatherFrames(), 0.9, dirX);
+            const dirY = this.node.position.y - (this.player?.position.y ?? 0);
+            const dir = CharacterAnimator.dirOf(dirX, dirY);
+            anim.playOneShot(GameArt.gatherFrames(dir), 0.9, dirX, false, dir);
         }
         // 樹：以樹根為軸左右擺（錨點是 (0.5,0)）
         tween(this.node)

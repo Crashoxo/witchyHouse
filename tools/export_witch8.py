@@ -11,21 +11,23 @@
   art-src/witch-v2/walk/rotations                 8 方向站姿
   art-src/witch-v2/walk/animations/Walking/<dir>  走路 8 方向 ×8 幀
   art-src/witch-v2/run/animations/Running/<dir>   跑步 8 方向 ×8 幀
-  art-src/witch-v2/cast/animations/Fireball/<dir> 施法 8 方向 ×6 幀（澆水也用這組）
-  tools/legacy_pose.png                           前一位女巫的蹲下 5 幀
-                                                  （新圖還沒做，先頂著；見下面 LEGACY 那段）
+  art-src/witch-v2/cast/animations/Fireball/<dir> 施法 8 方向 ×6 幀
+                                                  （**澆水／採集／摘花／種花全部共用這組** ——
+                                                    新角色沒有蹲下的圖，使用者指定就用這組）
 
 ⚠️ 同一組動畫有時會匯出兩份方向（PixelLab 的重生成）：跑步的 north 取 `north-71d078af`
    （`north-f030d599` 整組是疊影壞圖）、施法的 north-west 取 `north-west-969deef6`
    （`north-west-fe5a5dbc` 每幀的帽子與身體都在跳）。
 
 輸出（resources/witch8/）
-  base.png    8 欄 × 26 列，格子大小一致：
+  base.png    8 欄 × 25 列，格子大小一致：
                 列 0       = 站姿，欄＝方向（south, SE, E, NE, N, NW, W, SW）
                 列 1..8    = 走路，列 1+d ＝方向 d，欄＝幀
                 列 9..16   = 跑步，列 9+d ＝方向 d，欄＝幀
                 列 17..24  = 施法，列 17+d ＝方向 d，欄＝幀（0..5）
-                列 25      = 蹲下 5 幀（欄 0..4）  ← 還是前一位女巫
+
+  `tools/legacy_pose.png` 是前一位（紫袍）女巫的施法＋蹲下 11 幀，**已經沒有人用了**，
+  留著純粹是因為她的來源資料夾早就被刪掉，那是僅存的一份。
   green/brown/ivory.png    換裝造型（緋紅緞邊改色版）
 
   睡覺立繪 `sleep.png` / `*-sleep.png` **這支腳本不再產生**：新角色沒有躺床的圖，
@@ -51,8 +53,8 @@ CAST_DIRS = dict((d, d) for d in DIRS)
 CAST_DIRS["north-west"] = "north-west-969deef6"  # 另一份 north-west-fe5a5dbc 每幀都在跳
 
 COLS = 8
-ROW_WALK, ROW_RUN, ROW_CAST, ROW_CROUCH = 1, 9, 17, 25
-ROWS = 26
+ROW_WALK, ROW_RUN, ROW_CAST = 1, 9, 17
+ROWS = 25
 PAD = 1
 
 def load(p):
@@ -82,43 +84,10 @@ foot = max(b[3] for b in boxes) - y0
 body = foot - (min(b[1] for b in boxes) - y0)
 print(f"格子 {CW}x{CH}（裁 {x0},{y0},{x1},{y1}）身高 {body}px、腳底 y={foot}（離底部 {CH-foot}px）")
 
-# ── 前一位女巫的蹲下（暫用）──
-# 新角色還沒有蹲下（採集／摘花／種花）的圖。這段動畫的來源資料夾已經被刪掉，只剩
-# legacy_pose.png，所以從那裡讀、**等比放大到跟新角色一樣高**再置中貼進格子裡
-# （不放大的話，一按 E 採集人就縮水一截）。新圖做好後，把這段連同 legacy_pose.png
-# 一起刪掉。（legacy_pose.png 的列 0 是前一位女巫的施法，現在用不到了。）
-LEGACY = os.path.join(TOOLS, "legacy_pose.png")
-legacy_crouch = []
-if os.path.exists(LEGACY):
-    strip = load(LEGACY)
-    lw, lh = strip.width // COLS, strip.height // 2
-    cells = [strip.crop((c * lw, r * lh, (c + 1) * lw, (r + 1) * lh))
-             for r in range(2) for c in range(COLS)]
-    lb = [im.getbbox() for im in cells if im.getbbox()]
-    ux0, uy0 = min(b[0] for b in lb), min(b[1] for b in lb)
-    ux1, uy1 = max(b[2] for b in lb), max(b[3] for b in lb)
-    k = body / (uy1 - uy0)                       # 放大倍率：舊身高 → 新身高
-    print(f"舊姿勢格子 {lw}x{lh}、身高 {uy1-uy0}px → 放大 {k:.2f} 倍")
-
-    def fit(im):
-        """把舊格子裁到內容、等比放大、置中且腳底對齊新格子。"""
-        crop = im.crop((ux0, uy0, ux1, uy1))
-        w, h = max(1, round(crop.width * k)), max(1, round(crop.height * k))
-        crop = crop.resize((w, h), Image.NEAREST)
-        cell = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
-        cell.paste(crop, ((CW - w) // 2, foot - h))
-        return cell
-
-    legacy_crouch = [fit(cells[COLS + c]) for c in range(5)]     # 列 1 的前 5 格
-else:
-    print("（沒有 legacy_pose.png，蹲下留白）")
-
 def build_sheet():
     sh = Image.new("RGBA", (COLS * CW, ROWS * CH), (0, 0, 0, 0))
-    def put_raw(im, c, r):                  # 已經是格子大小
-        sh.paste(im, (c * CW, r * CH))
     def put(im, c, r):                      # 116x116 來源，用共同裁切框裁
-        put_raw(im.crop((x0, y0, x1, y1)), c, r)
+        sh.paste(im.crop((x0, y0, x1, y1)), (c * CW, r * CH))
     for i, im in enumerate(rot):
         put(im, i, 0)
     for d, v in enumerate(walk):
@@ -130,8 +99,6 @@ def build_sheet():
     for d, v in enumerate(cast):
         for c, im in enumerate(v):
             put(im, c, ROW_CAST + d)
-    for c, im in enumerate(legacy_crouch):
-        put_raw(im, c, ROW_CROUCH)
     return sh
 
 base = build_sheet()
