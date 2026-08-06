@@ -9,9 +9,19 @@ Cocos Creator 3.8.8 的 2D 俯視角遊戲（女巫採集 × 商店經營），�
 
 ## 工具鏈：沒有 npm / 測試 / lint
 
-- `package.json` 是 **Cocos 專案描述檔**，不是 npm 專案：沒有 `scripts`、沒有 `dependencies`、沒有 `tsconfig.json`、沒有測試框架、沒有 CI。
-  **不要跑 `npm install` / `npm test` / `npx tsc`**，都不會有作用。
-- 唯一的驗證方式是用 Cocos Creator 3.8.8 開啟專案實際跑起來。在無編輯器的環境（例如純命令列 session）能做的是靜態閱讀與改碼，**改完要明說沒辦法實測**。
+- `package.json` 是 **Cocos 專案描述檔**，不是 npm 專案：沒有 `scripts`、沒有 `dependencies`、沒有測試框架、沒有 CI。
+  **不要跑 `npm install` / `npm test`**，不會有作用。
+- **型別檢查有辦法跑**（2026-08-07 加）：根目錄的 `tsconfig.check.json` 繼承 Cocos 自己產的
+  `temp/tsconfig.cocos.json`（所以 `temp/` 必須存在＝編輯器至少開過一次），指令：
+
+  ```
+  npx -p typescript@5.4.5 tsc -p tsconfig.check.json
+  ```
+
+  ⚠️ 那個檔**一定要放在根目錄**（引擎宣告是相對路徑 `./temp/declarations/cc`），且必須開
+  `skipLibCheck`（引擎自己的 `.d.ts` 一堆錯）。exit 0 才算過。
+- 這只驗編譯，**不驗跑起來對不對**。實際行為仍然要用 Cocos Creator 3.8.8 開起來跑；
+  在無編輯器的環境（例如純命令列 session）**改完要明說沒辦法實測**。
 - `library/`、`temp/`、`build/`、`.creator/` 都在 `.gitignore`，clone 下來不會有；第一次用編輯器開會重建，會花一段時間。
 
 ## 建置與發佈
@@ -25,7 +35,13 @@ CocosCreator.exe --project <專案路徑> --build "configPath=buildConfig-web-mo
 然後把 `build/web-mobile/` 的內容覆蓋到 `docs/`（保留 `.nojekyll`）並提交 —— GitHub Pages 由 `docs/` 發佈。
 `docs/` 全是建置產物，**不要手改**。
 
-⚠️ `buildConfig-web-mobile.json` 的 `scenes` 只列了 4 個場景（brew / main / town / shop），但實際發佈出去的建置含全部 6 個（`docs/assets/main/config.json` 可以看到另有 garden、candy）。**重建時務必把 6 個場景都納入**，漏了的話走去後花園或糖果鎮會載不到場景。
+⚠️ `buildConfig-web-mobile.json` 的 `scenes` 曾經只列 4 個場景，漏掉的 garden／candy 走過去就載不到 ——
+現在 repo 這份已經是完整 6 個（2026-08-04 修）。改建置設定時**先確認 6 個都在**，
+建完用 `docs/assets/main/config.json` 的 `scenes` 對一次數量。
+
+命令列建置在 PowerShell 要用 `Start-Process ... -Wait`（`& $exe` 會立刻回傳，看起來像秒建完），
+**exit code 36 ＝成功**。部署 `robocopy build\web-mobile docs /MIR`（exit 3 ＝成功），
+`/MIR` 會刪掉 `.nojekyll`，**記得補回來**。
 
 ## 程式風格
 
@@ -64,12 +80,20 @@ CocosCreator.exe --project <專案路徑> --build "configPath=buildConfig-web-mo
 - 分組載入：`common` 開機就載，其餘依 `SCENE_GROUPS` 按目前場景名決定。新增場景或素材要同步補 `SCENE_GROUPS` 與對應的檔名常數；拿不到場景名時會退回全載（寧可不省也不缺圖）。
 - 載入是非同步：呼叫端一律 `GameArt.preload()` ＋ `GameArt.onReady(cb)`，不要假設圖已經在。
 - 村民走路表固定是 4 欄 × 3 列（下／側／上，側面一律朝左，往右走靠翻面）。
+- **女巫本人**是另一套：`resources/witch8/<造型>.png` 一張圖集，**8 欄 × 25 列、格子 49×66**
+  （列 0 站姿／1–8 走路／9–16 跑步／17–24 施法，欄＝方向或幀，方向 0 ＝南、每 45° 逆時針一格）。
+  施法那組是**所有動作共用**的（施法／澆水／採集／摘花／種花）。圖集由 `tools/export_witch8.py`
+  從 `tools/art-src/witch-v2/` 產生，**可重跑**；換裝＝同一張圖集把緋紅緞邊改色（眼睛不動）。
+  ⚠️ 從圖集切出來的 `SpriteFrame` 其 `originalSize` 是整張圖，Sprite 一定要 **CUSTOM**＋
+  `setContentSize(格子大小)`，用 RAW 會被拉伸成整張那麼大。
 
 ### 場景與換場景
 
 6 個場景：`brew`（藥水室）、`main`（森林）、`town`（城鎮）、`shop`（自己的店）、`garden`（後花園）、`candy`（糖果鎮）。
 
-⚠️ 起始場景目前三處對不上：README 與 `buildConfig-web-mobile.json` 的 `startScene` 都是 `brew`（女巫的房間），但已發佈的 `docs/` 建置 `launchScene` 是 `db://assets/main.scene`（森林），程式裡也沒有開場轉場的程式碼。動到開場流程前先確認想要的是哪一個。
+起始場景是 `brew`（女巫的房間）：`buildConfig-web-mobile.json` 的 `startScene` 與已發佈建置的
+`launchScene`（`docs/src/settings.json` 的 `st['launch']['launchScene']`，**不是頂層的 launchScene**）
+現在一致。舊版 `docs/` 曾經是 `main`，那是設定沒補齊時建出來的。
 
 兩種傳送方式：
 
