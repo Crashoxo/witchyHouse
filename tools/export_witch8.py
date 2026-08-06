@@ -37,6 +37,8 @@
 角色的腳底與左右中心自動保持對齊，不用逐格對位。
 """
 import os, sys, colorsys
+import numpy as np
+from scipy import ndimage
 from PIL import Image
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -105,31 +107,59 @@ base = build_sheet()
 
 # ── 換裝：把緞邊的緋紅改色 ──
 # 新角色是黑袍，舊那套「紫色轉色相」完全沒東西可轉。這張圖只有 18 個顏色，
-# 紅色家族（H 335~360、S>0.35：帽帶、披風、緞帶、滾邊、寶石）佔 11%，改它最有效：
-# 黑袍與黑描邊不動（描邊被染色像素畫會很髒），皮膚是暖色 H<30 也不在區間內。
+# 紅色家族（H 335~12、S>0.35：帽帶、披風、緞帶、滾邊、寶石）佔 11%，改它最有效：
+# 黑袍與黑描邊不動（描邊被染色像素畫會很髒），皮膚是暖色 H<50 也不在區間內。
+#
+# ⚠️ **眼睛與嘴巴用的是跟緞邊一模一樣的那幾個紅**（量過：#4f1727/#622635/#901e33/#f75e73
+# 兩邊都出現），所以光看顏色分不出來，得靠位置與大小：**一整塊紅色，又小又碰得到皮膚
+# ＝五官，整塊留原色**（使用者要求換衣服不要換眼睛顏色）。
+# 只用「貼著皮膚」不夠 —— 眼睛外角那一格貼的是頭髮，會被漏掉染成綠色（踩過）；
+# 只用「往外長 2 圈」則會連領口的滾邊一起保住。所以是「連通塊」＋大小上限。
 RED_H = (335, 12)      # 跨過 0° 的區間：H>=335 或 H<=12
 RED_S = 0.35
+SKIN_H = (5, 50)       # 皮膚：暖色、不太飽和、夠亮
+SKIN_S = (0.12, 0.75)
+SKIN_V = 0.40
+FACE_BLOB_MAX = 14     # 一隻眼睛/一張嘴大概幾格；緞邊那些塊都比這大很多
+
+def _hsv(a):
+    """RGBA uint8 陣列 → (H 0..360, S, V)，全部向量化。"""
+    rgb = a[..., :3].astype(np.float32) / 255.0
+    mx, mn = rgb.max(2), rgb.min(2)
+    d = np.maximum(mx - mn, 1e-6)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    h = np.zeros_like(mx)
+    m = mx == r; h[m] = ((g - b)[m] / d[m]) % 6
+    m = (mx == g) & (mx != r); h[m] = ((b - r)[m] / d[m]) + 2
+    m = (mx == b) & (mx != r) & (mx != g); h[m] = ((r - g)[m] / d[m]) + 4
+    return h * 60, np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0), mx
 
 def recolor(im, hue, sat_mul=1.0, val_mul=1.0):
-    out = im.copy()
-    px = out.load()
-    w, h = out.size
-    for y in range(h):
-        for x in range(w):
-            r, g, b, a = px[x, y]
-            if a < 8:
-                continue
-            hh, ss, vv = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
-            deg = hh * 360
-            if not (deg >= RED_H[0] or deg <= RED_H[1]):
-                continue                       # 不是緋紅：黑袍、描邊、銀髮、皮膚
-            if ss < RED_S:
-                continue                       # 帶點紅的灰（陰影）：留著
-            ss = min(1.0, ss * sat_mul)
-            vv = min(1.0, vv * val_mul)
-            nr, ng, nb = colorsys.hsv_to_rgb(hue / 360.0, ss, vv)
-            px[x, y] = (round(nr * 255), round(ng * 255), round(nb * 255), a)
-    return out
+    a = np.array(im).copy()
+    h, s, v = _hsv(a)
+    op = a[..., 3] > 8
+    red = op & ((h >= RED_H[0]) | (h <= RED_H[1])) & (s > RED_S)
+    skin = (op & (h > SKIN_H[0]) & (h < SKIN_H[1])
+            & (s > SKIN_S[0]) & (s < SKIN_S[1]) & (v > SKIN_V))
+    # 五官：紅色連通塊裡「又小又碰得到皮膚」的那些，整塊保留
+    near_skin = ndimage.binary_dilation(skin, iterations=1)
+    lab, n = ndimage.label(red, structure=np.ones((3, 3), bool))
+    face = np.zeros_like(red)
+    if n:
+        sizes = ndimage.sum(red, lab, range(1, n + 1))
+        touches = ndimage.sum(near_skin & red, lab, range(1, n + 1))
+        keep = {i + 1 for i in range(n) if sizes[i] <= FACE_BLOB_MAX and touches[i] > 0}
+        if keep:
+            face = np.isin(lab, list(keep))
+    target = red & ~face
+    # 只有幾個紅色 → 查表換算，不必逐像素跑 colorsys
+    for col in np.unique(a[target][:, :3], axis=0):
+        _, ss, vv = colorsys.rgb_to_hsv(*(col / 255.0))
+        nr, ng, nb = colorsys.hsv_to_rgb(hue / 360.0,
+                                         min(1.0, ss * sat_mul), min(1.0, vv * val_mul))
+        m = target & np.all(a[..., :3] == col, axis=2)
+        a[m, 0], a[m, 1], a[m, 2] = round(nr * 255), round(ng * 255), round(nb * 255)
+    return Image.fromarray(a)
 
 # 對應 data/outfits.ts 既有的三個 id（存檔相容，只有顯示名稱換了）
 OUTFITS = {

@@ -252,15 +252,17 @@ export class PlayerController extends Component {
     }
 
     private cast() {
+        // ⚠️ 動作要先演，而且不受 spellPrefab 有沒有指定影響 —— 按了鍵人卻完全沒反應
+        // 是最難查的那種「壞掉了嗎？」。長度跟澆水一樣 0.9 秒，六幀才看得清楚。
+        const dir = CharacterAnimator.dirOf(this.facing.x, this.facing.y);
+        const frames = GameArt.castFrames(dir);
+        if (frames.length) {
+            this.getComponent(CharacterAnimator)?.playOneShot(frames, 0.9, 0, true, dir);
+        }
         if (!this.spellPrefab) return;
         const spell = instantiate(this.spellPrefab);
         this.node.parent!.addChild(spell);                   // 生在角色的同一層
         spell.setPosition(this.node.position);
         spell.getComponent(SpellProjectile)?.fire(this.facing);
-        // 施法動畫（新圖每個方向各 6 幀，舊圖只有一張姿勢）；一移動就自動取消。
-        // 方向取魔法彈飛出去的那個方向，人跟彈才會一致。
-        const dir = CharacterAnimator.dirOf(this.facing.x, this.facing.y);
-        const f = GameArt.castFrames(dir);
-        if (f.length) this.getComponent(CharacterAnimator)?.playOneShot(f, 0.5, 0, true, dir);
     }
 }
