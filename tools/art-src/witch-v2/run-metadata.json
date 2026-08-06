@@ -1,0 +1,129 @@
+{
+  "group_id": "ca92ff1a-ecca-4203-99c8-a6517e0bcf62",
+  "states": [
+    {
+      "character": {
+        "id": "5e77ae8f-0067-4f76-856e-94e28e22f6e9",
+        "name": "run",
+        "prompt": "\"A high-resolution, crisp pixel art sprite of an adorable, darkly elegant, and mystical female character, presented in a clean isometric view. Based precisely on the body structure and skin tone (light peach) of image_10.png. The character is now dressed in an elaborate, high-quality fusion of gothic Lolita fashion and witch's attire, featuring layers of deep black lace, rich charcoal gray fabric, and accents of deep crimson red bows, trim, and magical embroidery. She wears a classic, ornate black witch's pointed hat adorned with a small crescent moon charm, dark gems, and a twisted ribbon, replacing the bonnet. Her face structure is identical to image_10.png, but the expression has been enhanced to be bright, alert, and sparkling with lively energy, featuring striking, intense crimson red cat-style eyes that are \u70af\u70af\u6709\u795e (intensely sparkling and engaging). Flowing from under the witch's hat is a voluminous, wavy, long silver hair styled with curled ends. In one hand, she holds a small, intricately carved gnarled wooden staff topped with a glowing red crystal. The entire piece has soft, even lighting, highlighting the intricate pixel details against a transparent background.\"",
+        "size": {
+          "width": 116,
+          "height": 116
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-08-06T06:55:10.514511+00:00"
+      },
+      "folder": "run",
+      "frames": {
+        "rotations": {
+          "south": "run/rotations/south.png",
+          "south-east": "run/rotations/south-east.png",
+          "east": "run/rotations/east.png",
+          "north-east": "run/rotations/north-east.png",
+          "north": "run/rotations/north.png",
+          "north-west": "run/rotations/north-west.png",
+          "west": "run/rotations/west.png",
+          "south-west": "run/rotations/south-west.png"
+        },
+        "animations": {
+          "Running": {
+            "north-east": [
+              "run/animations/Running/north-east/frame_000.png",
+              "run/animations/Running/north-east/frame_001.png",
+              "run/animations/Running/north-east/frame_002.png",
+              "run/animations/Running/north-east/frame_003.png",
+              "run/animations/Running/north-east/frame_004.png",
+              "run/animations/Running/north-east/frame_005.png",
+              "run/animations/Running/north-east/frame_006.png",
+              "run/animations/Running/north-east/frame_007.png"
+            ],
+            "north-west": [
+              "run/animations/Running/north-west/frame_000.png",
+              "run/animations/Running/north-west/frame_001.png",
+              "run/animations/Running/north-west/frame_002.png",
+              "run/animations/Running/north-west/frame_003.png",
+              "run/animations/Running/north-west/frame_004.png",
+              "run/animations/Running/north-west/frame_005.png",
+              "run/animations/Running/north-west/frame_006.png",
+              "run/animations/Running/north-west/frame_007.png"
+            ],
+            "west": [
+              "run/animations/Running/west/frame_000.png",
+              "run/animations/Running/west/frame_001.png",
+              "run/animations/Running/west/frame_002.png",
+              "run/animations/Running/west/frame_003.png",
+              "run/animations/Running/west/frame_004.png",
+              "run/animations/Running/west/frame_005.png",
+              "run/animations/Running/west/frame_006.png",
+              "run/animations/Running/west/frame_007.png"
+            ],
+            "east": [
+              "run/animations/Running/east/frame_000.png",
+              "run/animations/Running/east/frame_001.png",
+              "run/animations/Running/east/frame_002.png",
+              "run/animations/Running/east/frame_003.png",
+              "run/animations/Running/east/frame_004.png",
+              "run/animations/Running/east/frame_005.png",
+              "run/animations/Running/east/frame_006.png",
+              "run/animations/Running/east/frame_007.png"
+            ],
+            "south-east": [
+              "run/animations/Running/south-east/frame_000.png",
+              "run/animations/Running/south-east/frame_001.png",
+              "run/animations/Running/south-east/frame_002.png",
+              "run/animations/Running/south-east/frame_003.png",
+              "run/animations/Running/south-east/frame_004.png",
+              "run/animations/Running/south-east/frame_005.png",
+              "run/animations/Running/south-east/frame_006.png",
+              "run/animations/Running/south-east/frame_007.png"
+            ],
+            "north-71d078af": [
+              "run/animations/Running/north-71d078af/frame_000.png",
+              "run/animations/Running/north-71d078af/frame_001.png",
+              "run/animations/Running/north-71d078af/frame_002.png",
+              "run/animations/Running/north-71d078af/frame_003.png",
+              "run/animations/Running/north-71d078af/frame_004.png",
+              "run/animations/Running/north-71d078af/frame_005.png",
+              "run/animations/Running/north-71d078af/frame_006.png",
+              "run/animations/Running/north-71d078af/frame_007.png"
+            ],
+            "south-west": [
+              "run/animations/Running/south-west/frame_000.png",
+              "run/animations/Running/south-west/frame_001.png",
+              "run/animations/Running/south-west/frame_002.png",
+              "run/animations/Running/south-west/frame_003.png",
+              "run/animations/Running/south-west/frame_004.png",
+              "run/animations/Running/south-west/frame_005.png",
+              "run/animations/Running/south-west/frame_006.png",
+              "run/animations/Running/south-west/frame_007.png"
+            ],
+            "south": [
+              "run/animations/Running/south/frame_000.png",
+              "run/animations/Running/south/frame_001.png",
+              "run/animations/Running/south/frame_002.png",
+              "run/animations/Running/south/frame_003.png",
+              "run/animations/Running/south/frame_004.png",
+              "run/animations/Running/south/frame_005.png",
+              "run/animations/Running/south/frame_006.png",
+              "run/animations/Running/south/frame_007.png"
+            ],
+            "north-f030d599": [
+              "run/animations/Running/north-f030d599/frame_000.png",
+              "run/animations/Running/north-f030d599/frame_001.png",
+              "run/animations/Running/north-f030d599/frame_002.png",
+              "run/animations/Running/north-f030d599/frame_003.png",
+              "run/animations/Running/north-f030d599/frame_004.png",
+              "run/animations/Running/north-f030d599/frame_005.png",
+              "run/animations/Running/north-f030d599/frame_006.png",
+              "run/animations/Running/north-f030d599/frame_007.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-08-06T16:44:49.207502"
+}

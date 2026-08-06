@@ -8,3 +8,7 @@
 node_modules/
 
 /.claude/
+
+# export_witch8.py 每次跑都會重畫的預覽圖（只是拿來看的，不進版控）
+/tools/witch8_sheet.png
+/tools/witch8_outfits.png

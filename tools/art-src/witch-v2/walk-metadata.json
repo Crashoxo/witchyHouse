@@ -1,0 +1,119 @@
+{
+  "group_id": "ca92ff1a-ecca-4203-99c8-a6517e0bcf62",
+  "states": [
+    {
+      "character": {
+        "id": "e9594bfe-81f2-4552-a7c9-4fc51b60253f",
+        "name": "walk",
+        "prompt": "\"A high-resolution, crisp pixel art sprite of an adorable, darkly elegant, and mystical female character, presented in a clean isometric view. Based precisely on the body structure and skin tone (light peach) of image_10.png. The character is now dressed in an elaborate, high-quality fusion of gothic Lolita fashion and witch's attire, featuring layers of deep black lace, rich charcoal gray fabric, and accents of deep crimson red bows, trim, and magical embroidery. She wears a classic, ornate black witch's pointed hat adorned with a small crescent moon charm, dark gems, and a twisted ribbon, replacing the bonnet. Her face structure is identical to image_10.png, but the expression has been enhanced to be bright, alert, and sparkling with lively energy, featuring striking, intense crimson red cat-style eyes that are \u70af\u70af\u6709\u795e (intensely sparkling and engaging). Flowing from under the witch's hat is a voluminous, wavy, long silver hair styled with curled ends. In one hand, she holds a small, intricately carved gnarled wooden staff topped with a glowing red crystal. The entire piece has soft, even lighting, highlighting the intricate pixel details against a transparent background.\"",
+        "size": {
+          "width": 116,
+          "height": 116
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-08-06T06:55:14.020158+00:00"
+      },
+      "folder": "walk",
+      "frames": {
+        "rotations": {
+          "south": "walk/rotations/south.png",
+          "south-east": "walk/rotations/south-east.png",
+          "east": "walk/rotations/east.png",
+          "north-east": "walk/rotations/north-east.png",
+          "north": "walk/rotations/north.png",
+          "north-west": "walk/rotations/north-west.png",
+          "west": "walk/rotations/west.png",
+          "south-west": "walk/rotations/south-west.png"
+        },
+        "animations": {
+          "Walking": {
+            "east": [
+              "walk/animations/Walking/east/frame_000.png",
+              "walk/animations/Walking/east/frame_001.png",
+              "walk/animations/Walking/east/frame_002.png",
+              "walk/animations/Walking/east/frame_003.png",
+              "walk/animations/Walking/east/frame_004.png",
+              "walk/animations/Walking/east/frame_005.png",
+              "walk/animations/Walking/east/frame_006.png",
+              "walk/animations/Walking/east/frame_007.png"
+            ],
+            "north": [
+              "walk/animations/Walking/north/frame_000.png",
+              "walk/animations/Walking/north/frame_001.png",
+              "walk/animations/Walking/north/frame_002.png",
+              "walk/animations/Walking/north/frame_003.png",
+              "walk/animations/Walking/north/frame_004.png",
+              "walk/animations/Walking/north/frame_005.png",
+              "walk/animations/Walking/north/frame_006.png",
+              "walk/animations/Walking/north/frame_007.png"
+            ],
+            "south-west": [
+              "walk/animations/Walking/south-west/frame_000.png",
+              "walk/animations/Walking/south-west/frame_001.png",
+              "walk/animations/Walking/south-west/frame_002.png",
+              "walk/animations/Walking/south-west/frame_003.png",
+              "walk/animations/Walking/south-west/frame_004.png",
+              "walk/animations/Walking/south-west/frame_005.png",
+              "walk/animations/Walking/south-west/frame_006.png",
+              "walk/animations/Walking/south-west/frame_007.png"
+            ],
+            "west": [
+              "walk/animations/Walking/west/frame_000.png",
+              "walk/animations/Walking/west/frame_001.png",
+              "walk/animations/Walking/west/frame_002.png",
+              "walk/animations/Walking/west/frame_003.png",
+              "walk/animations/Walking/west/frame_004.png",
+              "walk/animations/Walking/west/frame_005.png",
+              "walk/animations/Walking/west/frame_006.png",
+              "walk/animations/Walking/west/frame_007.png"
+            ],
+            "north-east": [
+              "walk/animations/Walking/north-east/frame_000.png",
+              "walk/animations/Walking/north-east/frame_001.png",
+              "walk/animations/Walking/north-east/frame_002.png",
+              "walk/animations/Walking/north-east/frame_003.png",
+              "walk/animations/Walking/north-east/frame_004.png",
+              "walk/animations/Walking/north-east/frame_005.png",
+              "walk/animations/Walking/north-east/frame_006.png",
+              "walk/animations/Walking/north-east/frame_007.png"
+            ],
+            "south-east": [
+              "walk/animations/Walking/south-east/frame_000.png",
+              "walk/animations/Walking/south-east/frame_001.png",
+              "walk/animations/Walking/south-east/frame_002.png",
+              "walk/animations/Walking/south-east/frame_003.png",
+              "walk/animations/Walking/south-east/frame_004.png",
+              "walk/animations/Walking/south-east/frame_005.png",
+              "walk/animations/Walking/south-east/frame_006.png",
+              "walk/animations/Walking/south-east/frame_007.png"
+            ],
+            "north-west": [
+              "walk/animations/Walking/north-west/frame_000.png",
+              "walk/animations/Walking/north-west/frame_001.png",
+              "walk/animations/Walking/north-west/frame_002.png",
+              "walk/animations/Walking/north-west/frame_003.png",
+              "walk/animations/Walking/north-west/frame_004.png",
+              "walk/animations/Walking/north-west/frame_005.png",
+              "walk/animations/Walking/north-west/frame_006.png",
+              "walk/animations/Walking/north-west/frame_007.png"
+            ],
+            "south": [
+              "walk/animations/Walking/south/frame_000.png",
+              "walk/animations/Walking/south/frame_001.png",
+              "walk/animations/Walking/south/frame_002.png",
+              "walk/animations/Walking/south/frame_003.png",
+              "walk/animations/Walking/south/frame_004.png",
+              "walk/animations/Walking/south/frame_005.png",
+              "walk/animations/Walking/south/frame_006.png",
+              "walk/animations/Walking/south/frame_007.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-08-06T16:44:45.024694"
+}
