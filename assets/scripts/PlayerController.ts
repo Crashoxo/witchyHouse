@@ -34,6 +34,7 @@ export type EdgeSide = 'left' | 'right' | 'top' | 'bottom';
 /**
  * 俯視角魔女角色控制：
  *   WASD / 方向鍵 = 八方向移動
+ *   按住 Shift    = 衝刺（速度 ×runMultiplier，動畫自動換成跑步）
  *   滑鼠點地面    = 自動走過去（按方向鍵會立刻接手）
  *   J 或 空白鍵   = 往目前面向施放魔法彈
  *
@@ -44,6 +45,8 @@ export type EdgeSide = 'left' | 'right' | 'top' | 'bottom';
 @ccclass('PlayerController')
 export class PlayerController extends Component {
     @property moveSpeed = 200;                            // 移動速度（像素/秒）
+    @property({ tooltip: '按住 Shift 衝刺時的速度倍率（動畫會自己換成跑步那組）' })
+    runMultiplier = 1.7;
     @property(Prefab) spellPrefab: Prefab | null = null;  // 拖入 Spell 預製體
 
     @property({ tooltip: '是否把角色夾在地圖範圍內（擋住邊界）' })
@@ -161,12 +164,17 @@ export class PlayerController extends Component {
         let y = (k.has(KeyCode.KEY_W) || k.has(KeyCode.ARROW_UP)    ? 1 : 0)
               - (k.has(KeyCode.KEY_S) || k.has(KeyCode.ARROW_DOWN)  ? 1 : 0);
 
+        // 按住 Shift 衝刺。動畫不用通知 —— CharacterAnimator 是量「這一幀跑多遠」
+        // 自己決定要播走路還是跑步的。
+        const speed = this.moveSpeed *
+            (k.has(KeyCode.SHIFT_LEFT) || k.has(KeyCode.SHIFT_RIGHT) ? this.runMultiplier : 1);
+
         if (x !== 0 || y !== 0) this.moveTarget = null;       // 鍵盤一動就接手，取消點擊移動
         else if (this.moveTarget) {
             const p = this.node.position;
             const tx = this.moveTarget.x - p.x, ty = this.moveTarget.y - p.y;
             const dist = Math.sqrt(tx * tx + ty * ty);
-            if (dist <= Math.max(this.moveSpeed * dt, 2)) {   // 到了：貼齊目的地就收工
+            if (dist <= Math.max(speed * dt, 2)) {            // 到了：貼齊目的地就收工
                 this.node.setPosition(this.moveTarget.x, this.moveTarget.y, p.z);
                 this.moveTarget = null;
                 return;
@@ -179,8 +187,8 @@ export class PlayerController extends Component {
             this.dir.normalize();
             this.facing.set(this.dir);                       // 記住最後移動方向當作面向
             const p = this.node.position;
-            let nx = p.x + this.dir.x * this.moveSpeed * dt;
-            let ny = p.y + this.dir.y * this.moveSpeed * dt;
+            let nx = p.x + this.dir.x * speed * dt;
+            let ny = p.y + this.dir.y * speed * dt;
 
             if (this.clampToBounds) {
                 if (nx < this.minX) { nx = this.minX; this.onReachEdge('left', ny); }

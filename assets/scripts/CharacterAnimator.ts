@@ -15,9 +15,21 @@ const { ccclass, property } = _decorator;
  * 節點縮放也由這裡統一設成 WITCH_SCALE，所以六個場景檔一個都不用改。
  * 圖集還沒載到（或載失敗）時退回底下 @property 指定的舊圖，走路照樣會動。
  *
+ * ── 跑步（2026-08-07）──
+ * 新角色八個方向各多了 8 幀跑步。要不要播跑步是**看這一幀移動得多快**算出來的
+ * （超過 RUN_SPEED 就換跑步圖），不用 PlayerController 通知 —— 跟上面「靠位移判斷」
+ * 同一套想法，之後不管是衝刺、加速道具還是被推著跑，動畫都會自己對。
+ *
  * 另外提供 `playOneShot()` 讓別的腳本插播一段動作動畫（採集、施法、澆水）。
  * 播放期間走路/待機不搶畫面；玩家一移動就自動取消。
  */
+/**
+ * 移動速度超過這個值（像素/秒）就播跑步。
+ * PlayerController 走路 200、按住 Shift 衝刺 ×1.7 ＝ 340，取中間值當門檻，
+ * 點擊自動尋路（用的是走路速度）就不會誤判成在跑。
+ */
+const RUN_SPEED = 260;
+
 @ccclass('CharacterAnimator')
 export class CharacterAnimator extends Component {
     @property(SpriteFrame) idle: SpriteFrame | null = null;   // 待機圖（舊圖：正面）
@@ -132,7 +144,11 @@ export class CharacterAnimator extends Component {
             }
         }
 
-        const walk = eight ? GameArt.witchWalk(this.dir) : this.walk;
+        // 跑得夠快就換跑步那組（新圖才有；沒有的話 witchRun 回空陣列，照樣走路）
+        const running = eight && moving && dt > 0
+            && Math.sqrt(dx * dx + dy * dy) / dt > RUN_SPEED
+            && GameArt.witchRun(this.dir).length > 0;
+        const walk = eight ? (running ? GameArt.witchRun(this.dir) : GameArt.witchWalk(this.dir)) : this.walk;
         const idle = eight ? GameArt.witchIdle(this.dir) : this.idle;
         const s = this.node.scale;
 
@@ -150,9 +166,10 @@ export class CharacterAnimator extends Component {
             if (want !== s.x) this.node.setScale(want, s.y, s.z);
         }
 
-        // 新圖一輪 8 幀（舊圖 5 幀），照場景裡的 10fps 播會顯得拖 → 八方向固定 13fps
+        // 新圖一輪 8 幀（舊圖 5 幀），照場景裡的 10fps 播會顯得拖 → 八方向固定 13fps，
+        // 跑步再快一點（16fps），腳步才跟得上速度
         this.timer += dt;
-        const step = 1 / (eight ? 13 : Math.max(1, this.walkFps));
+        const step = 1 / (eight ? (running ? 16 : 13) : Math.max(1, this.walkFps));
         while (this.timer >= step) {
             this.timer -= step;
             this.frame = (this.frame + 1) % walk.length;

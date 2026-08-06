@@ -1,0 +1,15 @@
+// 只用來「檢查腳本編不編得過」的設定（Cocos 本身不讀這個檔）。
+//
+//   npx -p typescript@5.4.5 tsc -p tsconfig.check.json
+//
+// 一定要放在專案根目錄：temp/tsconfig.cocos.json 裡的 types 是相對路徑
+// （./temp/declarations/cc），檔案擺別的地方就找不到宣告。
+// skipLibCheck 一定要開 —— 引擎自己的 .d.ts 有一堆錯，不關掉會被淹沒。
+{
+  "extends": "./temp/tsconfig.cocos.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["assets/scripts/**/*.ts"]
+}

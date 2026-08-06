@@ -90,17 +90,22 @@ let sleepingFrame: SpriteFrame | null = null;       // 女巫睡覺立繪（含�
 
 /**
  * `resources/witch8/<造型>.png` 的排法（由 tools/export_witch8.py 產生）：
- *   列 0      站姿，欄＝方向
- *   列 1..8   走路，列 1+d ＝方向 d，欄＝動畫幀
- *   列 9      施法 6 幀（只有正面）
- *   列 10     蹲下 5 幀（只有正面）＝採集／摘花／澆水共用
+ *   列 0       站姿，欄＝方向
+ *   列 1..8    走路，列 1+d ＝方向 d，欄＝動畫幀
+ *   列 9       施法 6 幀（只有正面）
+ *   列 10      蹲下 5 幀（只有正面）＝採集／摘花／澆水共用
+ *   列 11..18  跑步，列 11+d ＝方向 d，欄＝動畫幀（2026-08-07 換新角色時加的）
  * 方向索引見 WitchDir。睡覺立繪（含床）是另一張 `witch8/<造型>-sleep.png`。
+ *
+ * ⚠️ 施法與蹲下那兩列還是**前一位（紫袍）女巫**的動畫 —— 新角色目前只有走路與跑步，
+ * 這兩段等新圖進來再換（見 tools/export_witch8.py 的 legacy_pose 那段）。
  */
 const W8_COLS = 8;
-const W8_ROWS = 11;
+const W8_ROWS = 19;
 const W8_ROW_WALK = 1;
 const W8_ROW_CAST = 9;
 const W8_ROW_CROUCH = 10;
+const W8_ROW_RUN = 11;
 const W8_CAST_FRAMES = 6;
 const W8_CROUCH_FRAMES = 5;
 
@@ -112,14 +117,16 @@ export const WITCH_DIRS = 8;
 export const WitchDir = { SOUTH: 0, EAST: 2, NORTH: 4, WEST: 6 };
 
 /**
- * 女巫節點的縮放：格子 53px 高、可見身高 46px → 畫面上 69px，跟村民與舊版女巫等高，
+ * 女巫節點的縮放：新角色的格子 66px 高、可見身高 64px，**直接 1:1 畫**（像素才不會糊，
+ * 前一位是 46px 身高硬放大 1.5 倍）。畫面上 64px，跟村民與前一位的 69px 差不到一成，
  * 所以場景裡調好的互動半徑/可走範圍都不用重調。**場景檔裡的 scale 由程式覆蓋**
  * （CharacterAnimator 套用），六個場景一個都不用改。
  */
-export const WITCH_SCALE = 1.5;
+export const WITCH_SCALE = 1.0;
 
 let w8Idle: SpriteFrame[] = [];        // [方向]
 let w8Walk: SpriteFrame[][] = [];      // [方向][幀]
+let w8Run: SpriteFrame[][] = [];       // [方向][幀]（衝刺）
 let w8Cast: SpriteFrame[] = [];        // 施法
 let w8Crouch: SpriteFrame[] = [];      // 蹲下（採集/摘花/澆水）
 let w8Sleep: SpriteFrame | null = null;
@@ -247,17 +254,19 @@ function loadWitch8(id: string): void {
                 sf.rect = new Rect(c * cw, r * ch, cw, ch);
                 return sf;
             };
-            const idle: SpriteFrame[] = [], walk: SpriteFrame[][] = [];
+            const idle: SpriteFrame[] = [], walk: SpriteFrame[][] = [], run: SpriteFrame[][] = [];
             for (let d = 0; d < WITCH_DIRS; d++) {
                 idle.push(cut(d, 0));
-                const fr: SpriteFrame[] = [];
+                const fr: SpriteFrame[] = [], rn: SpriteFrame[] = [];
                 for (let c = 0; c < W8_COLS; c++) fr.push(cut(c, W8_ROW_WALK + d));
+                for (let c = 0; c < W8_COLS; c++) rn.push(cut(c, W8_ROW_RUN + d));
                 walk.push(fr);
+                run.push(rn);
             }
             const cast: SpriteFrame[] = [], crouch: SpriteFrame[] = [];
             for (let c = 0; c < W8_CAST_FRAMES; c++) cast.push(cut(c, W8_ROW_CAST));
             for (let c = 0; c < W8_CROUCH_FRAMES; c++) crouch.push(cut(c, W8_ROW_CROUCH));
-            w8Idle = idle; w8Walk = walk; w8Cast = cast; w8Crouch = crouch;
+            w8Idle = idle; w8Walk = walk; w8Run = run; w8Cast = cast; w8Crouch = crouch;
         } else if (err) console.warn(`[GameArt] 載入失敗 witch8/${file}`, err);
         jobDone();
     });
@@ -409,6 +418,11 @@ export const GameArt = {
     /** 某個方向的走路幀（未載入回空陣列）。 */
     witchWalk(dir: number): SpriteFrame[] {
         return w8Walk[((dir % WITCH_DIRS) + WITCH_DIRS) % WITCH_DIRS] ?? [];
+    },
+
+    /** 某個方向的跑步幀（衝刺用；未載入回空陣列 → 呼叫端自己退回走路）。 */
+    witchRun(dir: number): SpriteFrame[] {
+        return w8Run[((dir % WITCH_DIRS) + WITCH_DIRS) % WITCH_DIRS] ?? [];
     },
 
     /** 施法動畫幀（新圖 6 幀；沒有圖集時退回舊的單張姿勢）。 */

@@ -21,15 +21,17 @@ export interface OutfitDef {
     portrait: string;
 }
 
+// ⚠️ 2026-08-07 換角色後，換裝改成「把緞邊的緋紅改色」（黑袍本身不動）——
+// 新角色是黑袍，舊那套「紫色轉色相」沒東西可轉。id 保持原樣，存檔才不會失效。
 export const OUTFITS: OutfitDef[] = [
-    { id: 'default', name: '紫袍', art: '', portrait: 'outfit8-default',
-      desc: '寬簷黑帽配深紫長袍，出門採集最順手的一套。' },
-    { id: 'green', name: '森綠袍', art: 'green', portrait: 'outfit8-green',
-      desc: '染成森林綠的長袍，走在樹影底下幾乎看不見人。' },
-    { id: 'brown', name: '褐色大衣', art: 'brown', portrait: 'outfit8-brown',
-      desc: '厚實的褐色長大衣，適合遠行到糖果鎮進貨。' },
-    { id: 'ivory', name: '米白長袍', art: 'ivory', portrait: 'outfit8-ivory',
-      desc: '素色長袍，調配藥水時最不怕沾上藥漬。' },
+    { id: 'default', name: '緋紅緞邊', art: '', portrait: 'outfit8-default',
+      desc: '黑帽黑袍配暗紅緞帶與滾邊，出門採集最順手的一套。' },
+    { id: 'green', name: '苔綠緞邊', art: 'green', portrait: 'outfit8-green',
+      desc: '緞帶染成森林苔綠，走在樹影底下幾乎看不見人。' },
+    { id: 'brown', name: '琥珀緞邊', art: 'brown', portrait: 'outfit8-brown',
+      desc: '琥珀金的緞帶與滾邊，適合遠行到糖果鎮進貨。' },
+    { id: 'ivory', name: '霜白緞邊', art: 'ivory', portrait: 'outfit8-ivory',
+      desc: '素白緞帶，調配藥水時最不怕沾上藥漬。' },
 ];
 
 export function outfitById(id: string): OutfitDef {

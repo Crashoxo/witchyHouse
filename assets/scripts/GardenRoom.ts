@@ -29,8 +29,11 @@ const REACH = 90;              // 玩家離花圃多近才能操作（像素）
 /** 舊手繪圖：澆花器壺口相對女巫腳底的位置（見 spoutPos 的算法；未翻面時壺在她左手邊）。 */
 const SPOUT_DX = (22 - 110.5) * 0.35;      // ≈ -31
 const SPOUT_DY = (196 - 166) * 0.35;       // ≈ +10.5
-/** 新 chibi 圖：蹲下那幾幀兩手伸在身體正前方，離腳底約 15px（格子座標）。 */
-const SPOUT8_DY = 15 * WITCH_SCALE;        // ≈ 22
+/**
+ * 新 chibi 圖：蹲下那幾幀兩手伸在身體正前方，離腳底約 15px（前一位女巫的格子座標）。
+ * 2026-08-07 換角色後那幾幀被等比放大了 1.33 倍塞進新格子 → 15×1.33 ≈ 20。
+ */
+const SPOUT8_DY = 20 * WITCH_SCALE;
 
 @ccclass('GardenRoom')
 export class GardenRoom extends Component {
