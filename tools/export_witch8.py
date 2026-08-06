@@ -8,21 +8,24 @@
 來源放在桌面，後來被刪掉就再也重跑不了，所以這次收進版控）。
 
 來源
-  art-src/witch-v2/walk/rotations                8 方向站姿
-  art-src/witch-v2/walk/animations/Walking/<dir> 走路 8 方向 ×8 幀
-  art-src/witch-v2/run/animations/Running/<dir>  跑步 8 方向 ×8 幀
-  tools/legacy_pose.png                          前一位女巫的施法 6 幀＋蹲下 5 幀
-                                                 （新圖還沒做，先頂著；見下面 LEGACY 那段）
+  art-src/witch-v2/walk/rotations                 8 方向站姿
+  art-src/witch-v2/walk/animations/Walking/<dir>  走路 8 方向 ×8 幀
+  art-src/witch-v2/run/animations/Running/<dir>   跑步 8 方向 ×8 幀
+  art-src/witch-v2/cast/animations/Fireball/<dir> 施法 8 方向 ×6 幀（澆水也用這組）
+  tools/legacy_pose.png                           前一位女巫的蹲下 5 幀
+                                                  （新圖還沒做，先頂著；見下面 LEGACY 那段）
 
-⚠️ 跑步的 north 有兩份：`north-71d078af` 是好的，`north-f030d599` 整組是疊影壞圖。
+⚠️ 同一組動畫有時會匯出兩份方向（PixelLab 的重生成）：跑步的 north 取 `north-71d078af`
+   （`north-f030d599` 整組是疊影壞圖）、施法的 north-west 取 `north-west-969deef6`
+   （`north-west-fe5a5dbc` 每幀的帽子與身體都在跳）。
 
 輸出（resources/witch8/）
-  base.png    8 欄 × 19 列，格子大小一致：
+  base.png    8 欄 × 26 列，格子大小一致：
                 列 0       = 站姿，欄＝方向（south, SE, E, NE, N, NW, W, SW）
                 列 1..8    = 走路，列 1+d ＝方向 d，欄＝幀
-                列 9       = 施法 6 幀（欄 0..5）  ← 還是前一位女巫
-                列 10      = 蹲下 5 幀（欄 0..4）  ← 還是前一位女巫
-                列 11..18  = 跑步，列 11+d ＝方向 d，欄＝幀
+                列 9..16   = 跑步，列 9+d ＝方向 d，欄＝幀
+                列 17..24  = 施法，列 17+d ＝方向 d，欄＝幀（0..5）
+                列 25      = 蹲下 5 幀（欄 0..4）  ← 還是前一位女巫
   green/brown/ivory.png    換裝造型（緋紅緞邊改色版）
 
   睡覺立繪 `sleep.png` / `*-sleep.png` **這支腳本不再產生**：新角色沒有躺床的圖，
@@ -43,11 +46,13 @@ PREVIEW = TOOLS
 
 DIRS = ["south", "south-east", "east", "north-east", "north", "north-west", "west", "south-west"]
 RUN_DIRS = dict((d, d) for d in DIRS)
-RUN_DIRS["north"] = "north-71d078af"        # 另一份 north-f030d599 是疊影壞圖
+RUN_DIRS["north"] = "north-71d078af"             # 另一份 north-f030d599 是疊影壞圖
+CAST_DIRS = dict((d, d) for d in DIRS)
+CAST_DIRS["north-west"] = "north-west-969deef6"  # 另一份 north-west-fe5a5dbc 每幀都在跳
 
 COLS = 8
-ROW_WALK, ROW_CAST, ROW_CROUCH, ROW_RUN = 1, 9, 10, 11
-ROWS = 19
+ROW_WALK, ROW_RUN, ROW_CAST, ROW_CROUCH = 1, 9, 17, 25
+ROWS = 26
 PAD = 1
 
 def load(p):
@@ -59,10 +64,13 @@ def frames(folder):
 rot = [load(os.path.join(SRC, "walk", "rotations", d + ".png")) for d in DIRS]
 walk = [frames(os.path.join(SRC, "walk", "animations", "Walking", d)) for d in DIRS]
 run = [frames(os.path.join(SRC, "run", "animations", "Running", RUN_DIRS[d])) for d in DIRS]
-print(f"站姿 {len(rot)}／走路 {[len(v) for v in walk]}／跑步 {[len(v) for v in run]}")
+cast = [frames(os.path.join(SRC, "cast", "animations", "Fireball", CAST_DIRS[d])) for d in DIRS]
+print(f"站姿 {len(rot)}／走路 {[len(v) for v in walk]}／跑步 {[len(v) for v in run]}"
+      f"／施法 {[len(v) for v in cast]}")
 
 # ── 共同裁切框（所有角色幀一起算，對齊才不會跑掉）──
-allf = rot + [im for v in walk for im in v] + [im for v in run for im in v]
+allf = (rot + [im for v in walk for im in v] + [im for v in run for im in v]
+        + [im for v in cast for im in v])
 boxes = [im.getbbox() for im in allf]
 W0, H0 = rot[0].size
 x0 = max(0, min(b[0] for b in boxes) - PAD)
@@ -74,12 +82,13 @@ foot = max(b[3] for b in boxes) - y0
 body = foot - (min(b[1] for b in boxes) - y0)
 print(f"格子 {CW}x{CH}（裁 {x0},{y0},{x1},{y1}）身高 {body}px、腳底 y={foot}（離底部 {CH-foot}px）")
 
-# ── 前一位女巫的施法／蹲下（暫用）──
-# 新角色只有走路與跑步。這兩段動畫的來源資料夾已經被刪掉，只剩 legacy_pose.png，
-# 所以從那裡讀、**等比放大到跟新角色一樣高**再置中貼進格子裡（不放大的話，
-# 一按 E 採集人就縮水一截）。新圖做好後，把這段連同 legacy_pose.png 一起刪掉。
+# ── 前一位女巫的蹲下（暫用）──
+# 新角色還沒有蹲下（採集／摘花／種花）的圖。這段動畫的來源資料夾已經被刪掉，只剩
+# legacy_pose.png，所以從那裡讀、**等比放大到跟新角色一樣高**再置中貼進格子裡
+# （不放大的話，一按 E 採集人就縮水一截）。新圖做好後，把這段連同 legacy_pose.png
+# 一起刪掉。（legacy_pose.png 的列 0 是前一位女巫的施法，現在用不到了。）
 LEGACY = os.path.join(TOOLS, "legacy_pose.png")
-legacy_cast, legacy_crouch = [], []
+legacy_crouch = []
 if os.path.exists(LEGACY):
     strip = load(LEGACY)
     lw, lh = strip.width // COLS, strip.height // 2
@@ -100,10 +109,9 @@ if os.path.exists(LEGACY):
         cell.paste(crop, ((CW - w) // 2, foot - h))
         return cell
 
-    legacy_cast = [fit(cells[c]) for c in range(6)]              # 列 0 的前 6 格
     legacy_crouch = [fit(cells[COLS + c]) for c in range(5)]     # 列 1 的前 5 格
 else:
-    print("（沒有 legacy_pose.png，施法／蹲下留白）")
+    print("（沒有 legacy_pose.png，蹲下留白）")
 
 def build_sheet():
     sh = Image.new("RGBA", (COLS * CW, ROWS * CH), (0, 0, 0, 0))
@@ -119,8 +127,9 @@ def build_sheet():
     for d, v in enumerate(run):
         for c, im in enumerate(v):
             put(im, c, ROW_RUN + d)
-    for c, im in enumerate(legacy_cast):
-        put_raw(im, c, ROW_CAST)
+    for d, v in enumerate(cast):
+        for c, im in enumerate(v):
+            put(im, c, ROW_CAST + d)
     for c, im in enumerate(legacy_crouch):
         put_raw(im, c, ROW_CROUCH)
     return sh

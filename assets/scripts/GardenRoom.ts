@@ -29,11 +29,10 @@ const REACH = 90;              // 玩家離花圃多近才能操作（像素）
 /** 舊手繪圖：澆花器壺口相對女巫腳底的位置（見 spoutPos 的算法；未翻面時壺在她左手邊）。 */
 const SPOUT_DX = (22 - 110.5) * 0.35;      // ≈ -31
 const SPOUT_DY = (196 - 166) * 0.35;       // ≈ +10.5
-/**
- * 新 chibi 圖：蹲下那幾幀兩手伸在身體正前方，離腳底約 15px（前一位女巫的格子座標）。
- * 2026-08-07 換角色後那幾幀被等比放大了 1.33 倍塞進新格子 → 15×1.33 ≈ 20。
- */
-const SPOUT8_DY = 20 * WITCH_SCALE;
+/** 新圖：澆水借施法那組動作，手大約在腳底往上 34px（格子 66px 高、手在半身高一點）。 */
+const SPOUT8_DY = 34 * WITCH_SCALE;
+/** 再往花圃那一側挪一點，水才不是從身體正中間冒出來。 */
+const SPOUT8_DX = 12 * WITCH_SCALE;
 
 @ccclass('GardenRoom')
 export class GardenRoom extends Component {
@@ -164,12 +163,13 @@ export class GardenRoom extends Component {
                 if (Garden.water(i)) { watered.push(i); if (planted) n++; }
             }
             if (n > 0) {
-                // ⚠️ 澆水這段要翻面（front=false）：圖裡的澆花器畫在她左手邊，朝右邊的
-                // 花圃澆時整張翻過來，壺口才會對著花圃（施法那種正面圖才不翻）。
-                anim?.playOneShot(GameArt.waterFrames(), 0.9, faceX, false);
+                // 澆水借施法那組八方向的圖 → 直接挑「朝花圃」的那個方向，人會轉過去澆。
+                // faceX/front 只有舊手繪圖才用得到（舊圖的澆花器畫在她左手邊，要翻面）。
+                const dir = this.dirTo(plot);
+                anim?.playOneShot(GameArt.waterFrames(dir), 0.9, faceX, false, dir);
                 plot.popup(n > 1 ? `澆了 ${n} 塊` : '澆好水了');
                 // 灑水特效：水從她手上澆花器的壺口出來，澆到的每一塊都來一份
-                const spout = this.spoutPos();
+                const spout = this.spoutPos(plot);
                 for (const i of watered) {
                     const p = this.plotAt(i);
                     p?.playWater(spout.x - p.node.position.x, spout.y - p.node.position.y);
@@ -197,20 +197,37 @@ export class GardenRoom extends Component {
         plot.refresh();
     }
 
+    /** 玩家看向某塊花圃時的方向索引（見 WitchDir）。 */
+    private dirTo(plot: GardenPlot): number {
+        const p = this.player;
+        if (!p) return 0;
+        return CharacterAnimator.dirOf(plot.node.position.x - p.position.x,
+                                       plot.node.position.y - p.position.y);
+    }
+
     /**
      * 水從哪裡出來（Props 座標，跟花圃同一層）。
      *
-     * 新的 chibi 圖沒有澆花器，蹲下那幾幀是兩手伸在身體正前方 → 水就從她身體中線
-     * 稍高的位置灑出去，八個方向都成立（新圖不翻面）。
+     * 新圖澆水借的是施法那組八方向的動作，手（與杖）伸在身體前方 → 水從身體中線稍高處
+     * 再往花圃那側挪一點點灑出去，八個方向都成立（新圖不翻面）。
      *
      * 舊手繪圖：畫布 221×196、錨點在腳底正中、節點 scale 0.35。澆水第 3 幀（把壺傾倒
      * 的那格）壺嘴量到在畫布的 (22, 166) → 距離腳底 ((22-110.5), (196-166)) 像素，乘上
      * 0.35 就是節點座標的偏移；朝右時整個節點是翻面的（scale.x < 0），x 要跟著鏡射。
      */
-    private spoutPos(): Vec3 {
+    private spoutPos(toward: GardenPlot | null = null): Vec3 {
         const p = this.player;
         if (!p) return new Vec3();
-        if (GameArt.witchReady()) return new Vec3(p.position.x, p.position.y + SPOUT8_DY, 0);
+        if (GameArt.witchReady()) {
+            let dx = 0, dy = 0;
+            if (toward) {
+                const vx = toward.node.position.x - p.position.x;
+                const vy = toward.node.position.y - p.position.y;
+                const len = Math.sqrt(vx * vx + vy * vy);
+                if (len > 0.001) { dx = vx / len * SPOUT8_DX; dy = vy / len * SPOUT8_DX; }
+            }
+            return new Vec3(p.position.x + dx, p.position.y + SPOUT8_DY + dy, 0);
+        }
         const flip = p.scale.x < 0 ? -1 : 1;
         return new Vec3(p.position.x + flip * SPOUT_DX, p.position.y + SPOUT_DY, 0);
     }

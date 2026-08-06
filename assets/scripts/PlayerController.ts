@@ -257,8 +257,10 @@ export class PlayerController extends Component {
         this.node.parent!.addChild(spell);                   // 生在角色的同一層
         spell.setPosition(this.node.position);
         spell.getComponent(SpellProjectile)?.fire(this.facing);
-        // 施法動畫（新圖 6 幀，舊圖只有一張姿勢）；一移動就自動取消
-        const f = GameArt.castFrames();
-        if (f.length) this.getComponent(CharacterAnimator)?.playOneShot(f, 0.5, 0, true);
+        // 施法動畫（新圖每個方向各 6 幀，舊圖只有一張姿勢）；一移動就自動取消。
+        // 方向取魔法彈飛出去的那個方向，人跟彈才會一致。
+        const dir = CharacterAnimator.dirOf(this.facing.x, this.facing.y);
+        const f = GameArt.castFrames(dir);
+        if (f.length) this.getComponent(CharacterAnimator)?.playOneShot(f, 0.5, 0, true, dir);
     }
 }

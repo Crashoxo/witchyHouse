@@ -62,11 +62,14 @@ export class CharacterAnimator extends Component {
      * @param frames 動畫幀（空陣列＝不播）
      * @param dur    總長度（秒）
      * @param faceX  面向：>0 朝右、<0 朝左、0 維持原朝向。**只有舊圖會用到**
-     *               （新圖的動作幀只有正面，翻面只會讓她背對玩家）
+     *               （舊圖的動作幀只有正面，翻面只會讓她背對玩家）
      * @param front  正面圖＝一律不翻面。同樣只有舊圖會用到
+     * @param dir    這段動作朝哪個方向（見 WitchDir，負數＝不改）。新圖的動作幀是分方向的，
+     *               傳進來的話連「播完之後的待機」也會維持那個朝向，人才不會演完就轉回去。
      */
-    playOneShot(frames: SpriteFrame[], dur = 0.9, faceX = 0, front = false) {
+    playOneShot(frames: SpriteFrame[], dur = 0.9, faceX = 0, front = false, dir = -1) {
         if (!this.sprite || frames.length === 0) return;
+        if (dir >= 0) this.dir = ((dir % WITCH_DIRS) + WITCH_DIRS) % WITCH_DIRS;
         this.shot = frames;
         this.shotDur = Math.max(0.1, dur);
         this.shotTimer = 0;
@@ -88,8 +91,9 @@ export class CharacterAnimator extends Component {
     /**
      * 位移向量 → 方向索引。0 是南（往下），每 45° 逆時針加一。
      * 圖集的欄序是 south, south-east, east, …，剛好就是這個順序。
+     * （公開的：施法與澆水要用「朝目標的方向」去挑那一組動作幀。）
      */
-    private static dirOf(dx: number, dy: number): number {
+    static dirOf(dx: number, dy: number): number {
         const deg = Math.atan2(dy, dx) * 180 / Math.PI;      // 東＝0、北＝90
         return (Math.round((deg + 90) / 45) % WITCH_DIRS + WITCH_DIRS) % WITCH_DIRS;
     }

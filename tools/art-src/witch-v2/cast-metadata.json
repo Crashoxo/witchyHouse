@@ -1,0 +1,111 @@
+{
+  "group_id": "ca92ff1a-ecca-4203-99c8-a6517e0bcf62",
+  "states": [
+    {
+      "character": {
+        "id": "70dbb987-cf4e-4a6f-b2f9-6395dd7c1448",
+        "name": "Idle (copy)",
+        "prompt": "\"A high-resolution, crisp pixel art sprite of an adorable, darkly elegant, and mystical female character, presented in a clean isometric view. Based precisely on the body structure and skin tone (light peach) of image_10.png. The character is now dressed in an elaborate, high-quality fusion of gothic Lolita fashion and witch's attire, featuring layers of deep black lace, rich charcoal gray fabric, and accents of deep crimson red bows, trim, and magical embroidery. She wears a classic, ornate black witch's pointed hat adorned with a small crescent moon charm, dark gems, and a twisted ribbon, replacing the bonnet. Her face structure is identical to image_10.png, but the expression has been enhanced to be bright, alert, and sparkling with lively energy, featuring striking, intense crimson red cat-style eyes that are \u70af\u70af\u6709\u795e (intensely sparkling and engaging). Flowing from under the witch's hat is a voluminous, wavy, long silver hair styled with curled ends. In one hand, she holds a small, intricately carved gnarled wooden staff topped with a glowing red crystal. The entire piece has soft, even lighting, highlighting the intricate pixel details against a transparent background.\"",
+        "size": {
+          "width": 116,
+          "height": 116
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-08-06T16:28:33.739843+00:00"
+      },
+      "folder": "Idle_copy",
+      "frames": {
+        "rotations": {
+          "south": "Idle_copy/rotations/south.png",
+          "south-east": "Idle_copy/rotations/south-east.png",
+          "east": "Idle_copy/rotations/east.png",
+          "north-east": "Idle_copy/rotations/north-east.png",
+          "north": "Idle_copy/rotations/north.png",
+          "north-west": "Idle_copy/rotations/north-west.png",
+          "west": "Idle_copy/rotations/west.png",
+          "south-west": "Idle_copy/rotations/south-west.png"
+        },
+        "animations": {
+          "Fireball": {
+            "north": [
+              "Idle_copy/animations/Fireball/north/frame_000.png",
+              "Idle_copy/animations/Fireball/north/frame_001.png",
+              "Idle_copy/animations/Fireball/north/frame_002.png",
+              "Idle_copy/animations/Fireball/north/frame_003.png",
+              "Idle_copy/animations/Fireball/north/frame_004.png",
+              "Idle_copy/animations/Fireball/north/frame_005.png"
+            ],
+            "south-west": [
+              "Idle_copy/animations/Fireball/south-west/frame_000.png",
+              "Idle_copy/animations/Fireball/south-west/frame_001.png",
+              "Idle_copy/animations/Fireball/south-west/frame_002.png",
+              "Idle_copy/animations/Fireball/south-west/frame_003.png",
+              "Idle_copy/animations/Fireball/south-west/frame_004.png",
+              "Idle_copy/animations/Fireball/south-west/frame_005.png"
+            ],
+            "north-east": [
+              "Idle_copy/animations/Fireball/north-east/frame_000.png",
+              "Idle_copy/animations/Fireball/north-east/frame_001.png",
+              "Idle_copy/animations/Fireball/north-east/frame_002.png",
+              "Idle_copy/animations/Fireball/north-east/frame_003.png",
+              "Idle_copy/animations/Fireball/north-east/frame_004.png",
+              "Idle_copy/animations/Fireball/north-east/frame_005.png"
+            ],
+            "south": [
+              "Idle_copy/animations/Fireball/south/frame_000.png",
+              "Idle_copy/animations/Fireball/south/frame_001.png",
+              "Idle_copy/animations/Fireball/south/frame_002.png",
+              "Idle_copy/animations/Fireball/south/frame_003.png",
+              "Idle_copy/animations/Fireball/south/frame_004.png",
+              "Idle_copy/animations/Fireball/south/frame_005.png"
+            ],
+            "north-west-969deef6": [
+              "Idle_copy/animations/Fireball/north-west-969deef6/frame_000.png",
+              "Idle_copy/animations/Fireball/north-west-969deef6/frame_001.png",
+              "Idle_copy/animations/Fireball/north-west-969deef6/frame_002.png",
+              "Idle_copy/animations/Fireball/north-west-969deef6/frame_003.png",
+              "Idle_copy/animations/Fireball/north-west-969deef6/frame_004.png",
+              "Idle_copy/animations/Fireball/north-west-969deef6/frame_005.png"
+            ],
+            "east": [
+              "Idle_copy/animations/Fireball/east/frame_000.png",
+              "Idle_copy/animations/Fireball/east/frame_001.png",
+              "Idle_copy/animations/Fireball/east/frame_002.png",
+              "Idle_copy/animations/Fireball/east/frame_003.png",
+              "Idle_copy/animations/Fireball/east/frame_004.png",
+              "Idle_copy/animations/Fireball/east/frame_005.png"
+            ],
+            "south-east": [
+              "Idle_copy/animations/Fireball/south-east/frame_000.png",
+              "Idle_copy/animations/Fireball/south-east/frame_001.png",
+              "Idle_copy/animations/Fireball/south-east/frame_002.png",
+              "Idle_copy/animations/Fireball/south-east/frame_003.png",
+              "Idle_copy/animations/Fireball/south-east/frame_004.png",
+              "Idle_copy/animations/Fireball/south-east/frame_005.png"
+            ],
+            "west": [
+              "Idle_copy/animations/Fireball/west/frame_000.png",
+              "Idle_copy/animations/Fireball/west/frame_001.png",
+              "Idle_copy/animations/Fireball/west/frame_002.png",
+              "Idle_copy/animations/Fireball/west/frame_003.png",
+              "Idle_copy/animations/Fireball/west/frame_004.png",
+              "Idle_copy/animations/Fireball/west/frame_005.png"
+            ],
+            "north-west-fe5a5dbc": [
+              "Idle_copy/animations/Fireball/north-west-fe5a5dbc/frame_000.png",
+              "Idle_copy/animations/Fireball/north-west-fe5a5dbc/frame_001.png",
+              "Idle_copy/animations/Fireball/north-west-fe5a5dbc/frame_002.png",
+              "Idle_copy/animations/Fireball/north-west-fe5a5dbc/frame_003.png",
+              "Idle_copy/animations/Fireball/north-west-fe5a5dbc/frame_004.png",
+              "Idle_copy/animations/Fireball/north-west-fe5a5dbc/frame_005.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-08-06T17:12:55.112270"
+}
