@@ -526,10 +526,7 @@
       "b": 255,
       "a": 255
     },
-    "_spriteFrame": {
-      "__uuid__": "1f121244-e12b-4d8c-87f7-742e6d50f491@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
+    "_spriteFrame": null,
     "_type": 0,
     "_fillType": 0,
     "_sizeMode": 2,
@@ -578,32 +575,8 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "idle": {
-      "__uuid__": "1f121244-e12b-4d8c-87f7-742e6d50f491@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
-    "walk": [
-      {
-        "__uuid__": "0cf25b3f-391d-416c-a157-6d8d75eaa8a9@f9941",
-        "__expectedType__": "cc.SpriteFrame"
-      },
-      {
-        "__uuid__": "fa60bf7b-9a68-4713-b4db-4b912d229a8f@f9941",
-        "__expectedType__": "cc.SpriteFrame"
-      },
-      {
-        "__uuid__": "1d7e0712-f33f-4861-8b3f-ef167ddec144@f9941",
-        "__expectedType__": "cc.SpriteFrame"
-      },
-      {
-        "__uuid__": "fa2a218c-8fe3-47f5-a21e-eb07edf32042@f9941",
-        "__expectedType__": "cc.SpriteFrame"
-      },
-      {
-        "__uuid__": "0c54ffa4-486c-400a-b5d0-151603426b26@f9941",
-        "__expectedType__": "cc.SpriteFrame"
-      }
-    ],
+    "idle": null,
+    "walk": [],
     "walkFps": 10,
     "_id": "5Hqnk0WT8RR2X7ufu5X2He"
   },

@@ -21,10 +21,11 @@ export class VillagerAnim extends Component {
     /** 每秒播幾幀（走路循環）。 */
     static readonly FPS = 8;
     /**
-     * 原圖縮到畫面上的比例。0.8 時身高約 69~88px —— 比女巫的 69px 高一點點，
-     * 大人站在小女巫旁邊本來就該高一些（0.7 看起來太小隻）。
+     * 原圖縮到畫面上的比例。**跟 `WITCH_SCALE` 綁在一起等比放大**：原本 0.8（身高 69~88px）
+     * 配女巫的 69px，現在女巫改成星露谷比例（1.6 倍，106px），這裡也要 ×1.6 → 1.28
+     * （身高 110~141px），大人才會繼續比小女巫高一點點。改女巫尺寸時記得一起動。
      */
-    static readonly SCALE = 0.8;
+    static readonly SCALE = 1.28;
 
     private villager = '';
     private scale = VillagerAnim.SCALE;

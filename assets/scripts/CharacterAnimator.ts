@@ -32,6 +32,9 @@ const RUN_SPEED = 260;
 
 @ccclass('CharacterAnimator')
 export class CharacterAnimator extends Component {
+    // ⚠️ 這兩個 fallback 現在**六個場景都是空的**（2026-08-19 清掉）：留著舊女巫的圖，
+    //    開場圖集還沒載完那一瞬間會閃一下前一位女巫。寧可先不顯示（圖集是 common 組，很快就到）。
+    //    程式碼保留這條路，是為了將來有人想拿它當別的角色的簡易動畫用。
     @property(SpriteFrame) idle: SpriteFrame | null = null;   // 待機圖（舊圖：正面）
     @property([SpriteFrame]) walk: SpriteFrame[] = [];        // 走路循環（舊圖：側面朝左）
     @property walkFps = 10;                                   // 每秒播幾格
