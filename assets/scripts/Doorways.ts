@@ -2,7 +2,7 @@ import { Node, UITransform, find } from 'cc';
 import { SceneDoor } from './SceneDoor';
 import { StorageCabinet } from './StorageCabinet';
 import { Wardrobe } from './Wardrobe';
-import { SHOP_TO_GARDEN } from './data/garden';
+import { tileCenter, DOOR_TOWN, DOOR_BREW, DOOR_GARDEN } from './data/shopRoom';
 
 /**
  * 城鎮小屋的門在整棟房子圖上的位置（節點原點在房子正中央底部）。
@@ -36,16 +36,32 @@ export const Doorways = {
             if (door) { door.doorX = COTTAGE_DOOR.x; door.doorY = COTTAGE_DOOR.y; }
         }
 
-        // 店裡右邊通往後花園的門
-        if (scene === 'shop' && !props.getChildByName('GardenDoor')) {
-            const node = new Node('GardenDoor');
-            node.layer = props.layer;
-            props.addChild(node);
-            node.setPosition(SHOP_TO_GARDEN.x, SHOP_TO_GARDEN.y, 0);
-            node.addComponent(UITransform).setContentSize(80, 40);
-            const door = node.addComponent(SceneDoor);
-            door.targetScene = 'garden';
-            door.hintText = '到後花園';
+        // 店裡的三個出口。等距房間沒辦法用「走出矩形邊界」那一套（地板是菱形，
+        // 塞得進去的矩形只剩正中間一小塊），所以連「回城鎮」也做成地板上的門 ——
+        // 三個出口規則一致，走上去就過圖，PortalGlow 也會自己掃到它們。
+        if (scene === 'shop') {
+            const doors: Array<[string, { gx: number; gy: number }, string, string]> = [
+                ['TownDoor', DOOR_TOWN, 'town', '回城鎮'],
+                ['BrewDoor', DOOR_BREW, 'brew', '進藥水室'],
+                ['GardenDoor', DOOR_GARDEN, 'garden', '到後花園'],
+            ];
+            for (const [name, cell, target, hint] of doors) {
+                const p = tileCenter(cell.gx, cell.gy);
+                let node = props.getChildByName(name);
+                if (!node) {
+                    node = new Node(name);
+                    node.layer = props.layer;
+                    props.addChild(node);
+                    node.addComponent(UITransform).setContentSize(80, 40);
+                }
+                node.setPosition(p.x, p.y, 0);
+                const door = node.getComponent(SceneDoor) ?? node.addComponent(SceneDoor);
+                door.targetScene = target;
+                door.hintText = hint;
+                // ⚠️ 提示範圍收到跟自動觸發一樣大（預設 200）。販售桌的櫃台也吃 E，
+                // 兩個感應圈重疊的話「按 E 上架」會同時把人送去別的場景（花園那道門踩過）。
+                door.interactRange = door.autoRange;
+            }
         }
 
         // 房間裡的倉庫：背景左邊那口木箱上放一個隱形觸發（同 brew.scene 的床）。

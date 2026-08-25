@@ -26,6 +26,7 @@ import { Storage } from './Storage';
 import { Toast } from './Toast';
 import { SleepOverlay } from './SleepOverlay';
 import { edgePortalsOf } from './data';
+import { clampToFloor } from './data/shopRoom';
 const { ccclass, property } = _decorator;
 
 /** 撞到地圖哪一側（給之後「切換下一張地圖」用）。 */
@@ -70,6 +71,8 @@ export class PlayerController extends Component {
     // 地圖邊界（World-local 座標）
     private minX = 0; private maxX = 0; private minY = 0; private maxY = 0;
     private switching = false;   // 已在切換地圖，避免重複觸發
+    // 等距房間（店裡）：地板是菱形，不能用矩形夾邊，改用 data/shopRoom 的格座標夾。
+    private isoRoom = false;
 
     private ground: Node | null = null;      // 點擊移動的接收面
     private moveTarget: Vec3 | null = null;  // 點擊指定的目的地（null＝沒有）
@@ -94,6 +97,7 @@ export class PlayerController extends Component {
         SleepOverlay.arm();       // 昏倒時也演睡覺過場，並把人送回房間
         // 戶外天色色板：只在森林/城鎮裝（室內 brew/shop 各自有背景，不套）。
         const scene = director.getScene()?.name;
+        this.isoRoom = scene === 'shop';
         if (scene === 'main' || scene === 'town' || scene === 'candy') DayNightTint.ensure();
         if (scene === 'town') LampGlow.ensure();   // 城鎮路燈夜間發光（疊在色板之上）
         if (scene === 'town') TownFolk.ensure();   // 街上走動的村民（沿 Roads 的路點晃）
@@ -136,6 +140,11 @@ export class PlayerController extends Component {
         const p = ut.convertToNodeSpaceAR(new Vec3(ui.x, ui.y, 0));
         // 目的地夾在邊界內縮一點 —— 自動走到底不該把人帶去別張地圖，
         // 換場景仍然只由玩家自己按方向鍵推到邊界觸發。
+        if (this.isoRoom) {
+            const c = clampToFloor(p.x, p.y);
+            this.moveTarget = new Vec3(c.x, c.y, 0);
+            return;
+        }
         const m = 4;
         this.moveTarget = new Vec3(
             Math.min(Math.max(p.x, this.minX + m), this.maxX - m),
@@ -190,7 +199,11 @@ export class PlayerController extends Component {
             let nx = p.x + this.dir.x * speed * dt;
             let ny = p.y + this.dir.y * speed * dt;
 
-            if (this.clampToBounds) {
+            if (this.isoRoom) {
+                // 等距房間：夾在菱形地板內。出口不是邊界而是地板上的門（見 Doorways）。
+                const c = clampToFloor(nx, ny);
+                nx = c.x; ny = c.y;
+            } else if (this.clampToBounds) {
                 if (nx < this.minX) { nx = this.minX; this.onReachEdge('left', ny); }
                 else if (nx > this.maxX) { nx = this.maxX; this.onReachEdge('right', ny); }
                 if (ny < this.minY) { ny = this.minY; this.onReachEdge('bottom', nx); }

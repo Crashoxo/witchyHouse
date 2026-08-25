@@ -37,6 +37,7 @@ export const SAVE_KEYS: string[] = [
     'witch.garden',          // Garden：後花園每一格種了什麼、澆水時間
     'witch.storage',         // Storage：房間倉庫的存貨
     'witch.outfit',          // Outfits：現在穿哪一套造型
+    'witch.room',            // RoomLayout：店裡的家具擺在哪幾格
 ];
 
 /**

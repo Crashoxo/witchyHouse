@@ -8,6 +8,8 @@ import { Quests } from './Quests';
 import { DailyLog } from './DailyLog';
 import { Reputation } from './Reputation';
 import { TimeSystem } from './TimeSystem';
+import { RoomLayout } from './RoomLayout';
+import { tileCenter, DOOR_TOWN } from './data/shopRoom';
 import { VillagerAnim } from './VillagerAnim';
 const { ccclass, property } = _decorator;
 
@@ -47,9 +49,20 @@ export class CustomerManager extends Component {
     @property({ tooltip: '顧客立繪縮放（原圖比例；0.7 時身高跟女巫差不多）' })
     displayScale = VillagerAnim.SCALE;
 
-    private readonly entrance = new Vec3(0, -330, 0);   // 進出口（畫面下方，靠出口）
-    // 桌子（展示商品的長木凳）在世界座標中心約 (-260,-100)；顧客走到桌前挑貨
-    private readonly tableFrontY = -185;
+    // 進出口＝通往城鎮那道門所在的格子（門搬家顧客就跟著改走那裡）
+    private entrancePos(): Vec3 {
+        const p = tileCenter(DOOR_TOWN.gx, DOOR_TOWN.gy);
+        return new Vec3(p.x, p.y, 0);
+    }
+    /**
+     * 挑貨位置＝販售桌前面。桌子是玩家自己擺的（見 DecorRoom 佈置模式），
+     * 所以這裡每次生成都重新問一次 RoomLayout —— 搬了桌子，顧客動線就跟著變。
+     */
+    private browseSpot(): Vec3 {
+        const f = RoomLayout.saleFront();
+        if (!f) return this.entrancePos();
+        return new Vec3(f.x + (Math.random() - 0.5) * 70, f.y + (Math.random() - 0.5) * 24, 0);
+    }
     private customers: Customer[] = [];
     private spawnTimer = 0;
 
@@ -92,15 +105,13 @@ export class CustomerManager extends Component {
         const node = new Node('Customer-' + who);
         node.layer = this.node.layer;
         this.node.addChild(node);
-        node.setPosition(this.entrance);
+        node.setPosition(this.entrancePos());
         const anim = node.addComponent(VillagerAnim);
         anim.init(who, this.displayScale);
 
-        // 走到桌前的隨機位置（桌子在左側，x 約 -360..-140）挑貨
-        const browseX = -360 + Math.random() * 220;
         this.customers.push({
             node, anim, state: St.ENTER, timer: 0,
-            want, target: new Vec3(browseX, this.tableFrontY, 0), bubble: null,
+            want, target: this.browseSpot(), bubble: null,
             emoteFrames: null, emoteSprite: null, emoteTimer: 0, emoteIdx: 0,
         });
     }
@@ -138,7 +149,7 @@ export class CustomerManager extends Component {
             case St.LEAVE:
                 c.timer += dt;
                 if (c.timer < 1.0) return false;   // 成交後停一下再走
-                return this.moveTo(c, this.entrance, dt);   // 走到出口就銷毀
+                return this.moveTo(c, this.entrancePos(), dt);   // 走到出口就銷毀
         }
         return false;
     }

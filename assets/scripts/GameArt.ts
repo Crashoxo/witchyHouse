@@ -3,6 +3,7 @@ import { ITEM_FILES, POTION_ITEMS, CANDY_ITEMS } from './data/items';
 import { FLOWERS } from './data/garden';
 import { OUTFITS } from './data/outfits';
 import { CANDY_CRITTERS } from './data/candy';
+import { FURNITURE } from './data/shopRoom';
 
 /**
  * 遊戲美術的執行期載入器：把 `assets/resources/` 底下的圖用 `resources.load`
@@ -48,7 +49,8 @@ const PORTRAIT_FILES = ['gnome', 'witch', 'elf', 'forestboy',
 const DECOR_FILES = ['succulent', 'daisypot', 'violetpot', 'birdcage_small', 'bonsai',
                      'ivy_hanging', 'roses_vase', 'lily_vase', 'sunflower_vase', 'autumn_vase',
                      'potted_fern', 'window_box', 'birdcage_large', 'blue_urn',
-                     'wildflower_basket', 'flower_case'];
+                     'wildflower_basket', 'flower_case',
+                     'herb_shelf', 'crystal_shelf', 'potion_shelf'];
 
 /** 時鐘盤面零件（resources/ui/clock 底下）：盤面／日月圖示／指針。 */
 const CLOCK_FILES = ['face', 'sun', 'moon', 'hand-hour', 'hand-min', 'hand-day'];
@@ -115,12 +117,15 @@ export const WITCH_DIRS = 8;
 export const WitchDir = { SOUTH: 0, EAST: 2, NORTH: 4, WEST: 6 };
 
 /**
- * 女巫節點的縮放：新角色的格子 66px 高、可見身高 64px，**直接 1:1 畫**（像素才不會糊，
- * 前一位是 46px 身高硬放大 1.5 倍）。畫面上 64px，跟村民與前一位的 69px 差不到一成，
- * 所以場景裡調好的互動半徑/可走範圍都不用重調。**場景檔裡的 scale 由程式覆蓋**
- * （CharacterAnimator 套用），六個場景一個都不用改。
+ * 女巫節點的縮放：圖集的格子是 66px 高、可見身高 58px。**照星露谷的人物比例定**——
+ * 星露谷 1280×720 一格 64px，農夫可見身高約 112px ＝畫面高的 15.5%；我們的設計解析度
+ * 是 960×640（fitHeight），所以要 640×0.155 ≈ 99px，66 × 1.6 = 106（可見 93px，14.5%）
+ * 剛好落在那個帶上。1:1 畫的話只有畫面高的 10%，比星露谷小了一號（使用者反映太小）。
+ * 放大是整數倍以外的比例，像素會稍微柔化，但這組圖本來就不是硬像素風，實測可接受。
+ * 村民要一起改（見 `VillagerAnim.SCALE`），不然大人會比女巫矮。
+ * **場景檔裡的 scale 由程式覆蓋**（CharacterAnimator 套用），六個場景一個都不用改。
  */
-export const WITCH_SCALE = 1.0;
+export const WITCH_SCALE = 1.6;
 
 let w8Idle: SpriteFrame[] = [];        // [方向]
 let w8Walk: SpriteFrame[][] = [];      // [方向][幀]
@@ -146,6 +151,8 @@ let brewRoomNightFrame: SpriteFrame | null = null;  // 藥水室背景（夜晚�
 let gardenFrame: SpriteFrame | null = null;         // 後花園背景（草地＋柵欄）
 const candyArt = new Map<string, SpriteFrame>();    // 糖果鎮的角色/小動物圖
 let questScrollFrame: SpriteFrame | null = null;    // 任務簿捲軸底板
+const furnitureArt = new Map<string, SpriteFrame>();// 店內家具 id → 圖
+let shopRoomFrame: SpriteFrame | null = null;       // 店內等距房間底圖
 let updateFrameArt: SpriteFrame | null = null;      // 更新公告板木框
 
 /**
@@ -369,8 +376,11 @@ function loadGroup(name: string): void {
         for (const file of PORTRAIT_FILES) loadImg(portraits, file, `portraits/${file}`);
     } else if (name === 'decor') {
         for (const file of DECOR_FILES) loadImg(decor, file, `decor/${file}`);
+        // 家具跟裝飾同一組：花店（城鎮）要畫得出家具圖示，店裡要擺出來，兩邊都載得到
+        for (const f of FURNITURE) loadImg(furnitureArt, f.id, `furniture/${f.id}`);
     } else if (name === 'shop') {
         for (const key of Object.keys(EMOTE_INFO)) loadEmote(key);
+        loadSingle('rooms/shop-room', sf => { shopRoomFrame = sf; });
     } else if (name === 'villagers') {
         for (const file of VILLAGER_FILES) loadVillager(file);
     } else if (name === 'garden') {
@@ -562,6 +572,12 @@ export const GameArt = {
 
     /** 藥水室背景（night=true 回夜晚版；未載入回 null）。 */
     brewRoom(night: boolean): SpriteFrame | null { return (night ? brewRoomNightFrame : brewRoomDayFrame); },
+
+    /** 店內家具圖（未載入回 null）。 */
+    furniture(id: string): SpriteFrame | null { return furnitureArt.get(id) ?? null; },
+
+    /** 店內等距房間底圖（未載入回 null）。 */
+    shopRoom(): SpriteFrame | null { return shopRoomFrame; },
 
     /** 任務簿捲軸底板（未載入回 null）。 */
     questScroll(): SpriteFrame | null { return questScrollFrame; },

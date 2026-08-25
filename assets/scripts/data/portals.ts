@@ -35,8 +35,7 @@ export const EDGE_PORTALS: EdgePortal[] = [
     { scene: 'main', side: 'top', to: 'candy', at: 0, span: 100 },
     // 城鎮西側 → 森林：對準往西的泥土路 road-dirt-v-a (y=-40)，也是玩家進城的抵達點
     { scene: 'town', side: 'left', to: 'main', at: -40, span: 80 },
-    // 店內下方 → 城鎮：對準玩家從城鎮進店的抵達點＝店門口
-    { scene: 'shop', side: 'bottom', to: 'town', at: -83, span: 80 },
+    // ⚠️ 店內沒有邊界出口：房間是等距菱形地板，改用地板上的門（見 Doorways/DOOR_TOWN）
     // 糖果鎮南側 → 回森林
     { scene: 'candy', side: 'bottom', to: 'main', at: 0, span: 160 },
 ];
