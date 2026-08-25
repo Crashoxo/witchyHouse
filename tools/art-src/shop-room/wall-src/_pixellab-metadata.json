@@ -1,0 +1,152 @@
+{
+  "objects": [
+    {
+      "id": "b4eb531a-57c5-4950-8d45-491fcf00aa53",
+      "name": "base",
+      "prompt": "aged cream plaster above dark wood wainscoting",
+      "size": {
+        "width": 128,
+        "height": 128
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/aged_cream_plaster_above_dark.png"
+      },
+      "animations": {}
+    },
+    {
+      "id": "57d0cfe2-85f8-4d72-a255-b93a69b7a5e3",
+      "name": "base",
+      "prompt": "dark blue wallpaper with tiny stars and wood wainscoting",
+      "size": {
+        "width": 128,
+        "height": 128
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/dark_blue_wallpaper_with_tiny.png"
+      },
+      "animations": {}
+    },
+    {
+      "id": "044807b5-3a8c-4269-ada9-08552cb50702",
+      "name": "base",
+      "prompt": "deep muted green painted panelling with wood skirting board",
+      "size": {
+        "width": 128,
+        "height": 128
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/deep_muted_green_painted_panel.png"
+      },
+      "animations": {}
+    },
+    {
+      "id": "1b3dd11d-55bd-4bb9-96d3-3ccad9b76545",
+      "name": "base",
+      "prompt": "faded floral wallpaper above dark wood wainscoting",
+      "size": {
+        "width": 128,
+        "height": 128
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/faded_floral_wallpaper_above_d.png"
+      },
+      "animations": {}
+    }
+  ],
+  "groups": [
+    {
+      "group_id": "29aaafec-5602-4dbd-ad17-407ae5667511",
+      "folder": "objects/aged_cream_plaster_above_dark",
+      "objects": [
+        {
+          "id": "b4eb531a-57c5-4950-8d45-491fcf00aa53",
+          "name": "base",
+          "prompt": "aged cream plaster above dark wood wainscoting",
+          "size": {
+            "width": 128,
+            "height": 128
+          },
+          "directions": 1,
+          "view": "low top-down",
+          "rotations": {
+            "unknown": "rotations/aged_cream_plaster_above_dark.png"
+          },
+          "animations": {}
+        }
+      ]
+    },
+    {
+      "group_id": "b450a823-78a0-4492-968e-d48b30b43ee8",
+      "folder": "objects/dark_blue_wallpaper_with_tiny",
+      "objects": [
+        {
+          "id": "57d0cfe2-85f8-4d72-a255-b93a69b7a5e3",
+          "name": "base",
+          "prompt": "dark blue wallpaper with tiny stars and wood wainscoting",
+          "size": {
+            "width": 128,
+            "height": 128
+          },
+          "directions": 1,
+          "view": "low top-down",
+          "rotations": {
+            "unknown": "rotations/dark_blue_wallpaper_with_tiny.png"
+          },
+          "animations": {}
+        }
+      ]
+    },
+    {
+      "group_id": "c64abef9-83c1-4c8e-a503-35d4be598207",
+      "folder": "objects/deep_muted_green_painted_panel",
+      "objects": [
+        {
+          "id": "044807b5-3a8c-4269-ada9-08552cb50702",
+          "name": "base",
+          "prompt": "deep muted green painted panelling with wood skirting board",
+          "size": {
+            "width": 128,
+            "height": 128
+          },
+          "directions": 1,
+          "view": "low top-down",
+          "rotations": {
+            "unknown": "rotations/deep_muted_green_painted_panel.png"
+          },
+          "animations": {}
+        }
+      ]
+    },
+    {
+      "group_id": "c67d3c53-be62-48bd-9ef3-8911a16b4189",
+      "folder": "objects/faded_floral_wallpaper_above_d",
+      "objects": [
+        {
+          "id": "1b3dd11d-55bd-4bb9-96d3-3ccad9b76545",
+          "name": "base",
+          "prompt": "faded floral wallpaper above dark wood wainscoting",
+          "size": {
+            "width": 128,
+            "height": 128
+          },
+          "directions": 1,
+          "view": "low top-down",
+          "rotations": {
+            "unknown": "rotations/faded_floral_wallpaper_above_d.png"
+          },
+          "animations": {}
+        }
+      ]
+    }
+  ],
+  "export_version": "1.1",
+  "export_date": "2026-08-18T16:32:08.251078"
+}
