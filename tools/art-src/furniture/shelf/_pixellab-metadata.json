@@ -1,0 +1,22 @@
+{
+  "group_id": "1addf2d7-a7da-420c-9ba4-728f9197c18e",
+  "objects": [
+    {
+      "id": "1456cae8-8fc0-42d8-bed1-7f3a45c39424",
+      "name": "base",
+      "prompt": "shelf with arched top and two shelves",
+      "size": {
+        "width": 72,
+        "height": 72
+      },
+      "directions": 1,
+      "view": "low top-down",
+      "rotations": {
+        "unknown": "rotations/shelf_with_arched_top_and_two.png"
+      },
+      "animations": {}
+    }
+  ],
+  "export_version": "1.1",
+  "export_date": "2026-08-24T04:27:37.091225"
+}

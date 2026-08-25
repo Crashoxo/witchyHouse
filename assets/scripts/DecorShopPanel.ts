@@ -8,10 +8,12 @@ import { Inventory } from './Inventory';
 import { Garden } from './Garden';
 import { GameArt } from './GameArt';
 import { FLOWERS } from './data/garden';
+import { FURNITURE } from './data/shopRoom';
+import { RoomLayout } from './RoomLayout';
 import { BASE_PRICE } from './data/prices';
 const { ccclass } = _decorator;
 
-type Mode = 'decor' | 'seed';
+type Mode = 'decor' | 'shelf' | 'seed';
 
 /**
  * 花店的購買面板（modal，ensure 自動生，仿 ShopPanel），兩個分頁：
@@ -44,7 +46,9 @@ export class DecorShopPanel extends Component {
 
     private readonly cols = 4;
     private readonly maxCell = 158;
-    private readonly minCell = 100;
+    // ⚠️ 裝飾品加到 19 個之後是 5 排：minCell 100 會讓面板高 652 > 640 的畫面（老毛病）。
+    // 84 之後格子會照畫面高度算成 92，面板 612 剛好塞得下。
+    private readonly minCell = 84;
     private readonly pad = 24;
     private readonly headerH = 128;      // 標題列 ＋ 分頁按鈕列
     private cell = 158;                  // 實際格子大小（build 時依畫面高度算）
@@ -91,11 +95,14 @@ export class DecorShopPanel extends Component {
     private refresh() {
         if (this.goldLabel) this.goldLabel.string = `金幣 ${Wallet.gold}`;
         if (this.titleLabel) {
-            this.titleLabel.string = this.mode === 'decor' ? '花店 · 裝飾品' : '花店 · 花種子';
+            this.titleLabel.string = this.mode === 'decor' ? '花店 · 裝飾品'
+                : this.mode === 'shelf' ? '花店 · 貨架' : '花店 · 花種子';
         }
         if (this.hintLabel) {
             this.hintLabel.string = this.mode === 'decor'
                 ? 'Esc 關閉 · 點裝飾品購買（回自己店裡按「佈置房間」擺出來）'
+                : this.mode === 'shelf'
+                ? 'Esc 關閉 · 每款都佔 1×2 格，背板朝左上 · 靠左後牆那排最好看'
                 : 'Esc 關閉 · 點種子購買（回後花園走到花圃按 E 種下）';
         }
         this.buildTabs();
@@ -103,6 +110,7 @@ export class DecorShopPanel extends Component {
         if (!box) return;
         box.removeAllChildren();
         if (this.mode === 'decor') this.renderDecor(box);
+        else if (this.mode === 'shelf') this.renderShelves(box);
         else this.renderSeeds(box);
     }
 
@@ -182,10 +190,17 @@ export class DecorShopPanel extends Component {
         box.removeAllChildren();
         const active = new Color(96, 74, 128, 255);
         const idle = new Color(54, 46, 68, 255);
-        this.makeButton(box, '裝飾品', 150, 40, -84, 0,
-            this.mode === 'decor' ? active : idle, () => this.setMode('decor'));
-        this.makeButton(box, '花種子', 150, 40, 84, 0,
-            this.mode === 'seed' ? active : idle, () => this.setMode('seed'));
+        const tabs: [string, Mode][] = [['裝飾品', 'decor'],
+                                        ['貨架', 'shelf'], ['花種子', 'seed']];
+        // ⚠️ 寬度/間距**要從面板寬度回推**，不能寫死：面板寬是依目錄長度算出來的格子大小決定的，
+        // 每加一種裝飾品或一個分頁都會變（寫死 150/158 那版，裝飾品加到 19 個之後就凸出面板了）。
+        const gap = (this.panelW - this.pad * 2) / tabs.length;
+        const bw = gap - 8;
+        const x0 = -(tabs.length - 1) * gap / 2;
+        tabs.forEach(([text, m], i) => {
+            this.makeButton(box, text, bw, 40, x0 + i * gap, 0,
+                this.mode === m ? active : idle, () => this.setMode(m));
+        });
     }
 
     // ---- 裝飾品分頁 ----
@@ -202,6 +217,29 @@ export class DecorShopPanel extends Component {
                 price: d.price,
                 owned: owned > 0 ? `擁有 ${owned}` : '',
                 onBuy: () => { if (DecorCatalog.buy(d.id)) this.refresh(); },
+            });
+        });
+    }
+
+    // ---- 貨架分頁 ----
+
+    /**
+     * 貨架款式很多（十六款），排成 4×4 沿用裝飾品那套格線，不跟桌椅擠在同一頁。
+     * 全部佔地 1×2 格，所以格子底下不用再標佔幾格，改標「已有幾張」。
+     */
+    private renderShelves(box: Node) {
+        const list = FURNITURE.filter(f => f.shelf);
+        const left = -this.gridW / 2;
+        list.forEach((f, i) => {
+            const cx = left + (i % this.cols) * this.cell + this.cell / 2;
+            const cy = -Math.floor(i / this.cols) * this.cell - this.cell / 2;
+            const owned = RoomLayout.ownedCount(f.id);
+            this.buildCell(box, cx, cy, {
+                icon: () => GameArt.furniture(f.id),
+                name: f.name,
+                price: f.price,
+                owned: owned > 0 ? `擁有 ${owned}` : '',
+                onBuy: () => { if (RoomLayout.buy(f.id)) this.refresh(); },
             });
         });
     }
