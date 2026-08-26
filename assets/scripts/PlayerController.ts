@@ -13,6 +13,7 @@ import { UpdatePanel } from './UpdatePanel';
 import { DayNightTint } from './DayNightTint';
 import { LampGlow } from './LampGlow';
 import { TownFolk } from './TownFolk';
+import { TOWN_WALK } from './data/townRoads';
 import { ShadowLayer } from './ShadowLayer';
 import { GardenRoom } from './GardenRoom';
 import { CandyTown } from './CandyTown';
@@ -100,7 +101,7 @@ export class PlayerController extends Component {
         this.isoRoom = scene === 'shop';
         if (scene === 'main' || scene === 'town' || scene === 'candy') DayNightTint.ensure();
         if (scene === 'town') LampGlow.ensure();   // 城鎮路燈夜間發光（疊在色板之上）
-        if (scene === 'town') TownFolk.ensure();   // 街上走動的村民（沿 Roads 的路點晃）
+        if (scene === 'town') TownFolk.ensure(TOWN_WALK);  // 街上走動的村民（沿 data/townRoads 的路點晃）
         if (scene === 'garden') GardenRoom.ensure();   // 後花園：背景、花圃、回店的門、柵欄外的村民
         if (scene === 'candy') CandyTown.ensure();     // 糖果鎮：地圖、鎮上的角色、街上的小東西
         // 花園的門／房間的倉庫與衣櫃／城鎮小屋的門口位置。⚠️ 一定要排在 PortalGlow.ensure()
