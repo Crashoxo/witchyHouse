@@ -19,13 +19,22 @@ public static class WebBuilder
 {
     const string OutDir = "Build/Web";
 
+    /// <summary>
+    /// GitHub Pages 的輸出位置。Pages 的來源設成「main 分支的 /docs」，
+    /// 所以建置結果要直接落在專案根目錄的 `docs/`（**不是** `Build/`，那個有進 .gitignore）。
+    /// </summary>
+    const string PagesDir = "docs";
+
     [MenuItem("Witch Shop/建置/網頁版（WebGL）")]
     public static void BuildWeb() => Run(false);
 
     [MenuItem("Witch Shop/建置/網頁版（建好直接開瀏覽器）")]
     public static void BuildAndRunWeb() => Run(true);
 
-    static void Run(bool autoRun)
+    [MenuItem("Witch Shop/建置/網頁版（給 GitHub Pages）")]
+    public static void BuildForPages() => Run(false, pages: true);
+
+    static void Run(bool autoRun, bool pages = false)
     {
         SceneBuildUtil.RegisterAll();          // 確保五張地圖都在 Build Settings 裡
 
@@ -48,24 +57,42 @@ public static class WebBuilder
         // ⚠️ 壓縮先關掉：Brotli/Gzip 需要伺服器送對 Content-Encoding 標頭，
         //    本機測試最容易卡在這裡（畫面一片黑、Console 說載入失敗）。
         //    真的要放上網站再開，並照 Unity 文件設好伺服器。
-        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+        if (pages)
+        {
+            // ── 放 GitHub Pages 用的設定 ──────────────────────────
+            // Pages 是純靜態空間，**沒辦法設 Content-Encoding 標頭** —— 一般的
+            // Brotli/Gzip 建置放上去會直接載不起來。解法是開「解壓縮退路」：
+            // 檔案照樣壓，改由 Unity 產生的 JS 在瀏覽器端自己解開，任何靜態空間都能跑。
+            //
+            // 一定要壓的另一個理由：不壓的 .data 動輒上百 MB，
+            // 而 **GitHub 單一檔案的硬上限是 100 MB**，超過就推不上去。
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+            PlayerSettings.WebGL.decompressionFallback = true;
+        }
+        else
+        {
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+            PlayerSettings.WebGL.decompressionFallback = false;
+        }
         PlayerSettings.WebGL.dataCaching = true;
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
 
         var paths = new string[scenes.Length];
         for (int i = 0; i < scenes.Length; i++) paths[i] = scenes[i].path;
 
-        Directory.CreateDirectory(OutDir);
+        string outDir = pages ? PagesDir : OutDir;
+        if (pages && !ClearPagesDir()) return;
+        Directory.CreateDirectory(outDir);
 
         var opts = new BuildPlayerOptions
         {
             scenes = paths,
-            locationPathName = OutDir,
+            locationPathName = outDir,
             target = BuildTarget.WebGL,
             options = autoRun ? BuildOptions.AutoRunPlayer : BuildOptions.None,
         };
 
-        Debug.Log($"[WebBuilder] 開始建置網頁版 → {Path.GetFullPath(OutDir)}\n" +
+        Debug.Log($"[WebBuilder] 開始建置網頁版 → {Path.GetFullPath(outDir)}\n" +
                   $"場景 {paths.Length} 個。⚠️ 第一次會跑很久（15~40 分鐘），Unity 會像當掉一樣，別關它。");
 
         var report = BuildPipeline.BuildPlayer(opts);
@@ -73,18 +100,44 @@ public static class WebBuilder
 
         if (s.result == BuildResult.Succeeded)
         {
+            if (pages) File.WriteAllText(Path.Combine(outDir, ".nojekyll"), "");
             Debug.Log($"[WebBuilder] 建置成功！\n" +
-                      $"輸出：{Path.GetFullPath(OutDir)}\n" +
+                      $"輸出：{Path.GetFullPath(outDir)}\n" +
                       $"大小：{s.totalSize / 1048576} MB　耗時：{s.totalTime:hh\\:mm\\:ss}\n" +
-                      (autoRun ? "瀏覽器應該自己開了。" :
+                      (pages ? "接著 git add docs && git commit && git push，Pages 會自己更新。" :
+                       autoRun ? "瀏覽器應該自己開了。" :
                        "⚠️ 不要直接點 index.html —— 要用「建好直接開瀏覽器」那個選單，" +
                        "或自己起一個本機伺服器（見 Witch Shop → 建置 → 怎麼開網頁版）。"));
-            EditorUtility.RevealInFinder(Path.GetFullPath(OutDir));
+            EditorUtility.RevealInFinder(Path.GetFullPath(outDir));
         }
         else
         {
             Debug.LogError($"[WebBuilder] 建置失敗：{s.result}，錯誤 {s.totalErrors} 個。看上面的 Console。");
         }
+    }
+
+    /// <summary>
+    /// 清掉上一次的 Pages 建置。
+    ///
+    /// ⚠️ 只在確認那真的是「上一次的 WebGL 輸出」時才刪（要有 index.html 跟 Build/）——
+    ///    不然 `docs/` 裡萬一放了別的東西（手寫的說明頁、截圖）會被一起清掉。
+    ///    不留舊檔是因為換版之後檔名會變，殘檔會一直躺在 repo 裡陪著推上去。
+    /// </summary>
+    static bool ClearPagesDir()
+    {
+        if (!Directory.Exists(PagesDir)) return true;
+
+        bool looksLikeBuild = File.Exists(Path.Combine(PagesDir, "index.html"))
+                              && Directory.Exists(Path.Combine(PagesDir, "Build"));
+        if (!looksLikeBuild)
+        {
+            Debug.LogError($"[WebBuilder] {Path.GetFullPath(PagesDir)} 裡的東西看起來不是上一次的 " +
+                           "WebGL 輸出（沒有 index.html ＋ Build/），保險起見不動它。" +
+                           "確認可以刪的話自己清掉再建一次。");
+            return false;
+        }
+        Directory.Delete(PagesDir, true);
+        return true;
     }
 
     [MenuItem("Witch Shop/建置/怎麼開網頁版")]
