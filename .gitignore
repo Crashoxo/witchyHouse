@@ -1,0 +1,28 @@
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+*.csproj
+*.sln
+*.user
+
+# Unity 產生的其他東西
+[Mm]emoryCaptures/
+[Rr]ecordings/
+.vsconfig
+*.pidb
+*.booproj
+*.svd
+*.unitypackage
+*.apk
+*.aab
+sysinfo.txt
+crashlytics-build.properties
+
+# 編輯器
+.vs/
+.idea/
+.vscode/

@@ -1,0 +1,15 @@
+NotoSansTC.ttf
+==============
+來源：Windows 內建的 NotoSansTC-VF.ttf（Noto Sans Traditional Chinese，可變字型）
+授權：SIL Open Font License 1.1
+
+選它的理由：
+  - 它是開源字型，**可以隨遊戲一起散布**（微軟正黑體 msjh.ttc 不行）
+  - 網頁版（WebGL）沒有「作業系統字型」可以借，字型一定要包進專案裡，
+    否則所有中文會變成空白 —— 而且不會報任何錯。
+
+OFL 的要求很寬鬆，主要是：
+  - 可以自由使用、修改、散布（含商業用途）
+  - 不能單獨販售字型本身
+  - 衍生的字型要沿用 OFL 授權
+完整條款：https://scripts.sil.org/OFL

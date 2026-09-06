@@ -1,0 +1,40 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!--
+        背包／倉庫面板的「結構」。
+
+        對照 Cocos 版 BagPanel.ts 的 build()／buildTabs()／buildPager()：
+        那邊是 130 行的 new Node() + addComponent(UITransform) + setPosition(手算的 x, y)。
+        這裡結構寫在 UXML、外觀寫在 BagPanel.uss，位置交給 flexbox 自己排。
+        要多加一個欄位，就是多一行標籤，不用重算任何座標。
+    -->
+    <ui:VisualElement name="dim" class="dim">
+        <ui:VisualElement name="panel" class="panel">
+
+            <ui:VisualElement class="header">
+                <ui:Label name="title" class="title" text="背包" />
+                <ui:VisualElement class="spacer" />
+                <ui:Label name="cap" class="cap" />
+                <ui:Button name="close" class="close" text="✕" />
+            </ui:VisualElement>
+
+            <!-- 分頁鈕由 C# 依 Tab 列表生出來，數量改變不必動版面 -->
+            <ui:VisualElement name="tabs" class="tabs" />
+
+            <!--
+                ⚠️ 這裡用 ScrollView，把 Cocos 版的「一頁 7 列 + 翻頁鈕」拿掉了。
+                原本會分頁是因為 Cocos 沒有現成的捲動容器，要自己算 perPage／page。
+                UI Toolkit 的 ScrollView 是內建的，捲動比翻頁好用，所以 buildPager()
+                那 25 行連同 page 狀態一起消失。
+                想要翻頁的話講一聲，加回來不難。
+            -->
+            <ui:ScrollView name="rows" class="rows" />
+
+            <ui:VisualElement name="footer" class="footer">
+                <ui:Button name="stashAll" class="btn btn-keep" text="全部存入" />
+                <ui:VisualElement class="spacer" />
+                <ui:Label name="hint" class="hint" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

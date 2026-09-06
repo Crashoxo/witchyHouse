@@ -1,0 +1,166 @@
+/*
+    背包／倉庫面板的「外觀」。
+
+    Cocos 版所有顏色都是散在程式碼裡的字面值，例如：
+        new Color(42, 36, 32, 248)     面板底
+        new Color(244, 238, 228, 255)  主要文字
+        new Color(118, 92, 58, 255)    分頁選中
+        new Color(78, 108, 122, 255)   存入鈕
+    改個色調要在 421 行裡一個一個找。這裡集中成幾個 class，改一次全部跟著變。
+*/
+
+.dim {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.59);   /* 原 Color(0,0,0,150) */
+    align-items: center;
+    justify-content: center;
+}
+
+.panel {
+    width: 720px;                             /* 原 panelW */
+    max-height: 88%;
+    background-color: rgb(42, 36, 32);
+    border-width: 4px;
+    border-color: rgb(220, 198, 160);
+    padding: 18px 22px;
+}
+
+/* ── 標題列 ───────────────────────────────────────── */
+
+.header {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.spacer { flex-grow: 1; }
+
+.title {
+    font-size: 26px;
+    color: rgb(250, 238, 220);
+    -unity-font-style: bold;
+}
+
+.cap {
+    font-size: 18px;
+    color: rgb(206, 196, 178);
+    margin-right: 12px;
+}
+
+.close {
+    width: 40px; height: 40px;
+    background-color: rgb(120, 60, 70);
+    color: rgb(244, 240, 232);
+    border-width: 2px;
+    border-color: rgba(228, 216, 198, 0.75);
+    font-size: 18px;
+}
+.close:hover { background-color: rgb(150, 74, 86); }
+
+/* ── 分頁 ─────────────────────────────────────────── */
+
+.tabs {
+    flex-direction: row;
+    margin-bottom: 10px;
+}
+
+.tab {
+    flex-grow: 1;                             /* ← 取代 Cocos 版手算的 -246 + i*164 */
+    height: 38px;
+    margin-right: 8px;
+    background-color: rgb(64, 56, 50);
+    color: rgb(244, 240, 232);
+    border-width: 2px;
+    border-color: rgba(228, 216, 198, 0.75);
+    font-size: 18px;
+}
+.tab:hover { background-color: rgb(84, 74, 66); }
+.tab.active { background-color: rgb(118, 92, 58); }
+
+/* ── 列表 ─────────────────────────────────────────── */
+
+.rows {
+    flex-grow: 1;
+    min-height: 300px;
+}
+
+.row {
+    flex-direction: row;
+    align-items: center;
+    height: 54px;                             /* 原 rowH */
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(228, 216, 198, 0.12);
+}
+
+.row-icon {
+    width: 38px; height: 38px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.row-name {
+    font-size: 20px;
+    color: rgb(244, 238, 228);
+    width: 150px;
+    flex-shrink: 0;
+}
+
+.row-count {
+    font-size: 20px;
+    color: rgb(220, 230, 210);
+    width: 90px;
+}
+.row-count.empty { color: rgb(130, 126, 120); }
+
+.row-side {
+    font-size: 18px;
+    width: 92px;
+    -unity-text-align: middle-center;
+}
+.row-side.bag { color: rgb(220, 230, 210); }
+.row-side.kept { color: rgb(255, 224, 160); }
+.row-side.empty { color: rgb(130, 126, 120); }
+
+.empty-msg {
+    font-size: 20px;
+    color: rgb(200, 192, 184);
+    -unity-text-align: middle-center;
+    margin-top: 60px;
+}
+
+/* ── 按鈕 ─────────────────────────────────────────── */
+
+.btn {
+    height: 34px;
+    margin-left: 6px;
+    color: rgb(244, 240, 232);
+    background-color: rgb(70, 66, 62);
+    border-width: 2px;
+    border-color: rgba(228, 216, 198, 0.75);
+    font-size: 16px;
+}
+.btn:hover { background-color: rgb(92, 86, 80); }
+.btn:disabled { opacity: 0.45; }
+
+.btn-keep { background-color: rgb(78, 108, 122); }
+.btn-keep:hover { background-color: rgb(96, 130, 146); }
+.btn-take { background-color: rgb(108, 92, 62); }
+.btn-take:hover { background-color: rgb(130, 112, 76); }
+.btn-one { width: 40px; }
+.btn-wide { width: 62px; }
+
+/* ── 底列 ─────────────────────────────────────────── */
+
+.footer {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.hint {
+    font-size: 15px;
+    color: rgb(184, 176, 166);
+    -unity-text-align: middle-right;
+    flex-shrink: 1;
+}

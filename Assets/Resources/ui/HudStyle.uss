@@ -1,0 +1,57 @@
+/*
+    畫面下排的背包格子。
+
+    Cocos 版 layoutSlots() 要自己算換行：
+        const r = Math.floor(i / PER_ROW), c = i % PER_ROW;
+        const inRow = Math.min(n - r * PER_ROW, PER_ROW);
+        const rowW = inRow * slotSize + (inRow - 1) * gap;
+        const x = -(rowW - slotSize) / 2 + c * step;
+        const y = (totalH - slotSize) / 2 - r * step;
+    ——「一排最多 12 格、最後一排不滿時要各自置中」全部手算。
+
+    這裡就是 flex-wrap + justify-content: center，換行與置中都是免費的。
+*/
+
+.hud {
+    position: absolute;
+    left: 0; right: 0; bottom: 24px;          /* 原 bottomMargin */
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+}
+
+.slot {
+    width: 64px;                               /* 原 slotSize */
+    height: 64px;
+    margin: 4px;                               /* 原 gap 8 ÷ 2 */
+    background-color: rgba(30, 24, 40, 0.67);
+    border-width: 3px;
+    border-color: rgba(210, 190, 230, 0.86);
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+}
+
+.slot-icon {
+    width: 46px;                               /* 原 slotSize * 0.72 */
+    height: 46px;
+    position: absolute;
+}
+
+/* 沒有圖示時退回文字 */
+.slot-name {
+    font-size: 15px;
+    color: rgb(240, 240, 245);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.slot-count {
+    position: absolute;
+    right: 3px;
+    bottom: 1px;
+    font-size: 16px;
+    color: rgb(255, 240, 200);
+    -unity-text-align: middle-right;
+}

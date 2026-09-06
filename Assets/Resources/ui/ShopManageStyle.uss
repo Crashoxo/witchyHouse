@@ -1,0 +1,102 @@
+/*
+    店內經營面板。跟 BagPanelStyle 同一套視覺語彙（暗木＋米黃描邊），
+    顏色集中在這裡，改一次兩個面板一起變。
+*/
+
+.dim {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.59);
+    align-items: center;
+    justify-content: center;
+}
+
+.panel {
+    width: 760px;
+    max-height: 88%;
+    background-color: rgb(42, 36, 32);
+    border-width: 4px;
+    border-color: rgb(220, 198, 160);
+    padding: 18px 22px;
+}
+
+.header { flex-direction: row; align-items: center; margin-bottom: 10px; }
+.spacer { flex-grow: 1; }
+
+.title { font-size: 26px; color: rgb(250, 238, 220); -unity-font-style: bold; }
+.gold  { font-size: 20px; color: rgb(255, 224, 130); margin-right: 12px; }
+
+.close {
+    width: 40px; height: 40px;
+    background-color: rgb(120, 60, 70);
+    color: rgb(244, 240, 232);
+    border-width: 2px; border-color: rgba(228, 216, 198, 0.75);
+}
+.close:hover { background-color: rgb(150, 74, 86); }
+
+.tabs { flex-direction: row; margin-bottom: 8px; }
+.tab {
+    flex-grow: 1; height: 40px; margin-right: 8px;
+    background-color: rgb(64, 56, 50);
+    color: rgb(244, 240, 232);
+    border-width: 2px; border-color: rgba(228, 216, 198, 0.75);
+    font-size: 18px;
+}
+.tab:hover  { background-color: rgb(84, 74, 66); }
+.tab.active { background-color: rgb(118, 92, 58); }
+
+/* 欄位標頭 */
+.head-row {
+    flex-direction: row; align-items: center;
+    height: 26px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(228, 216, 198, 0.25);
+}
+.head-label { font-size: 16px; color: rgb(200, 190, 178); -unity-text-align: middle-center; }
+
+.rows { flex-grow: 1; min-height: 260px; }
+
+.row {
+    flex-direction: row; align-items: center;
+    height: 44px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(228, 216, 198, 0.12);
+}
+
+.col-name  { width: 130px; font-size: 20px; color: rgb(244, 236, 224); }
+.col-bag   { width: 70px;  font-size: 18px; color: rgb(220, 230, 210); -unity-text-align: middle-center; }
+.col-shelf { width: 70px;  font-size: 18px; color: rgb(255, 224, 160); -unity-text-align: middle-center; }
+.col-price { width: 74px;  font-size: 18px; color: rgb(255, 224, 130); -unity-text-align: middle-center; }
+.dimmed { color: rgb(130, 126, 120); }
+
+.btn {
+    height: 34px; margin-left: 6px;
+    color: rgb(244, 240, 232);
+    background-color: rgb(70, 66, 62);
+    border-width: 2px; border-color: rgba(228, 216, 198, 0.75);
+    font-size: 16px;
+}
+.btn:hover { background-color: rgb(92, 86, 80); }
+.btn:disabled { opacity: 0.45; }
+
+.btn-step { width: 32px; background-color: rgb(80, 66, 60); }
+.btn-list { width: 72px; background-color: rgb(78, 118, 92); }
+.btn-list:hover { background-color: rgb(96, 142, 112); }
+.btn-pull { width: 72px; background-color: rgb(120, 90, 70); }
+.btn-pull:hover { background-color: rgb(144, 108, 84); }
+.btn-buy  { width: 88px; background-color: rgb(78, 108, 122); }
+.btn-buy:hover { background-color: rgb(96, 130, 146); }
+
+.empty-msg {
+    font-size: 19px; color: rgb(200, 192, 184);
+    -unity-text-align: middle-center; margin-top: 60px;
+    white-space: normal;
+}
+
+/* 升級分頁 */
+.up-name   { width: 110px; font-size: 20px; color: rgb(244, 236, 224); }
+.up-desc   { flex-grow: 1; font-size: 15px; color: rgb(186, 178, 168); white-space: normal; }
+.up-effect { width: 150px; font-size: 16px; color: rgb(200, 220, 200); -unity-text-align: middle-center; }
+.up-cost   { width: 90px;  font-size: 17px; color: rgb(255, 224, 130); -unity-text-align: middle-center; }
+
+.hint { font-size: 15px; color: rgb(184, 176, 166); margin-top: 10px; }

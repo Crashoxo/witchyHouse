@@ -1,0 +1,90 @@
+using System.Collections.Generic;
+
+namespace WitchShop.Data
+{
+    /// <summary>
+    /// 道具「內容」資料：有哪些基礎材料、每個道具對應的美術檔名。
+    /// （道具的「價格」在 Prices.cs；藥水「配方」在 Recipes.cs。）
+    /// </summary>
+    public static class Items
+    {
+        /// <summary>8 種可採集的基礎材料（固定顯示順序）。</summary>
+        public static readonly string[] Materials =
+        {
+            "木材", "樹枝", "漿果", "落葉", "藥草", "黑莓", "金蘋果", "藍莓",
+        };
+
+        /// <summary>材料名稱 → Resources/items 底下的檔名。</summary>
+        public static readonly Dictionary<string, string> ItemFiles = new()
+        {
+            ["木材"] = "wood",  ["樹枝"] = "twig",       ["漿果"] = "berry",    ["落葉"] = "leaf",
+            ["藥草"] = "herb",  ["黑莓"] = "blackberry", ["金蘋果"] = "goldapple", ["藍莓"] = "blueberry",
+        };
+
+        /// <summary>沒有專屬說明時的預設句。</summary>
+        public const string DefaultItemDesc = "一件在森林裡採到的材料。";
+
+        /// <summary>道具說明（玩家資訊面板 Tab → 物品頁顯示）。沒列到的用 DefaultItemDesc 帶過。</summary>
+        public static readonly Dictionary<string, string> ItemDesc = new()
+        {
+            ["木材"] = "從樹上採下的結實木料，做掃帚的骨架少不了它。",
+            ["樹枝"] = "隨處可撿的細枝，燒起來很快，也能綁成掃帚尾。",
+            ["漿果"] = "酸甜多汁的紅色小果，村民拿它做果醬。",
+            ["落葉"] = "乾燥的落葉，磨碎後是暗系藥水的基底。",
+            ["藥草"] = "帶著清香的綠葉，幾乎所有藥水都用得到。",
+            ["黑莓"] = "味道濃烈的深色莓果，染料與藥水都愛用。",
+            ["金蘋果"] = "偶爾才結一顆的金色果實，光是擺著就很值錢。",
+            ["藍莓"] = "夏天森林裡最甜的小果，冰涼系藥水的關鍵。",
+            ["清涼藥水"] = "喝一口從喉嚨涼到指尖，夏天賣得最好。",
+            ["戀愛藥水"] = "粉紅色的甜香藥水。效果如何，店主不負責。",
+            ["暗影藥水"] = "喝下後腳步聲會消失一小段時間。",
+            ["烈焰藥水"] = "瓶身摸起來是溫的，冬天鎮上的人搶著買。",
+            ["溫暖熱可可"] = "不是藥水，是真的很好喝的熱可可。",
+            ["蜂蜜藥劑"] = "金黃黏稠，喝完連指尖都暖起來。",
+            ["黃金藥劑"] = "傳說中能讓人一整天好運的高級藥劑。",
+            ["夜影掃帚"] = "夜裡飛行不會被看見的黑色掃帚。",
+            ["星光掃帚"] = "掃帚尾會拖出一道淡淡的星光。",
+            ["羽翼掃帚"] = "掃帚柄上綁著羽毛，飛得又穩又快。",
+            ["薰衣草種子"] = "一小包薰衣草的種子，種在後花園就會長。",
+            ["毛地黃種子"] = "毛地黃的細小種子，開出來的花又高又艷。",
+            ["星鈴花種子"] = "難得一見的星鈴花種子，據說要在月光下才發芽。",
+            ["薰衣草"] = "後花園採下的紫色花串，香得整個店都是味道。",
+            ["毛地黃"] = "粉紫色的鐘形花，插在瓶裡好看，別拿來煮。",
+            ["星鈴花"] = "花瓣夜裡會泛著微光，藥水鋪出的價錢最高。",
+            ["焦糖蘋果棒"] = "糖果鎮的街邊點心，焦糖裹得厚厚一層。",
+            ["鱷魚軟糖袋"] = "一整袋軟糖鱷造型的軟糖，據說是照真的軟糖鱷做的。",
+            ["永恆彩球糖"] = "含一整天也不會變小的彩球糖，孩子們的最愛。",
+            ["糖李礦坑地圖"] = "標著糖李礦坑通道的羊皮地圖，沒有它的人都繞回原地。",
+            ["妖精粉小袋"] = "會自己發光的細粉，據說撒一點就能讓東西浮起來。",
+            ["時晶法杖"] = "杖頭是時晶碎片，握著時會聽見很輕的滴答聲。",
+            ["安眠藥水"] = "薰衣草熬的紫色藥水，睡前一小口，一夜無夢。",
+            ["花香水"] = "毛地黃蒸餾出的香水。不能喝，但鎮上的姑娘搶著要。",
+            ["星光藥劑"] = "星鈴花與藍莓調的夜空色藥劑，瓶底沉著會亮的細砂。",
+        };
+
+        /// <summary>
+        /// 糖果鎮買得到的商品：中文名 → Resources/candy 底下的檔名。
+        /// 這些是「進貨」用的 —— 在糖果鎮花錢買，回自己店裡上架賣給顧客賺價差。
+        /// </summary>
+        public static readonly Dictionary<string, string> CandyItems = new()
+        {
+            ["焦糖蘋果棒"] = "item-lollipop", ["鱷魚軟糖袋"] = "item-treats",   ["永恆彩球糖"] = "item-gobstopper",
+            ["糖李礦坑地圖"] = "item-map",    ["妖精粉小袋"] = "item-pixiedust", ["時晶法杖"] = "item-staff",
+        };
+
+        /// <summary>藥水成品：中文名 → Resources/potions 底下的檔名。載進 items map，圖示查找同材料。</summary>
+        public static readonly Dictionary<string, string> PotionItems = new()
+        {
+            ["清涼藥水"] = "potion_blue",   ["戀愛藥水"] = "potion_pink",  ["暗影藥水"] = "potion_dark",
+            ["烈焰藥水"] = "potion_red",    ["溫暖熱可可"] = "cocoa_mug",  ["蜂蜜藥劑"] = "amber_jug",
+            ["黃金藥劑"] = "gold_bottle",   ["夜影掃帚"] = "broom_purple", ["星光掃帚"] = "broom_blue",
+            ["羽翼掃帚"] = "broom_white",
+            // 花做的藥水（圖是拿既有瓶子調色生的，見原專案 scratchpad/gen_potions.py）
+            ["安眠藥水"] = "potion_lavender", ["花香水"] = "perfume_rose", ["星光藥劑"] = "potion_star",
+        };
+
+        /// <summary>查道具說明，沒列到就回預設句。</summary>
+        public static string DescOf(string item) =>
+            ItemDesc.TryGetValue(item, out var d) ? d : DefaultItemDesc;
+    }
+}
