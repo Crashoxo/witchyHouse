@@ -53,6 +53,47 @@ log 只有 60 行也沒有任何錯誤訊息 —— 看起來很像「編過了�
 
 ⚠️ **不能直接點兩下 `index.html`** —— 瀏覽器的 `file://` 擋掉 WebAssembly 的載入方式，畫面會全黑。一定要走伺服器。
 
+### 更新線上版（GitHub Pages）
+
+線上位置 <https://crashoxo.github.io/witchyHouse/>，來源是 `main` 分支的 `/docs`。
+
+```
+① 改程式（先在編輯器裡玩過）
+② 選單 Witch Shop → 建置 → 網頁版（給 GitHub Pages）    ← 少了這步網站不會變
+③ git add -A && git commit -m "..."
+④ git push
+⑤ 等約一分鐘，Pages 自己重新發布
+```
+
+⚠️ **改程式 ≠ 網站更新**：網站吃的是 `docs/`，那是**建置產物**。只 commit 原始碼，線上還是舊的。
+
+不開 Unity 也能建（要先確認**沒有 Unity 行程在跑**，專案會被鎖住）：
+
+```
+"C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor\Unity.exe" ^
+  -batchmode -quit -nographics -projectPath "D:\Crash\witch-unity" ^
+  -executeMethod WebBuilder.BuildForPages -logFile build.log
+```
+
+### ⚠️ RAV（ReasonLabs）會擋掉 Unity 的建置
+
+這台機器上的防毒把 Unity 呼叫 dotnet 的命令列判成「Obfuscated command line execution」。
+症狀是 log 出現
+
+```
+##### Failed because this command failed to write the following output files:
+Library\BuildPlayerData\Editor\TypeDb-All.json
+```
+
+之後**整個卡死、CPU 歸零、完全沒有錯誤訊息** —— 看起來很像還在跑，其實已經死了
+（量一下那個行程的累計 CPU 時間就知道：跑了半小時卻只有十幾秒）。
+
+解法：RAV 視窗 → **Threats** 分頁 → 勾起那兩條（`powershell.exe` 與 Unity 的 `cmd.exe`）
+→ 按 **Allow**。⚠️ 不要按 Remove，那會把 Windows 的 PowerShell 跟 Unity 的建置工具當病毒清掉。
+
+同一個毛病也會咬**從命令列跑的 `python`**（例如 `tools/subset_font.py`）：指令卡住不動、
+沒有輸出也沒有效果。一樣去 Threats 分頁 Allow。
+
 ---
 
 ## 二、操作
@@ -322,6 +363,39 @@ Assets/Scripts/
   - 平衡旋鈕：`AwayShop.AwayRate`，**現在是 0.7**（沒人顧店時來客速度慢三成）。
     全速（1.0）的話待在店裡就完全沒好處，玩家最佳解會變成一直在外面跑。
 
+- **村民縮小**（`VillagerAnim.Scale` 1.28 → 1.0）。原本的 1.28 是「舊值 0.8 跟著女巫一起
+  ×1.6」推出來的，但**等比放大只有在兩邊原圖比例一樣時才成立** —— 女巫的格子 66px、
+  村民的格子 100px。量「真的畫到東西」的高度：女巫可見 58px × 1.6 ＝ 畫面上 93px；
+  村民十一張平均可見 98px × 1.28 ＝ 125px，高了 34%，站在一起大人像巨人。
+  改成 ×1.0 ＝ 98px，比女巫高約 5%，維持「大人比小女巫高一點點」的原意。
+  （試過 0.85 ＝ 83px，太小、不像大人。）這個常數同時是店裡顧客的預設值。
+- **公告板的內文會溢出**（實機才看到）。六條公告因為中文自動換行變成十行，撐出米色內裡、
+  壓到木框上，最後一條被切掉 —— 字級是照「幾條」算的，沒有考慮換行。
+  UI Toolkit 沒有 Cocos 的 `Label.Overflow.SHRINK`，所以自己做一個收斂迴圈
+  （太高就把字級縮 8%，縮完 layout 會再觸發一次回呼，直到塞得下或碰到下限；
+  `fitPasses` 擋住萬一收斂不了的無窮迴圈），另外 `.update-inner` 補 `overflow: hidden` 當保險。
+
+**上線（2026-09-06）** —— Unity 版**取代了 GitHub 上的 Cocos 版**。
+
+- 專案進了 git（`git init`，branch `main`），remote 接上原本那個 repo
+  <https://github.com/Crashoxo/witchyHouse>，force push 換掉 `main`。
+  **動 main 之前先把 Cocos 版的完整歷史推成 `cocos-legacy` 分支**，一個 commit 都沒少；
+  本機 `D:\Crash\witch-shop` 也原封不動留著當對照。
+  ⚠️ 那個資料夾的 `origin` 還指著同一個 repo，在那邊 `git push -f` 會把網站打回 Cocos 版。
+- 加了 `Witch Shop → 建置 → 網頁版（給 GitHub Pages）`（`Editor/WebBuilder.cs`）：
+  直接建到 `docs/`、順便寫 `.nojekyll`。壓縮設定跟本機測試那個目標**刻意不同** ——
+  Pages 是純靜態空間、**不能設 `Content-Encoding`**，一般的 Brotli 建置放上去會直接
+  載不起來，所以開 `decompressionFallback`（改由 Unity 產的 JS 在瀏覽器端自己解壓）。
+  而且不壓的 `.data` 動輒上百 MB，會撞到 **GitHub 單檔 100 MB 的硬上限**。
+  實際產出 27 MB、最大單檔 22 MB。
+- ⚠️ **`.gitignore` 的忽略規則要用 `/` 釘在根目錄**（`/[Bb]uild/`）—— 沒有斜線的 pattern
+  會比對**任何一層**，而 WebGL 輸出裡就有 `docs/Build/`（`.wasm`/`.data` 全在裡面）。
+  照原本的寫法推上去，網站只剩一個空殼 `index.html`，**而且 git 完全不會提醒你**。
+- README 從開發筆記改寫成 repo 首頁（線上試玩連結、操作表、內容介紹在前，開發設定在後）。
+- 已用瀏覽器實際開過確認：載入 → 進店裡的場景 → HUD／時鐘／背包欄都在、
+  中文全部顯示正常（字型子集化沒掉字）、Console 無錯誤。
+
 ### 還沒做
 
 - 魔法彈的正式美術（需要美術資源）
+- `AwayShop`（離店營業）只編過、還沒實機玩過：上架 → 出門 → 回店看有沒有跳 Toast
