@@ -1,0 +1,11 @@
+# 網頁版建置的產物：不要拿去算語言統計，也不要在 diff 裡展開
+docs/** linguist-vendored
+docs/** -diff
+
+# Unity 的資產與 meta 一律當文字，換行統一成 LF（跨機器合併才不會整包衝突）
+*.cs        text eol=lf diff=csharp
+*.meta      text eol=lf
+*.unity     text eol=lf
+*.asset     text eol=lf
+*.uss       text eol=lf
+*.uxml      text eol=lf

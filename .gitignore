@@ -1,10 +1,13 @@
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Bb]uild/
-[Bb]uilds/
-[Ll]ogs/
-[Uu]ser[Ss]ettings/
+# ⚠️ 這幾條一定要用 / 開頭釘在專案根目錄。沒有 / 的 pattern 會比對**任何一層**，
+#    而網頁版建置的輸出 `docs/Build/`（.wasm/.data 都在裡面）就會被 `[Bb]uild/` 吃掉 ——
+#    推上 GitHub 之後網站只剩一個空殼 index.html，而且 git 完全不會提醒你。
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
 *.csproj
 *.sln
 *.user
