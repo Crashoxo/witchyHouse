@@ -29,10 +29,13 @@ namespace WitchShop.Core
         const string ShopScene = "shop";
 
         /// <summary>
-        /// 沒人顧店時的成交效率。1 ＝ 跟你站在店裡完全一樣。
-        /// 想讓「親自顧店」比較划算就調低（例如 0.7 ＝ 慢三成）。
+        /// 沒人顧店時的成交效率。1 ＝ 跟你站在店裡完全一樣，0.7 ＝ 來客速度慢三成。
+        ///
+        /// 為什麼不是 1：全速的話「待在店裡」就完全沒有好處，玩家最佳解變成一直在外面跑，
+        /// 店面這條線等於白做。留一點差距，親自顧店才是划算的選擇，
+        /// 但出門也不會被懲罰到不敢離開。
         /// </summary>
-        const float AwayRate = 1f;
+        const float AwayRate = 0.7f;
 
         float timer;
         int soldCount;      // 這次離店期間賣掉幾件
