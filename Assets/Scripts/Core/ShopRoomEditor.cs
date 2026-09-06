@@ -525,7 +525,7 @@ namespace WitchShop.Core
             // 拖曳中撞到規則 —— 提示這行就是「為什麼拖不過去」的主要出口
             if (dragFurn != null && dragBlock != PlaceBlock.Ok)
             {
-                tray.SetHint($"✕ 放不下：{RoomLayout.BlockText(dragBlock)} · 紅色格＝擋住的地方 · " +
+                tray.SetHint($"× 放不下：{RoomLayout.BlockText(dragBlock)} · 紅色格＝擋住的地方 · " +
                              "鬆手會停在最後一個放得下的位置");
                 return;
             }

@@ -8,6 +8,12 @@ NotoSansTC.ttf
   - 網頁版（WebGL）沒有「作業系統字型」可以借，字型一定要包進專案裡，
     否則所有中文會變成空白 —— 而且不會報任何錯。
 
+這個檔是**子集化＋定住字重**之後的版本（不是原始字型）：
+  - 完整字型在 `tools/fonts/NotoSansTC-full.ttf`（Assets 外面，不會進 build）
+  - 產生方式：`python tools/subset_font.py`（只留專案裡出現過的字，wght 定在 400）
+  - 11.4 MB → 約 428 KB
+  - OFL 允許修改與再散布，衍生字型沿用 OFL；家族名維持 "Noto Sans TC" 沒有改名
+
 OFL 的要求很寬鬆，主要是：
   - 可以自由使用、修改、散布（含商業用途）
   - 不能單獨販售字型本身

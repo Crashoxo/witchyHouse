@@ -84,6 +84,7 @@ namespace WitchShop.Core
             UI.CornerHud.Ensure();     // 左上角金幣與名聲
             UI.SleepOverlay.Arm();     // 撐到 02:00 昏倒時也演睡覺過場並送回房間
             Outfits.Apply();           // 換裝：把存檔裡那套的圖套到女巫身上（每個場景都要）
+            UI.UpdatePanel.ShowOnce();  // 更新公告板（一次執行只跳一次，換場景不重跳）
 
             // 各場景專屬的東西，同樣在這裡喚起 —— 不用改場景檔（對應原版的做法）
             string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;

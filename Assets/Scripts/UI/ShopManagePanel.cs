@@ -119,7 +119,7 @@ namespace WitchShop.UI
             goldLabel.AddToClassList("gold");
             header.Add(goldLabel);
 
-            var close = new Button(Close) { text = "✕" };
+            var close = new Button(Close) { text = "×" };
             close.AddToClassList("close");
             header.Add(close);
 

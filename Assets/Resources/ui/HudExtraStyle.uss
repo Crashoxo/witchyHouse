@@ -528,3 +528,70 @@
     -unity-text-align: middle-center;
     margin-top: 10px;
 }
+
+/* ── 更新公告板（開遊戲時從上方滑下來的木框）───────────── */
+
+.update-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(20, 14, 26, 0.67);
+    transition-property: opacity;
+    transition-duration: 0.25s;
+}
+
+/* 關閉時整層淡掉（面板同時往上滑出去）*/
+.update-root--closing .update-layer { opacity: 0; }
+
+/* 寬高由 UpdatePanel.OnGeometry 依底圖比例設定，這裡只管外觀與動畫 */
+.update-panel {
+    background-size: 100% 100%;
+    transition-property: translate, opacity;
+    transition-duration: 0.55s;
+    transition-timing-function: ease-out-back;
+}
+
+/* 關閉：換成反向的緩動，快一點 */
+.update-panel--closing {
+    transition-duration: 0.35s;
+    transition-timing-function: ease-in-back;
+}
+
+/* 按著 OK 時整個面板微暗＝按鈕回饋（底圖上的 OK 是畫上去的，沒有自己的按下狀態）*/
+.update-panel--press { opacity: 0.8; }
+
+/* 退路：底圖載不到時至少有個素框，不開天窗 */
+.update-panel--bare {
+    background-color: rgb(238, 225, 196);
+    border-width: 6px;
+    border-color: rgb(120, 74, 42);
+    border-radius: 8px;
+}
+
+/* 底圖上「米色內裡」的位置（量出來的比例，同 Cocos 版的 INNER）*/
+.update-inner {
+    position: absolute;
+    left: 9.9%; right: 9.9%; top: 28.4%; bottom: 16.1%;
+    padding-left: 3%;
+    padding-right: 3%;
+}
+
+.update-date {
+    color: rgb(126, 76, 44);
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+}
+
+.update-body {
+    color: rgb(74, 50, 38);
+    -unity-text-align: upper-left;
+    white-space: normal;
+    flex-grow: 1;
+}
+
+/* 底圖上畫好的 OK 鈕的位置（同 Cocos 版的 OK_BTN），透明可點區 */
+.update-ok {
+    position: absolute;
+    left: 38.9%; right: 39.0%; top: 86.1%; bottom: 2.8%;
+}

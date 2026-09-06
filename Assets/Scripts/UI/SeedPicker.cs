@@ -113,7 +113,7 @@ namespace WitchShop.UI
             spacer.AddToClassList("spacer");
             header.Add(spacer);
 
-            var close = new Button(Cancel) { text = "✕" };
+            var close = new Button(Cancel) { text = "×" };
             close.AddToClassList("close");
             header.Add(close);
 

@@ -14,7 +14,7 @@
                 <ui:Label name="title" class="title" text="背包" />
                 <ui:VisualElement class="spacer" />
                 <ui:Label name="cap" class="cap" />
-                <ui:Button name="close" class="close" text="✕" />
+                <ui:Button name="close" class="close" text="×" />
             </ui:VisualElement>
 
             <!-- 分頁鈕由 C# 依 Tab 列表生出來，數量改變不必動版面 -->

@@ -38,6 +38,9 @@ Unity Hub → Add → 選 `D:\Crash\witch-unity`。第一次開要等它匯入 2
 `Witch Shop → 測試用`：塞道具進背包／倉庫、給 5000 金幣、塞一天的營業紀錄（睡一覺看每日結算）、
 清空存檔、顯示存檔位置。
 
+### 改了中文字串
+`python tools/subset_font.py` —— 重新產生子集字型（見第三節第 6 點）。忘了跑，新加的字會是豆腐。
+
 ### 改完程式想先確認編得過
 `bash tools/typecheck.sh` —— 用 Unity 內附的 Roslyn 離線編一次，不用開 Unity。
 
@@ -106,6 +109,12 @@ UI Toolkit 的預設字型（Unity 6 是 Inter）**完全沒有中文字**，而
 最初用 `Font.CreateDynamicFontFromOSFont` 跟系統借微軟正黑體，但那在 **WebGL 完全不能用**（瀏覽器沒有 OS 字型），而且包 Windows 字型散布有授權問題。
 
 現在用 `Assets/Resources/ui/fonts/NotoSansTC.ttf`（**SIL Open Font License，可合法散布**），OS 字型只留作退路。見 `CjkFont.cs` 與同資料夾的 `LICENSE-NOTE.txt`。
+
+那個 .ttf 是**子集化過的**（11.4 MB → 428 KB）：完整字型放在 Assets 外面的 `tools/fonts/NotoSansTC-full.ttf`（不會進 build），`tools/subset_font.py` 掃過 Assets 底下所有原始碼與版面檔，只留真的出現過的字。
+
+⚠️ **加了新的中文字串就要重跑 `python tools/subset_font.py`**，不然沒收到的字會變成豆腐（而且一樣不報錯）。
+
+⚠️ 來源是**可變字型**，wght 軸的預設值是 **100 ＝ Thin** —— 不處理的話整個遊戲的中文是用髮絲細體在畫。子集化時會先把它定在 `WEIGHT = 400`（Regular），順便甩掉 fvar/gvar。
 
 ### 7. 時間系統獨立於 UI
 原版是讓時鐘 HUD 順便驅動 `TimeSystem.tick()`。那樣**時鐘 UI 一旦沒生出來，整個遊戲的時間就停掉**（花不長、顧客不來），而且症狀（「花種下去永遠不發芽」）完全指不到原因。
@@ -286,10 +295,18 @@ Assets/Scripts/
   - 影響到的畫面：鏡頭是對準 `position` 的，所以現在女巫會落在畫面中央**偏上**半身
     —— 這跟 Cocos 版一致（原版鏡頭也是跟腳底），覺得不順眼再幫 `CameraFollow` 加 Y 偏移。
 
+- **更新公告板**（`UI/UpdatePanel.cs` ＋ `Data/UpdateNotes.cs`）。開遊戲時從上方滑下來，
+  一次執行只跳一次。公告內容獨立成 `UpdateNotes`，改公告不用碰版面。
+  - 底圖 `ui/update-frame` 上的 OK 是**畫上去的**，所以只在那個位置疊一個透明可點區。
+  - Cocos 版為了底圖有一整套非同步流程（先畫素框＋「載入中…」、單獨 load 這一張、
+    回呼裡確認元件還活著）—— Unity 的 `Resources.Load` 是同步的，那整套直接消失。
+  - 版面從「照底圖比例硬算子節點座標」改成 **USS 的百分比絕對定位**（`left: 9.9%` …），
+    滑入/滑出從 `tween` 改成 USS transition（`ease-out-back` / `ease-in-back`）。
+- **中文字型子集化**：11.4 MB → **428 KB**（見第三節第 6 點）。順帶發現兩件事：
+  - 來源字型是**可變字型且預設 Thin** —— 中文一直是細體在畫，現在定在 Regular。
+  - `✕`（U+2715）與 `✔`（U+2714）**不在 Noto Sans TC 裡**，七個面板的關閉鈕與任務清單
+    的完成標記其實一直是缺字。改用字型裡有的 `×`（U+00D7）與 `✓`（U+2713）。
+
 ### 還沒做
 
-剩下的是**原專案本來就沒有**、或**需要美術**的東西：
-
-- 更新公告板（`UpdatePanel`）
-- 魔法彈的正式美術
-- 中文字型子集化（現在整包 11.4 MB 進 build）
+- 魔法彈的正式美術（需要美術資源）

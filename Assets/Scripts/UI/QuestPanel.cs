@@ -123,7 +123,7 @@ namespace WitchShop.UI
             footLabel.AddToClassList("quest-foot");
             scroll.Add(footLabel);
 
-            var close = new Button(Close) { text = "✕" };
+            var close = new Button(Close) { text = "×" };
             close.AddToClassList("quest-close");
             scroll.Add(close);
 
@@ -173,7 +173,7 @@ namespace WitchShop.UI
 
             bool ready = QuestLog.StatusOf(id) == QuestStatus.Ready;
 
-            var title = new Label((ready ? "✔ " : "· ") + d.Title);
+            var title = new Label((ready ? "✓ " : "· ") + d.Title);
             title.AddToClassList("quest-entry-title");
             if (ready) title.AddToClassList("quest-ready");
             box.Add(title);
