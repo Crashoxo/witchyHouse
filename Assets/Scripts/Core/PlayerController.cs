@@ -85,6 +85,7 @@ namespace WitchShop.Core
             UI.SleepOverlay.Arm();     // 撐到 02:00 昏倒時也演睡覺過場並送回房間
             Outfits.Apply();           // 換裝：把存檔裡那套的圖套到女巫身上（每個場景都要）
             UI.UpdatePanel.ShowOnce();  // 更新公告板（一次執行只跳一次，換場景不重跳）
+            AwayShop.Ensure();          // 你不在店裡時，店還是照常做生意
 
             // 各場景專屬的東西，同樣在這裡喚起 —— 不用改場景檔（對應原版的做法）
             string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
@@ -95,6 +96,7 @@ namespace WitchShop.Core
                 ShopRoomEditor.Ensure();     // 按 R 進入佈置模式（拖曳家具）
                 CustomerManager.Ensure();    // 顧客上門買東西
                 SaleCounter.Ensure();        // 販售桌前按 E 開上架面板
+                AwayShop.ReportOnReturn();   // 回店：報告剛剛不在時賣掉了什麼
             }
             if (scene == "garden") GardenRoom.Ensure();      // 背景、花圃、回店的門、柵欄外的村民
             if (scene == "candy") CandyTown.Ensure();        // 建築、裝飾、NPC、街上的小動物

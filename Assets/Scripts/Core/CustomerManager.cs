@@ -117,6 +117,23 @@ namespace WitchShop.Core
             });
         }
 
+        /// <summary>
+        /// 成交：扣架上的貨、收錢、記今日營收（順便加名聲）、記任務進度。
+        /// 回傳成交價，**0 ＝架上已經沒貨**（顧客空手而歸）。
+        ///
+        /// 抽成 static 是為了讓 <see cref="AwayShop"/>（你不在店裡時的背景成交）
+        /// 走同一段程式 —— 不然很容易出現「離店賣掉的不算任務進度」這種對不起來的落差。
+        /// </summary>
+        public static int CompleteSale(string want)
+        {
+            int price = ShopStock.SellOne(want);
+            if (price <= 0) return 0;
+            Wallet.Add(price);
+            DailyLog.RecordSale(want, price);   // 記進今日營收，順便加名聲
+            QuestLog.Record(ObjKind.Sell, want, 1);
+            return price;
+        }
+
         /// <summary>推進一位顧客；回傳 true＝該離場銷毀。</summary>
         bool Step(Customer c, float dt)
         {
@@ -141,12 +158,9 @@ namespace WitchShop.Core
                     if (c.Timer >= 1.2f)
                     {
                         // 嘗試購買：想要的還在架上就成交
-                        int price = ShopStock.SellOne(c.Want);
+                        int price = CompleteSale(c.Want);
                         if (price > 0)
                         {
-                            Wallet.Add(price);
-                            DailyLog.RecordSale(c.Want, price);   // 記進今日營收，順便加名聲
-                            QuestLog.Record(ObjKind.Sell, c.Want, 1);
                             ShowEmote(c, price);
                         }
                         else
