@@ -60,6 +60,8 @@ namespace WitchShop.UI
         /// <summary>底圖上「米色內裡」的上下緣（佔底圖高的比例，量出來的）。
         /// ⚠️ 跟 HudExtraStyle.uss 的 `.update-inner` 是同一組數字，改要一起改。</summary>
         const float InnerTopEdge = 0.284f, InnerBottomEdge = 0.839f;
+        /// <summary>內文縮到這個字級就不再縮了（再小也讀不了，寧可讓 overflow 切掉）。</summary>
+        const float MinBodyFont = 11f;
 
         UIDocument doc;
         VisualElement root, panel, inner;
@@ -124,6 +126,7 @@ namespace WitchShop.UI
 
             bodyLabel = new Label(string.Join("\n", UpdateNotes.Lines));
             bodyLabel.AddToClassList("update-body");
+            bodyLabel.RegisterCallback<GeometryChangedEvent>(FitBody);
             inner.Add(bodyLabel);
 
             // OK：底圖已經畫好按鈕，這裡只疊一個透明可點區
@@ -166,9 +169,36 @@ namespace WitchShop.UI
             //    讀到的是上一次的值（第一次是 0），字級會忽大忽小。
             float bodyH = h * (InnerBottomEdge - InnerTopEdge) - h * 0.11f;
             float lineH = Mathf.Min(h * 0.088f, bodyH / Mathf.Max(1, UpdateNotes.Lines.Length));
+            fitPasses = 0;      // 面板尺寸變了 → 重新從理想字級開始收
             bodyLabel.style.fontSize = Mathf.Round(Mathf.Min(h * 0.052f, lineH * 0.62f));
             bodyLabel.style.height = StyleKeyword.Auto;
             bodyLabel.style.marginTop = Mathf.Round(h * 0.02f);
+        }
+
+        int fitPasses;
+
+        /// <summary>
+        /// 把內文縮到塞得進米色內裡為止。
+        ///
+        /// ⚠️ 為什麼不能只靠算的：上面的字級是照「幾條」推的，但中文條目會**自動換行** ——
+        ///    六條可以變成十行。UI Toolkit 沒有 Cocos 的 `Label.Overflow.SHRINK`，
+        ///    所以自己做：量完發現太高就把字級縮 8%，縮完 layout 會再觸發一次這個回呼，
+        ///    收斂為止。fitPasses 擋住萬一收斂不了的無窮迴圈。
+        /// </summary>
+        void FitBody(GeometryChangedEvent e)
+        {
+            if (fitPasses >= 12 || inner == null) return;
+
+            float avail = inner.resolvedStyle.height
+                          - dateLabel.resolvedStyle.height
+                          - bodyLabel.resolvedStyle.marginTop;
+            if (avail <= 0f) return;                       // layout 還沒好，下一輪再說
+            if (e.newRect.height <= avail) return;         // 塞得下了
+
+            float cur = bodyLabel.resolvedStyle.fontSize;
+            if (cur <= MinBodyFont) return;
+            fitPasses++;
+            bodyLabel.style.fontSize = Mathf.Max(MinBodyFont, Mathf.Floor(cur * 0.92f));
         }
 
         // ── 關閉 ────────────────────────────────────────────────

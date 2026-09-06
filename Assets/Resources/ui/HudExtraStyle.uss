@@ -575,6 +575,8 @@
     left: 9.9%; right: 9.9%; top: 28.4%; bottom: 16.1%;
     padding-left: 3%;
     padding-right: 3%;
+    /* 保險：就算自動縮字收斂不了，也絕不讓文字溢出去壓到木框 */
+    overflow: hidden;
 }
 
 .update-date {
