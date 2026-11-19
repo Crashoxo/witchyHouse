@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+using WitchShop.Core;
 
 namespace WitchShop.UI
 {
@@ -44,6 +45,7 @@ namespace WitchShop.UI
                 return;
             }
 
+            Sfx.Play("door");        // 換場景＝進門／過邊界，全部經過這裡，一處掛好
             Ensure().StartCoroutine(Ensure().Run(sceneName, dur, onArrive));
         }
 

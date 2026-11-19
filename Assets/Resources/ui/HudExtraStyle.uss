@@ -264,7 +264,12 @@
     font-size: 22px;
     color: rgb(255, 224, 130);
     -unity-font-style: bold;
+    transform-origin: 0% 50%;     /* 字靠左，彈一下（UIAnim.Bump）時從左邊放大，不然字會左右晃 */
 }
+/* 金額變動時短暫閃一下（UIAnim.Bump 帶的 class；顏色的 transition 寫在 AnimStyle 的 .uia-bump）。
+   ⚠️ 這裡不要再寫 transition-property，會把 .uia-bump 的 scale 動畫蓋掉。 */
+.hud-gold--up   { color: rgb(170, 240, 150); }
+.hud-gold--down { color: rgb(244, 150, 140); }
 
 .hud-rep {
     font-size: 14px;

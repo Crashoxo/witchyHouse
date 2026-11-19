@@ -58,6 +58,8 @@ namespace WitchShop.Core
             "witch.outfit",          // Outfits：現在穿哪一套造型
             "witch.room",            // RoomLayout：店裡的家具擺在哪幾格
         };
+        // ⚠️ "witch.audio"（Sfx：總音量／靜音）**刻意不列在這裡**：那是玩家的偏好、不是遊戲進度，
+        //    開新遊戲（Wipe）不該把音量重設；它也不該被當成「這是舊存檔」的判斷依據。
 
         // ──────────── 後端：整個遊戲唯一真正碰儲存的地方 ────────────
 

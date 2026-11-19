@@ -41,6 +41,16 @@ Unity Hub → Add → 選 `D:\Crash\witch-unity`。第一次開要等它匯入 2
 ### 改了中文字串
 `python tools/subset_font.py` —— 重新產生子集字型（見第三節第 6 點）。忘了跑，新加的字會是豆腐。
 
+### 重產音效
+`python tools/gen_sfx.py` —— 用程式合成整套 8-bit 佔位音效，輸出到 `Assets/Resources/audio/*.wav`
+（純標準函式庫、固定亂數種子，重跑結果一樣）。⚠️ 會**覆蓋同名檔**：已經換成正式音檔的話別跑（見第九節 2026-11-19）。
+
+### 重烤戶外地面
+`python tools/bake_ground.py`（或只烤一張：`… forest` / `town` / `candy`）—— 離線重新產生森林／城鎮／
+糖果鎮的地面圖（Pillow＋numpy、固定種子，重跑位元組相同），不用開 Unity。
+`--preview <資料夾>` 順便輸出疊上物件與女巫的預覽；`--restore` 還原原圖。細節見 `tools/ground/README.md`
+與第九節 2026-11-19「戶外地面重烤」。
+
 ### 改完程式想先確認編得過
 `bash tools/typecheck.sh` —— 用 Unity 內附的 Roslyn 離線編一次，不用開 Unity。
 
@@ -108,6 +118,7 @@ Library\BuildPlayerData\Editor\TypeDb-All.json
 | `Q` | 任務簿（右側捲軸，只列進行中的）|
 | `Tab` / `I` | 女巫的手札（任務／物品／村民／日曆）|
 | `R` | 店內佈置模式 |
+| `M` | 音效靜音／開啟（記在存檔裡）|
 | `Esc` | 關閉面板 |
 
 **佈置模式**（店裡按 `R`）：點托盤放進房間／左鍵拖曳搬位置／右鍵收回托盤／`F` 轉向／`T` 換基準點／`R` 完成／`Esc` 取消還原。
@@ -186,6 +197,9 @@ UI Toolkit 的預設字型（Unity 6 是 Inter）**完全沒有中文字**，而
 | **「在輪廓內」不等於「站在地板上」** | 架子整個埋進右邊的牆裡 | 基準角（`T`）會把圖搬到佔地的另一個角，配錯翻面狀態時整張圖平移到牆面上 —— 但四個角都還在「地板＋牆」的輪廓內，只驗輪廓擋不掉。真正的判準是**圖的底緣兩端要踩在地板菱形上**（`ShopRoom.RectOnFloor`）；往上長到牆上才是可以的 |
 | **圖的透明邊不是對稱的** | 用整張 PNG 的矩形判，左邊誤擋、右邊漏擋 | `shelf_box` 圖寬 176，實際只畫在 x=62..172。改用 `Data.FurnitureBounds`（離線量出來的不透明範圍，見第六節）|
 | **規則改嚴，舊存檔不會自己變好** | 修好之後進店，那個架子還是埋在牆裡 | 能不能放是**放的時候**檢查的。加了 `RoomLayout.RepairPlacements()`，進店時掃一次：先原地換基準角／翻面，再找最近的合法格，都不行才原樣留著（不刪玩家的東西）|
+| **場景裡沒有 AudioListener** | 音效全部呼叫了、卻一點聲音都沒有（Console 只有一行容易漏看的警告）| Cocos 不需要 Listener；我們的場景是產生器 `AddComponent<Camera>()` 建的，不會像 Unity 選單那樣順便帶一個。由 `Sfx` 的常駐物件自己掛，場景裡若之後有了別的 Listener 會自動讓開 |
+| **大圖被 Max Size 靜默縮小** | 城鎮/糖果鎮的地面糊糊的、像素格子大小不一 | 3200×2048 的整張地面圖，`.meta` 的 Max Size 是 2048 —— Unity 匯入時先縮到 2048 寬再用 Point 拉回 3200，**不會有任何警告**。改成烤半解析度（1600 寬）的圖，執行期用 PPU 0.5 貼回去（`BakedGround`）。之後新增超過 2048 的圖都要注意 |
+| **執行期把 Tiled 切成 Simple** | 森林地面每個美術像素變成約 22×14 的大方塊（放大 11×7 倍），樹與女巫正常 | 森林的 Ground 是 Tiled（256 的磚、size 2816×1792）。`BakedGround` 曾經先 `drawMode = Simple` 再換上 2816 的整張圖 —— 推測 Unity 切模式時把 size 換算進了 `localScale`（2816/256＝11、1792/256＝7，倍數吻合），新圖又被放大一次。改成**不切 drawMode**：Tiled 就把 `size` 設成新圖大小（FullRect，剛好鋪一格），`localScale` 一律還原，換完再驗 `bounds` 的中心與大小，不對就整組還原 |
 | **擋下來卻不說為什麼** | 拖不過去，玩家以為卡住了 | 規則收進 `RoomLayout.Check()`，回傳**是哪一條擋的**；擋住的格子標紅（sortingOrder 要在家具之上，不然被家具蓋住看不到），原因即時寫在托盤那行提示 |
 
 ---
@@ -218,7 +232,9 @@ Assets/Scripts/
 │   ├── GardenRoom / GardenPlot / Garden
 │   ├── BrewRoom / BrewCauldron / PotionRecipes / RoomFixtures
 │   ├── CandyTown / TownFolk / Doorways / SceneDoor / TalkNpc
-│   └── DayNightTint / LampGlow / PortalGlow / CameraFollow / FloatAway
+│   ├── DayNightTint / LampGlow / PortalGlow / CameraFollow / FloatAway
+│   ├── Sfx                音效（常駐、自帶 AudioListener；音檔在 Resources/audio/）
+│   └── BakedGround        戶外地面換成烤好的半解析度圖（Resources/art/ground/，PPU 0.5）
 │
 ├── UI/        全部走 UI Toolkit
 │   ├── CjkFont            中文字型（見第三節第 6 點）
@@ -227,6 +243,7 @@ Assets/Scripts/
 │   ├── TownShopPanels     雜貨鋪 / 花店 / 糖果鎮商行
 │   ├── QuestPanel / PlayerInfoPanel / WardrobePanel
 │   ├── Dialogue / SleepOverlay / DaySummaryPanel / ShopRoomTray
+│   ├── UIAnim             面板開關動效 ＋ HUD 彈一下（樣式在 Resources/ui/AnimStyle.uss）
 │   └── (UXML/USS 在 Assets/Resources/ui/)
 │
 └── Editor/    只在編輯器裡跑
@@ -237,6 +254,10 @@ Assets/Scripts/
     ├── DevTools           測試用
     └── WebBuilder         網頁版建置
 ```
+
+專案根目錄的 `tools/` 放離線工具：`typecheck.sh`（不開 Unity 編一次）、`subset_font.py`（中文字型子集化）、
+`gen_furniture_bounds.py`（家具不透明範圍）、`gen_sfx.py`（合成 8-bit 音效）、
+`bake_ground.py` ＋ `ground/`（戶外地面烘焙器；原圖備份在 `ground/orig/`，說明見 `ground/README.md`）。
 
 **各場景的子系統由 `PlayerController.Awake()` 依場景名喚起** —— 沿用原專案的做法，好處是加東西不用改場景檔。
 
@@ -395,7 +416,147 @@ Assets/Scripts/
 - 已用瀏覽器實際開過確認：載入 → 進店裡的場景 → HUD／時鐘／背包欄都在、
   中文全部顯示正常（字型子集化沒掉字）、Console 無錯誤。
 
+**2026-11-19（音效）** —— 遊戲原本**完全沒有聲音**（沒有 AudioSource、沒有音檔）。
+
+- **音效系統**（`Core/Sfx.cs`）。呼叫端一行 `Sfx.Play("coin")`，不用在場景掛任何東西：
+  `[RuntimeInitializeOnLoadMethod]` 生一個 `DontDestroyOnLoad` 的物件，上面一池 10 個 AudioSource，
+  AudioClip 照檔名 `Resources.Load("audio/…")` 載入後快取。
+  - **找不到檔就靜默略過**（同名只警告一次），任何例外都吞在裡面 —— 音效壞掉不能讓遊戲跟著壞。
+  - **最短重播間隔**：同一個音效在間隔內（預設 0.05 秒）再叫會被丟掉。一次搬一整排、同一幀成交好幾筆，
+    才不會疊成一聲爆音。
+  - **變體輪播**：`Play("step")` 在 `step-1..3` 之間隨機挑、不連續重複；腳步、對話 blip 這類
+    還會加一點隨機 pitch，聽起來不像機關槍。
+  - **總音量／靜音**存進存檔（key `witch.audio`，**刻意不列進 `SaveKeys`**：那是偏好不是進度，
+    開新遊戲不該把音量重設）。`Sfx.Volume` / `Sfx.Muted` 是給之後設定介面接的公開屬性。
+    **`M` 鍵切換靜音**（確認過沒有別的功能佔用）並冒 Toast。
+  - ⚠️ **場景裡根本沒有 AudioListener**（見第四節）—— 由 Sfx 的物件自己掛；換場時若發現場景
+    已經有別的 Listener 就把自己的關掉。
+  - 不受 `Time.timeScale` 影響（AudioSource 本來就不吃，重播間隔用 `unscaledTime` 量）。
+    專案目前也沒有任何地方動 `timeScale`。
+- **UI 按鈕的 click 音是共用的**：各面板 Build 時呼叫一次 `Sfx.BindClicks(root)`，在根節點收冒泡上來的
+  `ClickEvent`，不用逐顆按鈕貼。click 會**延到下一幀**才決定要不要響 —— 同一幀已經有更具體的音效
+  （ui-close／buy／deny／ui-tab…）就不再疊一聲。
+- **面板開關音**一律加在各面板 `Open()`/`Close()`（BagPanel 是 `Show()`）裡，**一行、註解寫
+  「音效：面板打開／關閉」**，之後改開關動畫的人很好找。
+- **掛點的原則：掛在事件真正發生的那一處**，不掛在會被讀檔／批次呼叫到的底層函式。
+  例如收錢掛在 `CustomerManager` 顧客成交的那個分支，**不掛在 `CompleteSale()`** ——
+  `AwayShop` 離店成交也走它，玩家不在店裡時每一筆都叮會很吵；回店時那則彙總 Toast 響一次 coin。
+  `Inventory.Add` 也沒掛（讀檔、搬倉庫、領獎都會呼叫）。
+- **腳步**：`PlayerController.LateUpdate` 量這一幀的實際位移，每走 64px 響一步 —— 鍵盤、點地面自動走、
+  衝刺都一樣（衝刺時同樣步幅走得快，自然變密）；站著或推著牆走不動就不響；一幀跳超過 40px 當作瞬移不算。
+- **佔位音檔**：`tools/gen_sfx.py` 用 Python 標準函式庫（不靠 numpy）做 sfxr 風格的合成 ——
+  方波／三角波／雜訊、頻率滑動、ADSR、琶音，方波一律過一階低通磨圓（要 cozy、不要刺耳），
+  峰值統一正規化留 headroom、頭尾 2ms/8ms 淡入淡出。24 個檔、16-bit mono 22050 Hz、共約 307 KB。
+  亂數種子固定（每個音效以名字當種子），重跑逐 byte 一致。
+- **換成正式音檔**：把新的音檔用**同樣的檔名**蓋掉 `Assets/Resources/audio/` 裡的 .wav 就好，程式不用改
+  （副檔名可以換成 .ogg —— `Resources.Load` 不看副檔名，但同名的舊 .wav 要刪掉，不然會載到哪個不一定）。
+  蓋掉之後**就別再跑 `gen_sfx.py`**，它會把同名檔覆蓋回去；只想重產其中幾個就把其他名字從腳本的 `SOUNDS` 表拿掉。
+  音量要調：個別的在呼叫端第二個參數，整體的在 `gen_sfx.py` 的 `PEAK` 與各音效的 gain。
+- `Packages/manifest.json` 補上 `com.unity.modules.audio`。原本其實是靠 `com.unity.ugui` **間接**帶進來的
+  （`packages-lock.json` 裡 depth 1），所以以前沒出事 —— 但直接用到的模組要自己列，不要賭別人的相依。
+  ⚠️ `tools/typecheck.sh` 引用全部 `UnityEngine*.dll`，**抓不到**少了模組這種問題。
+
+| 音效 | 掛在哪 |
+|---|---|
+| `step`（1..3）| `PlayerController.LateUpdate` 依位移 |
+| `cast` / `spell-hit` | `PlayerController.Cast` / `SpellProjectile` 壽命到（**在畫面內**才響；目前沒有命中判定）|
+| `gather` / `pickup` | `GatherTree.PlayFx`（＋花圃清枯枝）/ `GatherTree.PopItem`（材料、稀有物、種子冒出來的那一刻）、佈置模式收回托盤 |
+| `water` / `plant` / `harvest` | `GardenRoom.Water` / `PlantSeed` / `Act` 收成分支 |
+| `coin` | 店裡顧客成交、`AwayShop.ReportOnReturn`、雜貨鋪收購 |
+| `buy` / `upgrade` / `deny` | 花店、商行買東西 / 經營面板升級 / 錢不夠、背包滿、放不下、規則擋住、沒種子… |
+| `ui-open` / `ui-close` / `ui-tab` / `ui-click` | 各面板 `Open()`/`Close()` / 分頁鈕 / `Sfx.BindClicks` |
+| `talk` | `Dialogue.ShowLine`（開對話與換句都走它）|
+| `door` | `SceneFade.Go`（所有換場都經過這裡）|
+| `brew` / `quest-done` / `new-day` | `BrewCauldron` 熬好 / `TalkNpc` 回報成功 / `SleepOverlay` 醒來那一刻 |
+| `place` | 佈置模式：從托盤放進房間、拖曳換了位置、轉向／換基準點成功 |
+
+**2026-11-19（UI 動效）** —— 除了公告板，所有面板原本都是 `display` 一切**瞬間出現／消失**。
+
+- **共用 helper `UI/UIAnim.cs`** ＋ 樣式 `Resources/ui/AnimStyle.uss`（helper 自己掛到面板的根上 ——
+  各面板原本載的是 BagPanelStyle／ShopManageStyle／HudExtraStyle 三張不同的表，靠呼叫端記得 Add 一定會漏）。
+  各面板只改了三處：Build 裡建一個 `anim`、`Open()` 的 `display = Flex` 換成 `anim.Show()`、
+  `Close()` 的 `display = None` 換成 `anim.Hide()`；音效那一行沒動（**按下的那一刻**就響，不等動畫）。
+
+  | 動效 | 面板 |
+  |---|---|
+  | `UIAnim.Pop`：淡入＋0.94→1 放大 0.15s ease-out，暗幕只淡入；關閉 0.10s 淡出 | 背包、玩家資訊、衣櫃、調配藥水、經營商店、城鎮商店（共用基底）、種子選單、每日結算（只動帳單，黑幕是 SleepOverlay 的）|
+  | `UIAnim.SlideRight`：從右邊 48px 滑進來＋淡入 | 任務簿（貼右邊的捲軸，縮放看起來像從半空中冒出來，不對）|
+  | `UIAnim.SlideUp`：從下面 26px 滑上來＋淡入 | 對話框、佈置模式托盤（換句不重播 —— 只有 Open/Close 會碰動畫）|
+  | `UIAnim.Bump`：1→1.18→1，約 0.2s | 下排背包 HUD 某格數量**變多**時；左上角金幣變動時（多了閃綠、少了閃紅）|
+
+  SleepOverlay、SceneFade、UpdatePanel 原本就有自己的過場，沒動。
+  Toast 原本就有淡入淡出，只是線性的：改成 ease-out 滑上來、ease-in 飄走，位移從每幀改 `top`
+  換成 `translate`（不觸發重新排版）。
+- ⚠️ **陷阱 1：「開著沒」不能再看 `root.style.display`。** 關閉動畫要等淡出跑完才 display:none，
+  這段期間它還是 Flex —— 而 `IsOpen`、`OnDestroy` 裡解除 `ModalOpen`、`Update` 裡的 Esc、
+  `SleepOverlay` 等帳單關掉⋯⋯原本全是看 display。全部改看 `anim.IsOpen`（`Show()`/`Hide()` 當下就翻過去），
+  `grep DisplayStyle` 逐一查過，剩下的只有子元素的顯示切換與 Build 裡的初始隱藏。
+  所以按 Esc 的那一幀 `ModalOpen` 就解除、人馬上能走、同一顆鍵馬上能再開；淡出只是視覺殘影。
+- ⚠️ **陷阱 2：剛從 display:none 變 flex 的那一輪加 class 不會播 transition**（沒有「前一個樣式」可以比）。
+  open class 用**巢狀兩層 `schedule.Execute`** 才加：排程回呼裡再排的東西一定落到下一輪面板更新，
+  中間保證有一次樣式解析把「關閉狀態」解析過。UpdatePanel 的 `StartingIn(16)` 是同一招，但吃幀率。
+- ⚠️ **陷阱 3：快速連按（開→關→開）。** 延後的動作（加 class、收 display）都記著，`Show`/`Hide` 一進來先
+  `Pause()` 掉，回呼裡再比對流水號 —— 不會「重開之後被上一次的延後隱藏關掉」。
+  同一幀關了又開（對話選項：先關這段、馬上開下一段）直接把 class 掛回去，不會閃一下重播進場。
+- ⚠️ **陷阱 4：面板可能在換場景時被 Destroy（延遲的）。** 排程回呼只碰 VisualElement、不碰 MonoBehaviour；
+  UIDocument 一停用根就離開面板，排程本來就不跑了。
+- 關閉中的面板**不收點擊**：根上掛 trickle-down 攔截 `PointerDown`／`Click`。沒用 `SetEnabled(false)` ——
+  那會套上 `.btn:disabled`（半透明），淡出時看得到按鈕閃一下。世界的點擊（點地走路）本來就不看 UI，不受影響。
+- HUD 彈一下**只在數量增加時**：`InventoryHud` 記著上次畫的每種數量，第一次畫（開場／讀檔）只記不彈；
+  HUD 跨場景常駐，換場不會重建所以也不會誤彈。金幣同理（`lastGold` 還是初值時不跳）。
+  ⚠️ 被 Bump 的元素上**別的 class 不要再寫 `transition-property`** —— 同一個屬性只有一條規則勝出，
+  會把 scale 動畫蓋掉；要變色就把顏色寫在帶進去的 class 裡（`.uia-bump` 已經會 transition color）。
+- 時間全走 USS transition 與 `schedule`（毫秒、真實時間），不受 `Time.timeScale` 影響；沒有執行緒。
+- **順便修掉「同一顆鍵開了又關」**（上一位回報、讀程式確認是真的）：任務簿（`Q`）與玩家資訊（`Tab`/`I`）
+  「開」寫在 `PlayerController.Update`、「關」寫在面板自己的 `Update`，Unity 不保證誰先跑 ——
+  玩家先跑：開的那一幀面板又讀到同一下按鍵 → 開了立刻關；面板先跑：關掉並解除 `ModalOpen` 後，
+  玩家同一幀又讀到 → 關了立刻重開。兩個方向都擋：面板 `Update` 跳過 `anim.OpenedThisFrame`，
+  `Open()` 擋掉 `anim.ClosedThisFrame`。
+  **對話框是同一類**：最後一句按 `E` 關掉，同一幀 `TalkNpc` 若排在後面會用同一下 `E` 再開一次 ——
+  `TalkNpc` 加看 `Dialogue.ClosedThisFrame`（開的方向本來就有 `openedFrame` 擋著）。
+  背包（`B` 開、只有 `Esc` 關）、其他只吃 `Esc` 關的面板沒有這個問題。
+
+**2026-11-19（戶外地面重烤）** —— 森林／城鎮／糖果鎮的地面原本很醜：
+
+- **為什麼**：森林是一張 256×256 的**模糊雜訊磚**平鋪，跟像素風的物件對不上、重複紋路明顯；
+  城鎮與糖果鎮是 3200×2048 的整張圖，路是方塊直接拼（直角鋸齒、草與路沒有過渡、河是一條直藍帶），
+  而且 **`.meta` 的 Max Size 是 2048** —— 匯入時被縮到 2048 再用 Point 拉回 3200，格子糊掉、大小不一
+  （第四節坑表）。
+- **做法**：離線烘焙器 `tools/bake_ground.py`（Pillow＋numpy，固定種子）只用現有素材的色盤程式作畫，
+  路與河的位置從原圖抽出來（只把直角修圓，`TownRoads` 的村民路點都還在路內）。輸出**半解析度**
+  `Resources/art/ground/{forest,town,candy}.png`（1 美術像素＝2 世界像素，最大 1600 寬，原尺寸匯入）；
+  `Core/BakedGround` 用 `[RuntimeInitializeOnLoadMethod]` 掛 `sceneLoaded`，場景一載入就把 `Ground`
+  的 sprite 換成它（PPU 0.5，**drawMode 維持原樣**：森林的 Tiled 把 size 設成新圖大小、城鎮/糖果鎮的
+  Simple 只換 sprite）。**世界大小不變**（換之前比對 `bounds`、換之後再驗中心與大小，不對就整組還原），
+  可走範圍、攝影機邊界、邊界傳送點都不受影響。⚠️ 第一版在這裡把森林的 Tiled 切成 Simple，地面被放大
+  11×7 倍（第四節坑表「執行期把 Tiled 切成 Simple」）；那個狀態下 `PortalGlow`（在 `Start` 讀 bounds）
+  的邊界光圈也會擺錯，`PlayerController`／`CameraFollow` 在 `Awake` 讀、在換圖之前，不受影響。不改場景檔、不改 `PlayerController`、排序仍是 -10000。
+  原檔名的三張圖（`ground-grass` / `town-ground` / `candy-town`）同尺寸換成同風格的墊底版，只給編輯器看，
+  `.meta` 沒動。
+  - 城鎮：Voronoi 圓石街、較大較亮的廣場鋪石＋路緣石、泥土路鬆散邊緣、彎曲河岸＋沙岸＋三階水色、
+    橋欄與橋下陰影、噴泉腳下一圈鋪石、建築/灌木腳下壓暗。
+  - 糖果鎮：薄荷綠草、糖粒與小軟糖；巧克力磚路修圓角＋奶油糖霜（下緣滴落）；廣場內圈牛奶巧克力、
+    中央薄荷糖漩渦地磚。
+  - 森林的取捨：第一版自己一套較暗的色盤、兩階暗斑塊、往出口的泥土小徑 → **像迷彩、太花，被退件**；
+    改出的極簡版（幾乎單色＋小草葉記號）**太平、像塑膠地板**；最後定案：**草地直接用城鎮同一套**
+    （同一個色盤與斑塊參數，兩張地圖接起來是同一種草），再加所有樹/灌木/樹籬/落葉堆腳下兩階接地暗色、
+    果樹下落果、花樹下落瓣、落葉堆旁散葉，以及四周一圈寬度不規則、內緣用草叢打散的較深邊緣
+    （東、北出口留開口）。
+- **重烤**：`python tools/bake_ground.py`（或 `forest` / `town` / `candy` 只烤一張），重跑結果位元組相同。
+  參數與做法見 `tools/ground/README.md`。
+- **還原原圖**：`python tools/bake_ground.py --restore`（從 `tools/ground/orig/` 蓋回三張原圖、刪掉
+  `Resources/art/ground/`）；要完全拿掉再刪 `Core/BakedGround.cs`。
+- 開場的**更新公告板**內容（`Data/UpdateNotes.cs`）已換成 2026-11-19 這一版（音效、新地面、面板動效等六條），並重跑字型子集化。
+
 ### 還沒做
 
+- 新地面三張都**已實機確認**顯示正確（森林是修掉 Tiled→Simple 放大之後），還沒看過的只剩：
+  夜晚 `DayNightTint` 色調下的樣子、網頁版的建置大小
+- 網頁版（`docs/`）還是 2026-09-06 的舊建置，今天的改動尚未重建上線
+
+- 音效**只編過、還沒實機聽過**：音量平衡、腳步密度（`PlayerController.StepStride`）都是憑估算的
+- UI 動效**只編過、還沒實機看過**：進場有沒有真的播（陷阱 2）、時間與幅度順不順眼
+  （`AnimStyle.uss` 調時間與幅度，關閉時間改長要連 `UIAnim.HideDelayMs` 一起改）
+- 背景音樂（目前只有音效）、音量設定介面（`Sfx.Volume` 已經準備好）
 - 魔法彈的正式美術（需要美術資源）
 - `AwayShop`（離店營業）只編過、還沒實機玩過：上架 → 出門 → 回店看有沒有跳 Toast

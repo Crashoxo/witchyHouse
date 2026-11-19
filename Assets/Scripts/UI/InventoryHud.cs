@@ -86,6 +86,13 @@ namespace WitchShop.UI
             return true;
         }
 
+        /// <summary>
+        /// 上一次畫出來時每樣東西有幾個 —— 用來找「哪一格變多了」好讓它彈一下。
+        /// null＝還沒畫過：第一次（開場、讀檔後）只記下來不彈。
+        /// 這個 HUD 跨場景常駐，換場景不會重建，所以換場也不會誤彈。
+        /// </summary>
+        System.Collections.Generic.Dictionary<string, int> lastCounts;
+
         public void Refresh()
         {
             if (hud == null) return;
@@ -94,6 +101,9 @@ namespace WitchShop.UI
             int cap = Upgrades.BagSlots();
             builtCap = cap;
             var items = Inventory.List();
+            var prev = lastCounts;
+            lastCounts = new System.Collections.Generic.Dictionary<string, int>();
+            foreach (var st in items) lastCounts[st.name] = st.count;
 
             for (int i = 0; i < cap; i++)
             {
@@ -128,6 +138,13 @@ namespace WitchShop.UI
                 }
 
                 hud.Add(slot);
+
+                // 數量變多（含新撿到的一種）→ 那一格彈一下。變少（賣掉、收進倉庫）不彈。
+                if (prev != null && i < items.Count)
+                {
+                    prev.TryGetValue(items[i].name, out int before);
+                    if (items[i].count > before) UIAnim.Bump(slot);
+                }
             }
         }
     }

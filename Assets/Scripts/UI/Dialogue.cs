@@ -52,6 +52,7 @@ namespace WitchShop.UI
         List<DialogueLine> lines;
         int index;
         bool built;
+        UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
         /// <summary>開啟的那一幀不要吃按鍵 —— 開對話用的也是 E，同一幀會直接跳掉第一句。</summary>
         int openedFrame = -1;
 
@@ -68,10 +69,16 @@ namespace WitchShop.UI
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (root != null && root.style.display == DisplayStyle.Flex) UIState.ModalOpen = false;
+            if (anim != null && anim.IsOpen) UIState.ModalOpen = false;
         }
 
-        public bool IsOpen => built && root != null && root.style.display == DisplayStyle.Flex;
+        public bool IsOpen => built && anim != null && anim.IsOpen;   // ⚠️ 不看 display：關閉動畫期間它還是 Flex
+
+        /// <summary>
+        /// 這一幀才關掉。⚠️ 最後一句按 E 關掉時 ModalOpen 當下就解除了，同一幀 TalkNpc
+        /// 若排在後面跑，會讀到同一下 E 又開一次對話 —— TalkNpc 要看這個擋掉。
+        /// </summary>
+        public bool ClosedThisFrame => anim != null && anim.ClosedThisFrame;
 
         /// <summary>開始一段對話。</summary>
         public void Open(string speaker, List<DialogueLine> script, string portrait = null)
@@ -89,7 +96,7 @@ namespace WitchShop.UI
             portraitEl.style.display = sp != null ? DisplayStyle.Flex : DisplayStyle.None;
             if (sp != null) portraitEl.style.backgroundImage = new StyleBackground(sp);
 
-            root.style.display = DisplayStyle.Flex;
+            anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
             ShowLine();
         }
@@ -100,7 +107,7 @@ namespace WitchShop.UI
 
         public void Close()
         {
-            if (root != null) root.style.display = DisplayStyle.None;
+            anim?.Hide();                // 淡出只是視覺殘影，邏輯上這一行就算關了
             UIState.ModalOpen = false;
             lines = null;
         }
@@ -130,6 +137,7 @@ namespace WitchShop.UI
         {
             var l = lines[index];
             textLabel.text = l.Text;
+            Sfx.Play("talk");             // 音效：開對話、換下一句都走這裡
 
             choicesBox.Clear();
             bool hasChoices = l.Choices != null && l.Choices.Count > 0;
@@ -163,6 +171,7 @@ namespace WitchShop.UI
             if (root == null) { Debug.LogError("[Dialogue] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudExtraStyle"));
             CjkFont.Apply(root);
+            Sfx.BindClicks(root);         // 選項按鈕的 click 音（選完接著開新對話時會被 talk 蓋過）
 
             var layer = new VisualElement();
             layer.AddToClassList("dlg-layer");
@@ -197,6 +206,7 @@ namespace WitchShop.UI
             body.Add(nextLabel);
 
             root.style.display = DisplayStyle.None;
+            anim = UIAnim.SlideUp(root, box);                 // 從下方滑上來；換句不動它（只有 Open/Close 會）
             built = true;
         }
     }

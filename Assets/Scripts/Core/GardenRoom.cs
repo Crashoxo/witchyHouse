@@ -112,12 +112,12 @@ namespace WitchShop.Core
 
             if (v.Dead)
             {
-                if (Garden.Clear(plot.index)) plot.Popup("清掉了枯枝");
+                if (Garden.Clear(plot.index)) { Sfx.Play("gather"); plot.Popup("清掉了枯枝"); }
             }
             else if (v.Empty)
             {
                 // 有哪幾種種子讓玩家自己挑（面板是 modal，挑完才回來種）
-                if (UI.SeedPicker.SeedsInBag().Count == 0) { plot.Popup("沒有種子…"); return; }
+                if (UI.SeedPicker.SeedsInBag().Count == 0) { Sfx.Play("deny"); plot.Popup("沒有種子…"); return; }
                 UI.SeedPicker.Ensure().Open(seed => PlantSeed(plot, seed));
                 return;                      // 面板關掉後才會真的種
             }
@@ -130,6 +130,7 @@ namespace WitchShop.Core
                     DailyLog.RecordGather(got.Value.Count);
                     QuestLog.Record(ObjKind.Gather, got.Value.Name, got.Value.Count);
                     anim?.PlayOneShot(GameArt.PickFrames(dir), 0.9f, faceX, true, dir);
+                    Sfx.Play("harvest");
                     plot.Popup($"＋{got.Value.Name} ×{got.Value.Count}");
                 }
             }
@@ -158,6 +159,7 @@ namespace WitchShop.Core
             {
                 // 澆水借施法那組八方向的圖 → 直接挑「朝花圃」的那個方向，人會轉過去澆
                 anim?.PlayOneShot(GameArt.WaterFrames(dir), 0.9f, faceX, false, dir);
+                Sfx.Play("water");
                 plot.Popup(n > 1 ? $"澆了 {n} 塊" : "澆好水了");
 
                 // 灑水特效：水從她手上澆花器的壺口出來，澆到的每一塊都來一份
@@ -171,6 +173,7 @@ namespace WitchShop.Core
             }
             else
             {
+                Sfx.Play("deny");
                 plot.Popup("救不回來了…");
             }
 
@@ -190,6 +193,7 @@ namespace WitchShop.Core
             var anim = player != null ? player.GetComponent<CharacterAnimator>() : null;
             float faceX = player != null ? plot.transform.position.x - player.position.x : 0f;
             anim?.PlayOneShot(GameArt.PickFrames(DirTo(plot)), 0.7f, faceX, true, DirTo(plot));
+            Sfx.Play("plant");
             plot.Popup($"種下 {seed}");
             plot.Refresh();
         }

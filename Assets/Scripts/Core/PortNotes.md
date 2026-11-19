@@ -26,6 +26,8 @@
 - 路徑一律**小寫** `ui/`、`items/`⋯ —— `AssetDatabase` 的路徑區分大小寫，
   但 Windows 檔名不分，寫錯會靜默掉進別的資料夾。
 - `Resources.Load` 是同步的，`GameArt` 的 `Ready`/`OnReady` 只是保留 API 形狀。
+- 匯入的 **Max Size 是 2048**，超過的圖會被靜默縮小。戶外地面因此改成半解析度的
+  `art/ground/*.png`，由 `BakedGround` 執行期以 PPU 0.5 換上（重烤：`python tools/bake_ground.py`）。
 
 ## UI
 
@@ -35,6 +37,19 @@
 - 字型裡**沒有** `✕`(U+2715)、`✔`(U+2714)；要打叉打勾用 `×`(U+00D7)、`✓`(U+2713)。
 - 深色底配亮字、羊皮紙配深墨色。挑錯就是「東西沒顯示」。
 - 建構失敗時 **`built` 旗標要保持 false**，不然 `Update()` 會每幀丟 NullReference。
+- **新面板要有開關動效**：Build 時 `anim = UIAnim.Pop(root, panel, dim)`（貼邊的用 `SlideRight`／`SlideUp`），
+  開關改成 `anim.Show()`／`anim.Hide()`，**「開著沒」一律看 `anim.IsOpen`、不要看 `root.style.display`**
+  （關閉動畫期間 display 還是 Flex）。樣式表 helper 自己會掛。HUD 數字彈一下：`UIAnim.Bump(元素)`。
+- **同一顆鍵開關的面板**（Q、Tab/I）：`Update` 裡跳過 `anim.OpenedThisFrame`、`Open()` 擋掉
+  `anim.ClosedThisFrame` —— 開在 PlayerController、關在面板，Unity 不保證誰先跑。
+
+## 音效
+
+- **`Sfx.Play("名字")`** 一行就響，檔案在 `Resources/audio/名字.wav`，找不到會靜默略過。
+  掛在**事件真正發生的那一處**，不要掛在讀檔／批次會呼叫到的底層（`Inventory.Add`、`CompleteSale`⋯）。
+- 新面板：Build 時 `Sfx.BindClicks(root)`（全部按鈕的 click 音），`Open()`/`Close()` 各一行
+  `Sfx.Play("ui-open")` / `Sfx.Play("ui-close")`。
+- 新音效：在 `tools/gen_sfx.py` 的 `SOUNDS` 表加一支、重跑；或直接丟一個同名音檔進 `Resources/audio/`。
 
 ## 場景
 

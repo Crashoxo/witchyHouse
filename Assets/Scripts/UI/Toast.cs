@@ -76,7 +76,18 @@ namespace WitchShop.UI
             StartCoroutine(Play(el, seconds));
         }
 
-        /// <summary>淡入 0.18 秒 → 停一下 → 淡出 0.32 秒，同時整條往上飄 18px（同原版節奏）。</summary>
+        /// <summary>進場時從下面多少 px 滑上來。</summary>
+        const float RiseIn = 12f;
+        /// <summary>停留時慢慢往上飄、淡出時再往上飄的距離（合計 18px，同原版）。</summary>
+        const float DriftHold = 4f, DriftOut = 14f;
+
+        /// <summary>
+        /// 淡入 0.18 秒（同時從下方滑上來，ease-out）→ 停一下（慢慢往上飄一點）→
+        /// 淡出 0.32 秒（ease-in，邊淡邊往上飄）。時間節奏同原版，只是把線性換成緩動。
+        ///
+        /// 位移改用 <c>translate</c>，不再每幀改 <c>top</c> —— translate 不會觸發重新排版，
+        /// 改 top 每幀都要重跑整層 layout。
+        /// </summary>
         IEnumerator Play(VisualElement el, float seconds)
         {
             const float fadeIn = 0.18f, fadeOut = 0.32f;
@@ -87,14 +98,37 @@ namespace WitchShop.UI
             while (t < total)
             {
                 t += Time.unscaledDeltaTime;      // 開著選單時也要能看到提示
-                float a = t < fadeIn ? t / fadeIn
-                        : t < fadeIn + hold ? 1f
-                        : 1f - (t - fadeIn - hold) / fadeOut;
+                float a, y;
+                if (t < fadeIn)
+                {
+                    float p = EaseOut(t / fadeIn);
+                    a = p;
+                    y = RiseIn * (1f - p);
+                }
+                else if (t < fadeIn + hold)
+                {
+                    a = 1f;
+                    y = -DriftHold * ((t - fadeIn) / hold);
+                }
+                else
+                {
+                    float q = Mathf.Clamp01((t - fadeIn - hold) / fadeOut);
+                    q *= q;                         // ease-in：一開始慢、越後面越快
+                    a = 1f - q;
+                    y = -DriftHold - DriftOut * q;
+                }
                 el.style.opacity = Mathf.Clamp01(a);
-                el.style.top = 76f - 18f * Mathf.Clamp01(t / total);
+                el.style.translate = new StyleTranslate(new Translate(0, y));
                 yield return null;
             }
             el.RemoveFromHierarchy();
+        }
+
+        /// <summary>三次方 ease-out：一開始快、收尾慢。</summary>
+        static float EaseOut(float x)
+        {
+            x = 1f - Mathf.Clamp01(x);
+            return 1f - x * x * x;
         }
     }
 }

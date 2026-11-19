@@ -19,6 +19,7 @@ namespace WitchShop.UI
         protected Label titleLabel, goldLabel, hintLabel;
         protected VisualElement tabsBox;
         bool built;
+        UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         protected abstract string Title { get; }
         protected abstract string Hint { get; }
@@ -39,22 +40,24 @@ namespace WitchShop.UI
         protected void Update()
         {
             if (!built || root == null) return;
-            if (root.style.display == DisplayStyle.Flex && Input.GetKeyDown(KeyCode.Escape)) Close();
+            if (anim.IsOpen && Input.GetKeyDown(KeyCode.Escape)) Close();
         }
 
         public void Open()
         {
             if (!built) Build();
             if (!built) return;
-            root.style.display = DisplayStyle.Flex;
+            anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
+            Sfx.Play("ui-open");                                    // 音效：面板打開
             GameArt.OnReady(RefreshAll);
         }
 
         public void Close()
         {
-            if (root != null) root.style.display = DisplayStyle.None;
+            anim?.Hide();                // 淡出只是視覺殘影，邏輯上這一行就算關了
             UIState.ModalOpen = false;
+            Sfx.Play("ui-close");                                   // 音效：面板關閉
         }
 
         protected void RefreshAll()
@@ -71,6 +74,7 @@ namespace WitchShop.UI
             if (root == null) { Debug.LogError($"[{GetType().Name}] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/ShopManageStyle"));
             CjkFont.Apply(root);
+            Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
             var dim = new VisualElement();
             dim.AddToClassList("dim");
@@ -116,6 +120,7 @@ namespace WitchShop.UI
             panel.Add(hintLabel);
 
             root.style.display = DisplayStyle.None;
+            anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
             built = true;
         }
 
@@ -215,9 +220,10 @@ namespace WitchShop.UI
         void Sell(string name, int price, int qty)
         {
             if (qty <= 0) return;
-            if (!Storage.TakeAny(name, qty)) return;      // 先扣背包、不夠再扣倉庫
+            if (!Storage.TakeAny(name, qty)) { Sfx.Play("deny"); return; }   // 先扣背包、不夠再扣倉庫
             int gold = price * qty;
             Wallet.Add(gold);
+            Sfx.Play("coin");
             DailyLog.RecordTrade(gold);                   // 收購收入不算店裡的生意，不加名聲
             Toast.Show($"賣出 {name} ×{qty}　＋{gold} 金");
             RefreshAll();
@@ -285,7 +291,7 @@ namespace WitchShop.UI
                 })
                 {
                     var tt = t;
-                    var b = new Button(() => { tab = tt; RefreshAll(); }) { text = label };
+                    var b = new Button(() => { tab = tt; Sfx.Play("ui-tab"); RefreshAll(); }) { text = label };
                     b.AddToClassList("tab");
                     b.userData = tt;
                     tabsBox.Add(b);
@@ -312,7 +318,8 @@ namespace WitchShop.UI
                 bool canBuy = Wallet.Gold >= def.SeedPrice;
                 row.Add(Act("買 1", "btn-buy", canBuy, () =>
                 {
-                    if (!Garden.BuySeed(def.Seed)) { Toast.Show("買不了 —— 金幣不夠或背包滿了"); return; }
+                    if (!Garden.BuySeed(def.Seed)) { Sfx.Play("deny"); Toast.Show("買不了 —— 金幣不夠或背包滿了"); return; }
+                    Sfx.Play("buy");
                     Toast.Show($"買了 {def.Seed}　－{def.SeedPrice} 金");
                     RefreshAll();
                 }));
@@ -353,7 +360,8 @@ namespace WitchShop.UI
                 bool canBuy = Wallet.Gold >= def.Price;
                 row.Add(Act("買 1", "btn-buy", canBuy, () =>
                 {
-                    if (!RoomLayout.Buy(def.Id)) { Toast.Show("金幣不夠"); return; }
+                    if (!RoomLayout.Buy(def.Id)) { Sfx.Play("deny"); Toast.Show("金幣不夠"); return; }
+                    Sfx.Play("buy");
                     Toast.Show($"買了 {def.Name}　－{def.Price} 金");
                     RefreshAll();
                 }));
@@ -380,7 +388,8 @@ namespace WitchShop.UI
                 bool canBuy = Wallet.Gold >= def.Price;
                 row.Add(Act("買 1", "btn-buy", canBuy, () =>
                 {
-                    if (!DecorCatalog.Buy(def.Id)) { Toast.Show("金幣不夠"); return; }
+                    if (!DecorCatalog.Buy(def.Id)) { Sfx.Play("deny"); Toast.Show("金幣不夠"); return; }
+                    Sfx.Play("buy");
                     Toast.Show($"買了 {def.Name}　－{def.Price} 金");
                     RefreshAll();
                 }));
@@ -455,10 +464,11 @@ namespace WitchShop.UI
 
         void Buy(string name, int cost)
         {
-            if (Wallet.Gold < cost) { Toast.Show("金幣不夠"); return; }
-            if (!Inventory.Add(name, 1)) { Toast.Show("背包滿了 —— 先整理一下"); return; }
+            if (Wallet.Gold < cost) { Sfx.Play("deny"); Toast.Show("金幣不夠"); return; }
+            if (!Inventory.Add(name, 1)) { Sfx.Play("deny"); Toast.Show("背包滿了 —— 先整理一下"); return; }
             Wallet.Add(-cost);
             DailyLog.RecordSpend(cost);
+            Sfx.Play("buy");
             Toast.Show($"買了 {name}　－{cost} 金");
             RefreshAll();
         }

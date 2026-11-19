@@ -43,6 +43,7 @@ namespace WitchShop.UI
         float openedAt;
         bool ownedModal;
         bool built;
+        UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         void Awake()
         {
@@ -60,7 +61,7 @@ namespace WitchShop.UI
             if (IsOpen && ownedModal) UIState.ModalOpen = false;
         }
 
-        public bool IsOpen => built && root != null && root.style.display == DisplayStyle.Flex;
+        public bool IsOpen => built && anim != null && anim.IsOpen;   // ⚠️ 不看 display：關閉動畫期間它還是 Flex
 
         void Update()
         {
@@ -83,15 +84,17 @@ namespace WitchShop.UI
             if (ownedModal) UIState.ModalOpen = true;
 
             openedAt = Time.unscaledTime;
-            root.style.display = DisplayStyle.Flex;
+            anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
+            Sfx.Play("ui-open");                                    // 音效：面板打開
             GameArt.OnReady(Refresh);      // 同步載入，OnReady 只是保證圖示已經在了
         }
 
         public void Close()
         {
-            if (root != null) root.style.display = DisplayStyle.None;
+            anim?.Hide();                // 淡出只是視覺殘影，邏輯上這一行就算關了
             if (ownedModal) UIState.ModalOpen = false;
             ownedModal = false;
+            Sfx.Play("ui-close");                                   // 音效：面板關閉
         }
 
         // ── 版面 ────────────────────────────────────────────────
@@ -154,6 +157,7 @@ namespace WitchShop.UI
             card.Add(foot);
 
             root.style.display = DisplayStyle.None;
+            anim = UIAnim.Pop(root, card);                    // 黑幕是 SleepOverlay 的，這裡只動帳單本身
             built = true;
         }
 

@@ -39,6 +39,7 @@ namespace WitchShop.UI
         ScrollView rowsBox;
         Action<string> onPick;
         bool built;
+        UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         void Awake()
         {
@@ -53,13 +54,13 @@ namespace WitchShop.UI
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (root != null && root.style.display == DisplayStyle.Flex) UIState.ModalOpen = false;
+            if (anim != null && anim.IsOpen) UIState.ModalOpen = false;
         }
 
         void Update()
         {
             if (!built || root == null) return;
-            if (root.style.display == DisplayStyle.Flex && Input.GetKeyDown(KeyCode.Escape)) Cancel();
+            if (anim.IsOpen && Input.GetKeyDown(KeyCode.Escape)) Cancel();
         }
 
         /// <summary>開啟；玩家挑好之後呼叫 pick(種子名)。取消的話不呼叫。</summary>
@@ -68,8 +69,9 @@ namespace WitchShop.UI
             onPick = pick;
             if (!built) Build();
             if (!built) return;
-            root.style.display = DisplayStyle.Flex;
+            anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
+            Sfx.Play("ui-open");                                    // 音效：面板打開
             Refresh();
         }
 
@@ -81,8 +83,9 @@ namespace WitchShop.UI
 
         void Close()
         {
-            if (root != null) root.style.display = DisplayStyle.None;
+            anim?.Hide();                // 淡出只是視覺殘影，邏輯上這一行就算關了
             UIState.ModalOpen = false;
+            Sfx.Play("ui-close");                                   // 音效：面板關閉
         }
 
         void Build()
@@ -91,6 +94,7 @@ namespace WitchShop.UI
             if (root == null) { Debug.LogError("[SeedPicker] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/ShopManageStyle"));
             CjkFont.Apply(root);
+            Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
             var dim = new VisualElement();
             dim.AddToClassList("dim");
@@ -126,6 +130,7 @@ namespace WitchShop.UI
             hint.AddToClassList("hint");
             panel.Add(hint);
 
+            anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
             built = true;
         }
 

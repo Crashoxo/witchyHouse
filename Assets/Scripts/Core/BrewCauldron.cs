@@ -95,6 +95,7 @@ namespace WitchShop.Core
                 PotionRecipes.Produce(pending, pendingQty);
                 DailyLog.RecordBrew(pendingQty);
                 QuestLog.Record(ObjKind.Brew, pending.Name, pendingQty);
+                Sfx.Play("brew");
                 Popup($"＋{pending.Name} ×{pendingQty}");
                 pending = null;
             }

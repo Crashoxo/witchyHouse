@@ -37,6 +37,7 @@ namespace WitchShop.UI
         Label footLabel;
         int page;
         bool built;
+        UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         void Awake()
         {
@@ -51,33 +52,41 @@ namespace WitchShop.UI
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (root != null && root.style.display == DisplayStyle.Flex) UIState.ModalOpen = false;
+            if (anim != null && anim.IsOpen) UIState.ModalOpen = false;
         }
 
         void Update()
         {
             if (!built || root == null) return;
-            if (root.style.display != DisplayStyle.Flex) return;
-            // Q 或 Esc 都能關 —— 開的那顆鍵也能關，是最直覺的
+            if (!anim.IsOpen) return;
+            // Q 或 Esc 都能關 —— 開的那顆鍵也能關，是最直覺的。
+            // ⚠️ 「開」在 PlayerController.Update、「關」在這裡，Unity 不保證兩邊誰先跑：
+            //    PlayerController 先跑的話，開的那一幀這裡又讀到同一下 Q → 開了立刻關。
+            if (anim.OpenedThisFrame) return;
             if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Q)) Close();
         }
 
-        public bool IsOpen => built && root != null && root.style.display == DisplayStyle.Flex;
+        public bool IsOpen => built && anim != null && anim.IsOpen;   // ⚠️ 不看 display：關閉動畫期間它還是 Flex
 
         public void Open()
         {
             if (!built) Build();
             if (!built) return;
+            // ⚠️ 反方向的同一個問題：這裡先跑、按 Q 關掉並解除 ModalOpen，同一幀
+            //    PlayerController 又讀到那一下 Q 來開 → 關了立刻重開。關掉的那一幀不重開。
+            if (anim.ClosedThisFrame) return;
             page = 0;
-            root.style.display = DisplayStyle.Flex;
+            anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
+            Sfx.Play("ui-open");                                    // 音效：面板打開
             GameArt.OnReady(Refresh);
         }
 
         public void Close()
         {
-            if (root != null) root.style.display = DisplayStyle.None;
+            anim?.Hide();                // 淡出只是視覺殘影，邏輯上這一行就算關了
             UIState.ModalOpen = false;
+            Sfx.Play("ui-close");                                   // 音效：面板關閉
         }
 
         void Build()
@@ -86,6 +95,7 @@ namespace WitchShop.UI
             if (root == null) { Debug.LogError("[QuestPanel] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudExtraStyle"));
             CjkFont.Apply(root);
+            Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
             var layer = new VisualElement();
             layer.AddToClassList("quest-layer");
@@ -128,6 +138,7 @@ namespace WitchShop.UI
             scroll.Add(close);
 
             root.style.display = DisplayStyle.None;
+            anim = UIAnim.SlideRight(root, scroll);           // 靠右的捲軸：從右邊滑進來（縮放不適合貼邊的東西）
             built = true;
         }
 

@@ -70,6 +70,11 @@ namespace WitchShop.Core
         CharacterAnimator anim;
         Camera cam;
 
+        // 腳步聲：量實際位移，每走 StepStride 像素響一步（跑步時一樣的步幅、更快走完 → 自然變密）
+        const float StepStride = 64f;
+        Vector3 lastPos;
+        float stepAccum;
+
         void Awake()
         {
             anim = GetComponent<CharacterAnimator>();
@@ -118,7 +123,28 @@ namespace WitchShop.Core
             Doorways.Install(scene);
             PortalGlow.Ensure();       // 門與邊界傳送點的地上光圈
 
+            lastPos = transform.position;
+        }
 
+        /// <summary>
+        /// 腳步聲。跟 CharacterAnimator 同一套想法：**量這一幀實際移動了多少**，
+        /// 不管是鍵盤、點地面自動走、還是衝刺都一樣算；站著（或推著牆走不動）就不響。
+        /// 放 LateUpdate 是為了量到這一幀所有移動之後的位置。
+        /// </summary>
+        void LateUpdate()
+        {
+            var p = transform.position;
+            float d = Vector2.Distance(p, lastPos);
+            lastPos = p;
+
+            if (d < 0.01f) { stepAccum = StepStride * 0.6f; return; }   // 停下來：下次起步走一小段就響第一步
+            if (d > 40f) return;                                        // 一幀跳太遠＝被瞬移（出生點、夾回地板），不是走路
+
+            stepAccum += d;
+            if (stepAccum < StepStride) return;
+            stepAccum -= StepStride;
+            bool running = d / Mathf.Max(Time.deltaTime, 1e-4f) > moveSpeed * 1.3f;
+            Sfx.Play("step", running ? 0.9f : 0.7f);
         }
 
         void Update()
@@ -317,6 +343,7 @@ namespace WitchShop.Core
             var frames = GameArt.CastFrames(d);
             if (frames.Length > 0) anim.PlayOneShot(frames, 0.9f, 0f, true, d);
 
+            Sfx.Play("cast");
             SpellProjectile.Spawn(transform.position, facing);
         }
     }

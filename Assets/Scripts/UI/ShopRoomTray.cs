@@ -32,6 +32,7 @@ namespace WitchShop.UI
         VisualElement root, itemsBox;
         Label hintLabel;
         bool built;
+        UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         /// <summary>點了托盤裡的東西要做什麼（由 ShopRoomEditor 指派）。</summary>
         public Action<string, bool> onPick;   // (id, isDecor)
@@ -52,13 +53,13 @@ namespace WitchShop.UI
         {
             if (!built) Build();
             if (!built) return;
-            root.style.display = DisplayStyle.Flex;
+            anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             Refresh();
         }
 
         public void Hide()
         {
-            if (root != null) root.style.display = DisplayStyle.None;
+            anim?.Hide();                // 淡出只是視覺殘影，邏輯上這一行就算關了
         }
 
         void Build()
@@ -68,6 +69,7 @@ namespace WitchShop.UI
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudExtraStyle"));
             root.pickingMode = PickingMode.Ignore;   // 只有托盤本身吃滑鼠，其他地方要能拖家具
             CjkFont.Apply(root);
+            Sfx.BindClicks(root);         // 托盤按鈕的 click 音（放得下時會被 place 蓋過）
 
             var layer = new VisualElement();
             layer.AddToClassList("tray-layer");
@@ -95,6 +97,7 @@ namespace WitchShop.UI
             tray.Add(itemsBox);
 
             root.style.display = DisplayStyle.None;
+            anim = UIAnim.SlideUp(root, tray);                // 從下方滑上來
             built = true;
         }
 

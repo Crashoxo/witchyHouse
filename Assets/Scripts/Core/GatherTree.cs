@@ -93,6 +93,7 @@ namespace WitchShop.Core
             // 背包裝不下（種類滿了）就直說一聲 —— 不要靜靜地把採到的東西丟掉
             if (!Inventory.Add(itemName, qty))
             {
+                Sfx.Play("deny");
                 UI.Toast.Show("背包滿了，先回去整理一下");
                 return;
             }
@@ -141,6 +142,7 @@ namespace WitchShop.Core
                 }
             }
 
+            Sfx.Play("gather");                            // 樹葉沙沙
             StartCoroutine(Shake());                       // 樹左右擺
             for (int i = 0; i < 6; i++) Spark();           // 樹冠散出星星
             PopItem(item, qty, 0f);                        // 材料圖示往上冒
@@ -238,6 +240,9 @@ namespace WitchShop.Core
         /// <summary>採到的材料：圖示＋數量從樹上飄出來、往上淡出。</summary>
         void PopItem(string item, int qty, float extraY)
         {
+            // 東西冒出來＝拿到了。稀有掉落／種子是慢一拍才冒的，聲音也跟著慢一拍。
+            Sfx.Play("pickup", 0.85f);
+
             var size = VisualSize();
             var go = new GameObject("pop");
             go.transform.SetParent(transform.parent);

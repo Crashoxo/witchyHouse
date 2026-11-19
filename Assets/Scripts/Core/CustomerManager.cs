@@ -161,6 +161,9 @@ namespace WitchShop.Core
                         int price = CompleteSale(c.Want);
                         if (price > 0)
                         {
+                            // 收錢的音效掛在這裡、不掛在 CompleteSale 裡 —— AwayShop 離店成交也走
+                            // CompleteSale，玩家不在店裡時不該每一筆都叮一聲（回店那則彙總才響）。
+                            Sfx.Play("coin");
                             ShowEmote(c, price);
                         }
                         else

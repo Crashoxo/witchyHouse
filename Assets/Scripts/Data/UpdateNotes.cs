@@ -13,17 +13,17 @@ namespace WitchShop.Data
     public static class UpdateNotes
     {
         /// <summary>顯示在公告最上方的日期。</summary>
-        public const string Date = "2026 / 09 / 06";
+        public const string Date = "2026 / 11 / 19";
 
         /// <summary>這次更新的內容，一行一條。</summary>
         public static readonly string[] Lines =
         {
-            "· 整個遊戲換成 Unity 重做了一遍",
-            "· 睡醒之後多了「今日結算」帳單",
-            "· 店內佈置：擋路或穿牆的格子會標紅，並說明原因",
-            "· 靠牆的貨架可以換基準點，貼得住牆了",
-            "· 角色腳下都有了影子",
-            "· 修好女巫比地面低半身的問題",
+            "· 遊戲有聲音了：腳步、採集、施法、收錢…（按 M 靜音）",
+            "· 森林、城鎮、糖果鎮的地面重新畫過",
+            "· 樹和房子腳下有了樹蔭，草地上多了小花",
+            "· 打開背包、任務簿等面板時會有動態",
+            "· 撿到東西、金幣變動時，畫面會跳一下提示",
+            "· 修好任務簿偶爾按了沒反應的問題",
         };
     }
 }

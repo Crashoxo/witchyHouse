@@ -38,6 +38,7 @@ namespace WitchShop.UI
         Label titleLabel, hintLabel;
         Tab tab = Tab.Quests;
         bool built;
+        UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         void Awake()
         {
@@ -52,13 +53,16 @@ namespace WitchShop.UI
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (root != null && root.style.display == DisplayStyle.Flex) UIState.ModalOpen = false;
+            if (anim != null && anim.IsOpen) UIState.ModalOpen = false;
         }
 
         void Update()
         {
             if (!built || root == null) return;
-            if (root.style.display != DisplayStyle.Flex) return;
+            if (!anim.IsOpen) return;
+            // ⚠️ Tab/I 開關同一顆鍵，「開」在 PlayerController.Update —— 誰先跑不一定，
+            //    開的那一幀不吃鍵，不然可能開了立刻關（同 QuestPanel）
+            if (anim.OpenedThisFrame) return;
             if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Tab)
                 || Input.GetKeyDown(KeyCode.I)) Close();
         }
@@ -67,15 +71,18 @@ namespace WitchShop.UI
         {
             if (!built) Build();
             if (!built) return;
-            root.style.display = DisplayStyle.Flex;
+            if (anim.ClosedThisFrame) return;     // 這一幀才用 Tab/I 關掉的，別被同一下又打開（同 QuestPanel）
+            anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
+            Sfx.Play("ui-open");                                    // 音效：面板打開
             GameArt.OnReady(Refresh);
         }
 
         public void Close()
         {
-            if (root != null) root.style.display = DisplayStyle.None;
+            anim?.Hide();                // 淡出只是視覺殘影，邏輯上這一行就算關了
             UIState.ModalOpen = false;
+            Sfx.Play("ui-close");                                   // 音效：面板關閉
         }
 
         void Build()
@@ -84,6 +91,7 @@ namespace WitchShop.UI
             if (root == null) { Debug.LogError("[PlayerInfoPanel] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/ShopManageStyle"));
             CjkFont.Apply(root);
+            Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
             var dim = new VisualElement();
             dim.AddToClassList("dim");
@@ -119,7 +127,7 @@ namespace WitchShop.UI
                      })
             {
                 var tt = t;
-                var b = new Button(() => { tab = tt; Refresh(); }) { text = label };
+                var b = new Button(() => { tab = tt; Sfx.Play("ui-tab"); Refresh(); }) { text = label };
                 b.AddToClassList("tab");
                 b.userData = tt;
                 tabsBox.Add(b);
@@ -134,6 +142,7 @@ namespace WitchShop.UI
             panel.Add(hintLabel);
 
             root.style.display = DisplayStyle.None;
+            anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
             built = true;
         }
 

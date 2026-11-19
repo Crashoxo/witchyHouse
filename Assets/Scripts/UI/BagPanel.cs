@@ -106,6 +106,7 @@ namespace WitchShop.UI
         VisualElement tabsBox;
         ScrollView rowsBox;
         Button stashAllBtn;
+        UIAnim anim;                 // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         BagTab tab = BagTab.All;
         BagMode mode = BagMode.Bag;
@@ -126,14 +127,14 @@ namespace WitchShop.UI
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (root != null && root.style.display == DisplayStyle.Flex) UIState.ModalOpen = false;
+            if (anim != null && anim.IsOpen) UIState.ModalOpen = false;
         }
 
         void Update()
         {
             if (!built || root == null) return;
             // ⚠️ 只吃 Esc 關閉，不吃 B/E —— 開啟的那一下按鍵同一幀還會再被讀到。
-            if (root.style.display == DisplayStyle.Flex && Input.GetKeyDown(KeyCode.Escape))
+            if (anim.IsOpen && Input.GetKeyDown(KeyCode.Escape))
                 Close();
         }
 
@@ -148,15 +149,17 @@ namespace WitchShop.UI
             mode = m;
             if (!built) Build();
             if (!built) return;          // 建不起來就別往下走（Build 會印出原因）
-            root.style.display = DisplayStyle.Flex;
+            anim.Show();                 // 淡入＋輕微放大（邏輯上立刻算開著）
             UIState.ModalOpen = true;
+            Sfx.Play("ui-open");                                    // 音效：面板打開
             GameArt.OnReady(Refresh);
         }
 
         public void Close()
         {
-            if (root != null) root.style.display = DisplayStyle.None;
+            anim?.Hide();                // 淡出是視覺殘影，邏輯上這一行就算關了
             UIState.ModalOpen = false;
+            Sfx.Play("ui-close");                                   // 音效：面板關閉
         }
 
         // ── 建構（只跑一次）────────────────────────────────────
@@ -182,6 +185,7 @@ namespace WitchShop.UI
 
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/BagPanelStyle"));
             CjkFont.Apply(root);          // ⚠️ 見 CjkFont：預設字型沒有中文字
+            Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
             titleLabel = root.Q<Label>("title");
             capLabel = root.Q<Label>("cap");
@@ -203,6 +207,7 @@ namespace WitchShop.UI
                 return;
             }
 
+            anim = UIAnim.Pop(root, root.Q<VisualElement>("panel"), root.Q<VisualElement>("dim"));
             closeBtn.clicked += Close;
             stashAllBtn.clicked += StashAllInTab;
 
@@ -210,7 +215,7 @@ namespace WitchShop.UI
             foreach (var d in TabDefs)
             {
                 var t = d.Tab;
-                var b = new Button(() => { tab = t; Refresh(); }) { text = d.Label };
+                var b = new Button(() => { tab = t; Sfx.Play("ui-tab"); Refresh(); }) { text = d.Label };
                 b.AddToClassList("tab");
                 b.userData = t;
                 tabsBox.Add(b);
@@ -348,7 +353,7 @@ namespace WitchShop.UI
         void MoveToBag(string name, int qty)
         {
             if (qty <= 0 || Storage.Count(name) < qty) return;
-            if (!Inventory.Add(name, qty)) return;      // Add 回 false ＝ 背包種類滿了
+            if (!Inventory.Add(name, qty)) { Sfx.Play("deny"); return; }   // Add 回 false ＝ 背包種類滿了
             Storage.Remove(name, qty);
             Refresh();
         }
@@ -369,6 +374,7 @@ namespace WitchShop.UI
                 Storage.Add(name, qty);
                 moved++;
             }
+            if (moved == 0) Sfx.Play("deny");
             Toast.Show(moved > 0 ? $"已存入 {moved} 種" : "沒有可以存入的東西");
             Refresh();
         }

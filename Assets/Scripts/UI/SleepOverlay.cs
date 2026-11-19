@@ -107,6 +107,7 @@ namespace WitchShop.UI
                 UIState.ModalOpen = true;             // 新場景會重置，這裡補回來
             }
 
+            Sfx.Play("new-day");                      // 新的一天（睡醒、昏倒醒來都是這一刻）
             topLabel.text = advanceTime ? "睡了一覺" : "醒來時已經是……";
             bottomLabel.text = $"{TimeSystem.DateTextFull()}　{TimeSystem.ClockText()}";
 

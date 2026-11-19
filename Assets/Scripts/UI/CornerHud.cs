@@ -92,6 +92,11 @@ namespace WitchShop.UI
 
         void Refresh()
         {
+            // 金額變了 → 數字跳一下，多了閃綠、少了閃紅。
+            // lastGold 還是 MinValue ＝ 第一次畫（開場、讀檔後），只顯示不跳。
+            if (lastGold != int.MinValue && Wallet.Gold != lastGold)
+                UIAnim.Bump(goldLabel, Wallet.Gold > lastGold ? "hud-gold--up" : "hud-gold--down");
+
             lastGold = Wallet.Gold;
             lastPoints = Reputation.Points;
 

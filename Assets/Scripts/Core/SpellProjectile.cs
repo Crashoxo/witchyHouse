@@ -47,7 +47,21 @@ namespace WitchShop.Core
         {
             transform.position += (Vector3)(velocity * Time.deltaTime);
             age += Time.deltaTime;
-            if (age >= lifeTime) Destroy(gameObject);
+            if (age >= lifeTime)
+            {
+                // 消失的「噗」。目前還沒有命中判定，之後加碰撞時命中那一處也叫同一個音效。
+                // 飛出畫面外才消失的就不響 —— 看不到的東西發出聲音只會讓人困惑。
+                if (OnScreen()) Sfx.Play("spell-hit", 0.8f);
+                Destroy(gameObject);
+            }
+        }
+
+        bool OnScreen()
+        {
+            var cam = Camera.main;
+            if (cam == null) return false;
+            var v = cam.WorldToViewportPoint(transform.position);
+            return v.x >= 0f && v.x <= 1f && v.y >= 0f && v.y <= 1f;
         }
 
         static Sprite orb;

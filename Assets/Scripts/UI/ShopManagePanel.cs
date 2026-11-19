@@ -39,6 +39,7 @@ namespace WitchShop.UI
         Label titleLabel, goldLabel, hintLabel;
         Tab tab = Tab.Stock;
         bool built;
+        UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         void Awake()
         {
@@ -54,31 +55,33 @@ namespace WitchShop.UI
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (root != null && root.style.display == DisplayStyle.Flex) UIState.ModalOpen = false;
+            if (anim != null && anim.IsOpen) UIState.ModalOpen = false;
         }
 
         void Update()
         {
             if (!built || root == null) return;
-            if (root.style.display == DisplayStyle.Flex && Input.GetKeyDown(KeyCode.Escape)) Close();
+            if (anim.IsOpen && Input.GetKeyDown(KeyCode.Escape)) Close();
         }
 
         public void Open()
         {
             if (!built) Build();
             if (!built) return;
-            root.style.display = DisplayStyle.Flex;
+            anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
+            Sfx.Play("ui-open");                                    // 音效：面板打開
             GameArt.OnReady(Refresh);
         }
 
         public void Close()
         {
-            if (root != null) root.style.display = DisplayStyle.None;
+            anim?.Hide();                // 淡出只是視覺殘影，邏輯上這一行就算關了
             UIState.ModalOpen = false;
+            Sfx.Play("ui-close");                                   // 音效：面板關閉
         }
 
-        public bool IsOpen => built && root != null && root.style.display == DisplayStyle.Flex;
+        public bool IsOpen => built && anim != null && anim.IsOpen;   // ⚠️ 不看 display：關閉動畫期間它還是 Flex
 
         // ──────────── 建構 ────────────
 
@@ -92,6 +95,7 @@ namespace WitchShop.UI
             }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/ShopManageStyle"));
             CjkFont.Apply(root);
+            Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
             // 這個面板結構單純（沒有 UXML），直接在程式裡搭骨架 ——
             // 外觀仍然全部走 USS，沒有寫死的顏色或座標。
@@ -137,12 +141,13 @@ namespace WitchShop.UI
             hintLabel.AddToClassList("hint");
             panel.Add(hintLabel);
 
+            anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
             built = true;
         }
 
         void AddTab(string label, Tab t)
         {
-            var b = new Button(() => { tab = t; Refresh(); }) { text = label };
+            var b = new Button(() => { tab = t; Sfx.Play("ui-tab"); Refresh(); }) { text = label };
             b.AddToClassList("tab");
             b.userData = t;
             tabsBox.Add(b);
@@ -299,7 +304,11 @@ namespace WitchShop.UI
                 costLabel.AddToClassList("up-cost");
                 row.Add(costLabel);
 
-                var buy = new Button(() => { if (Upgrades.Buy(t)) Refresh(); }) { text = "升級" };
+                var buy = new Button(() =>
+                {
+                    if (Upgrades.Buy(t)) { Sfx.Play("upgrade"); Refresh(); }
+                    else Sfx.Play("deny");                  // 錢不夠或已滿級（按鈕通常已經灰掉，保險）
+                }) { text = "升級" };
                 buy.AddToClassList("btn"); buy.AddToClassList("btn-buy");
                 buy.SetEnabled(!max && Wallet.Gold >= cost);
                 row.Add(buy);

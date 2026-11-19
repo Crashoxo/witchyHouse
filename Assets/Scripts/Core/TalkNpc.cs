@@ -116,7 +116,10 @@ namespace WitchShop.Core
                 if (show) UpdateHintText();
             }
 
-            if (inRange && !UIState.ModalOpen && Input.GetKeyDown(KeyCode.E)) Talk();
+            // ⚠️ 對話框也是按 E 關掉的：它若先跑、同一幀解除了 ModalOpen，這裡會讀到同一下 E 又開一次
+            var dlg = UI.Dialogue.Instance;
+            bool justClosed = dlg != null && dlg.ClosedThisFrame;
+            if (inRange && !UIState.ModalOpen && !justClosed && Input.GetKeyDown(KeyCode.E)) Talk();
         }
 
         void Talk()
@@ -187,7 +190,8 @@ namespace WitchShop.Core
                     {
                         ("回報", () =>
                         {
-                            if (!QuestLog.Claim(qid)) return;
+                            if (!QuestLog.Claim(qid)) { Sfx.Play("deny"); return; }   // 送貨的材料不夠
+                            Sfx.Play("quest-done");
                             var done = UI.DialogueLine.Of(d.DoneLines);
                             done.Add(new UI.DialogueLine($"獲得：{QuestLog.RewardText(d)}"));
                             UI.Dialogue.Ensure().Open(who, done, face);

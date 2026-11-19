@@ -1,0 +1,89 @@
+/*
+    共用的開關動效與 HUD 小回饋。由 UI/UIAnim.cs 自己掛到面板的根上，
+    各面板原本載入哪一張 .uss（BagPanelStyle / ShopManageStyle / HudExtraStyle）都不影響。
+
+    規則：元素平常（＝關著）是「關閉狀態」；根上掛了 .uia--open 才換成「開啟狀態」。
+    transition 用的是**目的地**那一條規則的時間與緩動，所以：
+        開啟狀態那條寫 0.15s ease-out（進場）
+        關閉狀態那條寫 0.10s ease-in （退場，要快）
+    ⚠️ UI Toolkit 不支援 CSS 的 @keyframes / animation，只有 transition。
+    ⚠️ 關閉的時間改長的話，UIAnim.HideDelayMs 要跟著改（要比這裡長一點）。
+*/
+
+/* ── 暗幕：只淡入淡出 ─────────────────────────────────── */
+
+.uia-fade {
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.10s;
+    transition-timing-function: ease-in;
+}
+.uia--open .uia-fade {
+    opacity: 1;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-out;
+}
+
+/* ── 置中面板：淡入＋輕微放大 ─────────────────────────── */
+
+.uia-pop {
+    opacity: 0;
+    scale: 0.94 0.94;
+    transition-property: opacity, scale;
+    transition-duration: 0.10s;
+    transition-timing-function: ease-in;
+}
+.uia--open .uia-pop {
+    opacity: 1;
+    scale: 1 1;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-out;
+}
+
+/* ── 靠右的捲軸：從右邊滑進來 ─────────────────────────── */
+
+.uia-right {
+    opacity: 0;
+    translate: 48px 0px;
+    transition-property: opacity, translate;
+    transition-duration: 0.10s;
+    transition-timing-function: ease-in;
+}
+.uia--open .uia-right {
+    opacity: 1;
+    translate: 0px 0px;
+    transition-duration: 0.18s;
+    transition-timing-function: ease-out;
+}
+
+/* ── 貼著下緣的對話框／托盤：從下面滑上來 ───────────────── */
+
+.uia-up {
+    opacity: 0;
+    translate: 0px 26px;
+    transition-property: opacity, translate;
+    transition-duration: 0.10s;
+    transition-timing-function: ease-in;
+}
+.uia--open .uia-up {
+    opacity: 1;
+    translate: 0px 0px;
+    transition-duration: 0.16s;
+    transition-timing-function: ease-out;
+}
+
+/* ── HUD 彈一下（UIAnim.Bump）────────────────────────── */
+/* 時間對應 transition-property 的順序：scale, color。
+   回程（拿掉 --up）用這一條：縮回 0.13s；顏色退回比較慢，0.4s。 */
+
+.uia-bump {
+    transition-property: scale, color;
+    transition-duration: 0.13s, 0.4s;
+    transition-timing-function: ease-in-out, ease-out;
+}
+/* 去程：0.07s 放大。⚠️ 跟 UIAnim.BumpUpMs 同步 */
+.uia-bump--up {
+    scale: 1.18 1.18;
+    transition-duration: 0.07s, 0.07s;
+    transition-timing-function: ease-out, ease-out;
+}

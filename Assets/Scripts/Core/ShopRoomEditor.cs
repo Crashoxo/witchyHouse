@@ -99,6 +99,7 @@ namespace WitchShop.Core
         void Enter()
         {
             Editing = true;
+            Sfx.Play("ui-open");
 
             // 快照：按 Esc 要能整批還原
             snapFurn = RoomLayout.PlacedList();
@@ -122,6 +123,7 @@ namespace WitchShop.Core
             ShowConflicts(null);
             UI.ShopRoomTray.Instance?.Hide();
             // 拖曳過程已經即時寫進 RoomLayout / DecorCatalog 的資料，這裡只要收工
+            Sfx.Play("ui-close");
             UI.Toast.Show("佈置完成");
             view.Rebuild();
         }
@@ -136,6 +138,7 @@ namespace WitchShop.Core
             UI.ShopRoomTray.Instance?.Hide();
             RoomLayout.SetPlaced(snapFurn);
             DecorCatalog.SetPlaced(snapDecor);
+            Sfx.Play("ui-close");
             UI.Toast.Show("已取消，恢復原本的擺設");
             view.Rebuild();
         }
@@ -307,7 +310,8 @@ namespace WitchShop.Core
             if (dragFurn != null)
             {
                 // 在放不下的地方放開手：東西停在最後一個合法格，這裡把原因講出來
-                if (dragBlock != PlaceBlock.Ok)
+                bool denied = dragBlock != PlaceBlock.Ok;
+                if (denied)
                     UI.Toast.Show("放不下 —— " + RoomLayout.BlockText(dragBlock));
 
                 // Drag 只會停在合法格，正常不會進到這裡；保險起見還是驗一次
@@ -316,8 +320,13 @@ namespace WitchShop.Core
                 {
                     dragFurn.gx = dragOrigCell.gx;
                     dragFurn.gy = dragOrigCell.gy;
+                    denied = true;
                     UI.Toast.Show("放回原位 —— " + RoomLayout.BlockText(b));
                 }
+                // 被規則擋 → deny；真的換了位置 → 放下的「叩」。只是點一下沒搬動就不出聲。
+                bool moved = dragFurn.gx != dragOrigCell.gx || dragFurn.gy != dragOrigCell.gy;
+                if (denied) Sfx.Play("deny");
+                else if (moved) Sfx.Play("place");
                 var list = RoomLayout.PlacedList();
                 foreach (var p in list)
                     if (p.id == dragFurn.id && p.gx == dragOrigCell.gx && p.gy == dragOrigCell.gy)
@@ -331,6 +340,7 @@ namespace WitchShop.Core
             else if (dragDecorIndex >= 0)
             {
                 DecorCatalog.Move(dragDecorIndex, dragGo.transform.position.x, dragGo.transform.position.y);
+                if (((Vector2)dragGo.transform.position - (Vector2)dragOrigPos).sqrMagnitude > 1f) Sfx.Play("place");
             }
 
             dragGo = null; dragFurn = null; dragDecorIndex = -1;
@@ -353,6 +363,7 @@ namespace WitchShop.Core
                                         selected, want, selected.Anchor);
             if (turn != PlaceBlock.Ok)
             {
+                Sfx.Play("deny");
                 UI.Toast.Show("這個位置轉不過去 —— " + RoomLayout.BlockText(turn));
                 return;
             }
@@ -364,6 +375,7 @@ namespace WitchShop.Core
             RoomLayout.SetPlaced(list);
 
             var (w, h) = selected.Size;
+            Sfx.Play("place");
             UI.Toast.Show($"已轉向 —— 佔地 {w}×{h}");
             AfterEdit();
         }
@@ -388,6 +400,7 @@ namespace WitchShop.Core
             }
             if (next == selected.anchor)
             {
+                Sfx.Play("deny");
                 UI.Toast.Show("這個位置換不了基準點 —— " + RoomLayout.BlockText(why));
                 return;
             }
@@ -397,6 +410,7 @@ namespace WitchShop.Core
                 if (p.id == selected.id && p.gx == selected.gx && p.gy == selected.gy)
                 { p.anchor = next; selected.anchor = next; break; }
             RoomLayout.SetPlaced(list);
+            Sfx.Play("place");
             UI.Toast.Show("基準點：" + AnchorName(next));
             AfterEdit();
         }
@@ -555,7 +569,8 @@ namespace WitchShop.Core
             {
                 // 裝飾是自由座標 —— 放在房間正中央，玩家自己再拖到想要的位置
                 var c = ShopRoom.TileCenter(ShopRoom.GridW / 2, ShopRoom.GridH / 2);
-                if (DecorCatalog.Place(id, c.x, c.y) < 0) { UI.Toast.Show("托盤裡沒有這個了"); return; }
+                if (DecorCatalog.Place(id, c.x, c.y) < 0) { Sfx.Play("deny"); UI.Toast.Show("托盤裡沒有這個了"); return; }
+                Sfx.Play("place");
                 UI.Toast.Show($"擺好了 —— 拖曳可以調位置");
             }
             else
@@ -563,11 +578,12 @@ namespace WitchShop.Core
                 var d = Furniture.ById(id);
                 if (d == null) return;
                 var cell = FirstFreeCell(id, d.W, d.H);
-                if (cell == null) { UI.Toast.Show("房間裡沒有空位了 —— 先把別的東西收回托盤"); return; }
+                if (cell == null) { Sfx.Play("deny"); UI.Toast.Show("房間裡沒有空位了 —— 先把別的東西收回托盤"); return; }
 
                 var list = RoomLayout.PlacedList();
                 list.Add(new PlacedFurniture(id, cell.Value.gx, cell.Value.gy));
                 RoomLayout.SetPlaced(list);
+                Sfx.Play("place");
                 UI.Toast.Show($"擺好了 —— 拖曳可以搬位置");
             }
 
@@ -596,7 +612,7 @@ namespace WitchShop.Core
 
                 // ⚠️ 販售桌不能收 —— 沒有它就沒辦法賣東西，收掉會讓店整個停擺
                 var d = Furniture.ById(data.id);
-                if (d != null && d.Sale) { UI.Toast.Show("販售桌不能收起來，只能搬位置"); return; }
+                if (d != null && d.Sale) { Sfx.Play("deny"); UI.Toast.Show("販售桌不能收起來，只能搬位置"); return; }
 
                 var list = RoomLayout.PlacedList();
                 for (int i = 0; i < list.Count; i++)
@@ -609,6 +625,7 @@ namespace WitchShop.Core
 
             void Done(string msg)
             {
+                Sfx.Play("pickup");
                 UI.Toast.Show(msg);
                 view.Rebuild();
                 BuildGrid();

@@ -103,6 +103,8 @@ namespace WitchShop.UI
             ownedModal = !UIState.ModalOpen;
             if (ownedModal) UIState.ModalOpen = true;
             openedAt = Time.unscaledTime;
+            // ⚠️ 網頁版開場時瀏覽器還不准出聲（要等玩家第一次互動），這一聲多半聽不到，正常
+            Sfx.Play("ui-open");                                    // 音效：面板打開
 
             // 半透明背板：擋住世界的點擊（PlayerController 是看 UIState.ModalOpen）
             var layer = new VisualElement();
@@ -218,6 +220,7 @@ namespace WitchShop.UI
         {
             if (closing) return;
             closing = true;
+            Sfx.Play("ui-close");                                   // 音效：面板關閉
             if (ownedModal) UIState.ModalOpen = false;
             ownedModal = false;
 

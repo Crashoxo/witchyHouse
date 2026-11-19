@@ -96,6 +96,7 @@ namespace WitchShop.Core
         {
             var a = Instance;
             if (a == null || a.soldCount <= 0) return;
+            Sfx.Play("coin");       // 離店期間每筆都不響，這裡彙總響一聲
             UI.Toast.Show($"你不在的時候賣出 {a.soldCount} 件，賺了 {a.soldGold} 金");
             a.soldCount = 0;
             a.soldGold = 0;
