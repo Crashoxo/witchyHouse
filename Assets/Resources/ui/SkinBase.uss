@@ -1,0 +1,189 @@
+/*
+    「圖示化」新增元素的**結構**樣式（排版用：橫排、間距、大小），配色沿用舊的暗木主題。
+
+    由 UI/UiSkin.cs 的 UiSkin.Apply(root) **一律**掛上（不管 UiSkin.Enabled 開不開）——
+    因為金幣＋數字、材料小卡、鍵帽、任務狀態標籤、日曆格這些元素是程式新建的，
+    舊的 ShopManageStyle／BagPanelStyle 不認得它們；總開關關掉時靠這裡維持一個能看的舊外觀。
+    8-bit 外觀在 Skin8.uss（只在 UiSkin.Enabled 時掛，全部寫成 `.sk …` 開頭蓋過這裡）。
+
+    ⚠️ 原本寫在程式裡的 inline 顏色（PlayerInfoPanel 的任務標籤、日曆格、愛心）都搬到這裡變成 class ——
+       inline style 的優先權比任何 uss 都高，留在程式裡的話 Skin8 換成淺色羊皮紙底之後就蓋不掉、字會看不見。
+*/
+
+/* ── 金幣＋數字 ─────────────────────────────── */
+.sk-money { flex-direction: row; align-items: center; flex-shrink: 0; }
+.sk-money-num { font-size: 18px; color: rgb(255, 224, 130); }
+.sk-coin { width: 0; height: 0; flex-shrink: 0; }      /* 舊外觀沒有金幣圖：數字後面會自己帶「金」字 */
+.gold-box { flex-direction: row; align-items: center; }
+
+/* ── 數量徽章／圖示＋數量 ───────────────────── */
+.sk-badge { font-size: 15px; color: rgb(220, 230, 210); -unity-text-align: middle-center; }
+.sk-iconcount { flex-direction: row; align-items: center; flex-shrink: 0; }
+.sk-iconcount-icon { width: 24px; height: 24px; flex-shrink: 0; margin-right: 2px; }
+.sk-iconcount-text { font-size: 15px; color: rgb(200, 220, 200); }
+
+/* ── 製作清單：材料小卡 ─────────────────────── */
+.sk-chips { flex-grow: 1; flex-shrink: 1; flex-direction: row; align-items: center; }
+.sk-chip { flex-direction: row; align-items: center; margin-right: 8px; }
+.sk-chip-icon { width: 24px; height: 24px; flex-shrink: 0; margin-right: 2px; }
+.sk-chip-num { font-size: 15px; color: rgb(200, 230, 190); }
+.sk-chip--short .sk-chip-num { color: rgb(255, 140, 130); }
+.brew-icon { width: 34px; height: 34px; margin-right: 8px; flex-shrink: 0; }
+.brew-name { width: 110px; font-size: 20px; color: rgb(244, 236, 224); }
+.brew-price { width: 74px; justify-content: center; }
+.sk-off .brew-icon { opacity: 0.5; }
+
+/* ── 浮動說明（滑鼠移到材料小卡上才出現）───── */
+.sk-tip {
+    position: absolute;
+    display: none;
+    padding: 3px 8px;
+    font-size: 14px;
+    color: rgb(250, 240, 220);
+    background-color: rgb(20, 16, 14);
+    border-width: 1px; border-color: rgba(228, 216, 198, 0.6);
+    translate: -50% 0;
+}
+
+/* ── 底部：鍵帽＋極短字 ─────────────────────── */
+.sk-divider { height: 0; }
+.sk-footer { flex-direction: row; align-items: center; margin-top: 10px; }
+.sk-key {
+    font-size: 13px; color: rgb(244, 240, 232);
+    padding: 0 5px; margin-right: 6px;
+    border-width: 1px; border-color: rgba(228, 216, 198, 0.6);
+    -unity-text-align: middle-center;
+}
+.sk-foot-text { font-size: 15px; color: rgb(184, 176, 166); }
+.sk-foot-info { font-size: 15px; color: rgb(184, 176, 166); -unity-text-align: middle-right; }
+
+/* ── 小圖示（舊外觀不顯示）─────────────────── */
+.sk-ico { width: 0; height: 0; flex-shrink: 0; }
+
+/* ── 手札：任務狀態標籤（原本是 inline 顏色）── */
+.quest-tag { width: 58px; font-size: 15px; -unity-text-align: middle-center; }
+.quest-tag--ready  { color: rgb(255, 222, 115); }
+.quest-tag--active { color: rgb(199, 230, 199); }
+.quest-tag--avail  { color: rgb(184, 219, 242); }
+.quest-tag--done   { color: rgb(133, 128, 122); }
+.quest-title { width: 105px; }
+.quest-title--done { color: rgb(133, 128, 122); }
+.quest-prog { width: 66px; }
+.quest-reward { width: 118px; }
+.quest-giver { width: 96px; font-size: 15px; color: rgb(184, 176, 166); -unity-text-align: middle-center; }
+
+/* ── 手札：村民愛心 ─────────────────────────── */
+.vil-hearts { width: 100px; flex-direction: row; align-items: center; justify-content: center; }
+.vil-hearts-text { font-size: 17px; color: rgb(255, 140, 158); }
+
+/* ── 手札：日曆格（原本是 inline 顏色）──────── */
+.cal-head { font-size: 18px; margin-bottom: 8px; }
+.cal-line { flex-direction: row; margin-bottom: 6px; }
+.cal-cell {
+    width: 88px; height: 54px; margin-right: 6px; padding-left: 6px;
+    justify-content: center;
+    border-width: 2px; border-color: rgba(255, 255, 255, 0.12);
+}
+.cal-cell--fest  { border-color: rgb(158, 219, 173); }
+.cal-cell--today { border-color: rgb(255, 224, 128); background-color: rgba(255, 224, 128, 0.12); }
+.cal-day { font-size: 17px; color: rgb(212, 204, 194); }
+.cal-cell--today .cal-day { color: rgb(255, 230, 153); }
+.cal-fest { font-size: 12px; color: rgb(173, 235, 189); white-space: normal; }
+.cal-next { margin-top: 10px; }
+
+/* ── 城鎮商店：列圖示（原本是 inline 34／40）── */
+.ts-icon { width: 34px; height: 34px; margin-right: 8px; flex-shrink: 0; }
+.ts-icon--big { width: 40px; height: 40px; }
+.ts-profit { font-size: 15px; color: rgb(170, 220, 160); margin-left: 6px; }
+.ts-owned { width: 150px; flex-direction: row; align-items: center; justify-content: center; }
+.btn-money { flex-direction: row; align-items: center; justify-content: center; }
+.btn-money-text { font-size: 16px; color: rgb(244, 240, 232); }
+.btn-money .sk-money-num { font-size: 16px; color: rgb(244, 240, 232); }
+
+/* ── 經營商店 ─────────────────────────────── */
+.stock-icon { width: 34px; height: 34px; margin-right: 8px; flex-shrink: 0; }
+.up-name-box { width: 150px; flex-direction: row; align-items: center; flex-shrink: 0; }
+.up-name-box .up-name { width: auto; margin-right: 6px; }
+.up-effect-box { width: 150px; flex-direction: row; align-items: center; justify-content: center; }
+.up-max { width: 90px; flex-direction: row; align-items: center; justify-content: center; }
+.col-price.sk-money, .up-cost.sk-money { justify-content: center; }
+.up-effect-box .up-effect { width: auto; }
+
+/* ── 手札：原本 inline 的列高與欄寬 ─────────── */
+.quest-row { height: 56px; }
+.info-row { height: 52px; }
+.info-name { width: 110px; }
+.info-have { width: 70px; align-items: center; justify-content: center; flex-shrink: 0; }
+.vil-row { height: 62px; }
+.vil-portrait { width: 44px; height: 44px; margin-right: 10px; flex-shrink: 0; }
+.vil-name { width: 100px; }
+.vil-place { width: 90px; }
+
+/* ── 城鎮商店：原本 inline 的列高 ──────────── */
+.ts-row { height: 52px; }
+.ts-row--big { height: 56px; }
+.ts-headgap { height: 0; }
+.ts-cell { align-items: center; justify-content: center; flex-shrink: 0; }
+.ts-yield { width: 150px; justify-content: center; }
+.ts-resale { width: 150px; flex-direction: row; align-items: center; justify-content: center; }
+.ts-unplaced { font-size: 13px; color: rgb(186, 178, 168); margin-left: 4px; }
+
+/* ── 種子選單 ───────────────────────────────── */
+.seed-name { width: 120px; }
+.seed-yield { margin-left: 12px; flex-grow: 1; }
+
+/* ══════════════ 第二輪：任務簿、每日結算、對話框、公告板、時鐘、托盤、上方工具列 ══════════════
+   這些元素**只在像素外觀開著時才會建出來**（面板裡 `if (UiSkin.On)` 走新的版面），這裡只寫排版；
+   配色與九宮格在 Skin8.uss。舊外觀那一條路的元素一個都沒換 class。 */
+
+/* ⚠️ `.quest-title` 也是手札（PlayerInfoPanel）任務列的欄位 class，上面那條 width 105 是給它的；
+   任務簿捲軸的標題要整列置中，不能被它限寬 */
+.quest-scroll .quest-title { width: auto; }
+
+/* ── 任務簿：一條任務卡（第 1 行 [勾選框][標題]、第 2 行 [動詞][道具][進度條][2/5]、第 3 行 [→ 誰]…[獎勵]）── */
+.sk-q-line { flex-direction: row; align-items: center; }
+.sk-q-box { width: 24px; height: 24px; flex-shrink: 0; margin-right: 6px; }
+.sk-q-title { flex-grow: 1; flex-shrink: 1; white-space: normal; }
+.sk-q-icon { width: 24px; height: 24px; flex-shrink: 0; margin-left: 3px; }
+.sk-q-bar { flex-grow: 1; flex-shrink: 1; margin: 0 6px 0 3px; }
+.sk-q-fill { height: 100%; }
+.sk-q-num { flex-shrink: 0; -unity-text-align: middle-right; }
+.sk-q-giver { flex-grow: 1; flex-shrink: 1; }
+.sk-q-reward { flex-direction: row; align-items: center; flex-shrink: 0; }
+.sk-q-reward .sk-iconcount { margin-left: 6px; }
+
+/* ── 每日結算：數字格（三欄換行）、明細列、淨收入 ── */
+.sk-day-stats { flex-direction: row; flex-wrap: wrap; }
+.sk-day-tile { flex-direction: row; align-items: center; flex-shrink: 0; }
+.sk-day-tile-text { flex-direction: column; justify-content: center; }
+.sk-day-qty { width: 45px; flex-shrink: 0; align-items: center; justify-content: center; }
+.sk-day-gold { width: 72px; flex-shrink: 0; flex-direction: row; justify-content: flex-end; }
+.sk-day-net { flex-direction: row; align-items: center; }
+.sk-day-net-label { flex-grow: 1; }
+.sk-day-wallet { flex-direction: row; align-items: center; justify-content: flex-end; }
+
+/* ── 對話框：頭像框、「[E][Space] 繼續」 ── */
+.sk-dlg-frame { flex-shrink: 0; }
+.sk-dlg-next-row { flex-direction: row; align-items: center; justify-content: flex-end; }
+
+/* ── 公告板：條目（[小金菱形][一行字，可換行]）、OK 鈕置中 ── */
+.sk-upd-line { flex-direction: row; align-items: flex-start; }
+.sk-upd-text { flex-grow: 1; flex-shrink: 1; white-space: normal; }
+.sk-upd-ok-row { flex-direction: row; justify-content: center; }
+
+/* ── 時鐘：盤面底下靠右的時刻／日期膠囊 ── */
+.sk-clock-info {
+    position: absolute;
+    right: 0;
+    width: 320px;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+/* ── 上方工具列：名聲那一格（[星][上：Lv＋點數 / 下：進度條]）、設定鈕裡的 [齒輪][O] ── */
+.sk-hud-rep-box { flex-grow: 1; flex-direction: column; justify-content: center; }
+.sk-hud-rep-top { flex-direction: row; align-items: center; }
+.hud-btn.hud-settings.sk-hud-set { flex-direction: row; align-items: center; }
+
+/* ── 下排背包 HUD：格子外面多包的一層（像素外觀時是木頭底座；這裡只負責跟以前一樣換行置中）── */
+.hud-bar { flex-direction: row; flex-wrap: wrap; justify-content: center; max-width: 100%; flex-shrink: 1; }

@@ -44,7 +44,9 @@ namespace WitchShop.Core
             {
                 Name = "招牌", Desc = "顧客來得更快、同時更多人",
                 Costs = new[] { 100, 250, 500, 1000 },
-                Effect = lv => $"每 {IntervalAt(lv)} 秒 · 同時 {MaxAt(lv)} 人",
+                // 「同時幾人」顯示的是店裡實際的上限（CrowdCap 換算過），不是 MaxAt 的原始值 ——
+                // 11/26 起顧客會結伴、有人只逛不買，上限放寬了，面板要跟實際看到的人數對得上。
+                Effect = lv => $"每 {IntervalAt(lv)} 秒 · 同時 {CrowdCap(MaxAt(lv))} 人",
             },
             [Track.Bag] = new UpgradeDef
             {
@@ -159,6 +161,13 @@ namespace WitchShop.Core
         public static int ShelfCap() => ShelfAt(Levels[Track.Shelf]);
         public static float CustomerInterval() => IntervalAt(Levels[Track.Signboard]);
         public static int CustomerMax() => MaxAt(Levels[Track.Signboard]);
+
+        /// <summary>
+        /// 「舊制的同時人數」（招牌 ＋ 名聲 ＋ 節日）→ 店裡實際的同時上限 ＝ ceil(×1.5) ＋ 2。
+        /// CustomerManager 與升級面板的效果文字共用這一支，兩邊才不會對不起來。
+        /// 為什麼要放寬見 CustomerManager 檔頭（來客變多、每位停留變長，上限不放寬成交率會掉）。
+        /// </summary>
+        public static int CrowdCap(int legacyMax) => Mathf.CeilToInt(legacyMax * 1.5f) + 2;
         /// <summary>後花園開墾了幾塊花圃（Garden.UnlockedCount 讀這個）。</summary>
         public static int GardenPlots() => PlotAt(Levels[Track.Plot]);
         /// <summary>澆水波及範圍：0＝只有腳下那塊、1＝十字相鄰、2＝整片花園。</summary>

@@ -90,6 +90,7 @@ namespace WitchShop.UI
             root = doc.rootVisualElement;
             if (root == null) { Debug.LogError("[PlayerInfoPanel] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/ShopManageStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關在 UiSkin.Enabled）
             CjkFont.Apply(root);
             Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
@@ -137,9 +138,7 @@ namespace WitchShop.UI
             rowsBox.AddToClassList("rows");
             panel.Add(rowsBox);
 
-            hintLabel = new Label();
-            hintLabel.AddToClassList("hint");
-            panel.Add(hintLabel);
+            hintLabel = UiSkin.Footer(panel, "關閉", "Tab", "Esc");   // [Tab][Esc] 關閉 ……… 右邊放短資訊
 
             root.style.display = DisplayStyle.None;
             anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
@@ -158,13 +157,14 @@ namespace WitchShop.UI
                 case Tab.Villagers: BuildVillagers(); break;
                 case Tab.Calendar: BuildCalendar(); break;
             }
+            UiSkin.Stripe(rowsBox);
         }
 
         // ──────────── 任務 ────────────
 
         void BuildQuests()
         {
-            hintLabel.text = "Tab / Esc 關閉 · 接任務與回報都要找發任務的人談（按 Q 可看右側捲軸）";
+            hintLabel.text = "找發任務的人回報 · Q 看捲軸";
 
             // 排序：可回報 → 進行中 → 可接 → 已完成。鎖住的不列（玩家還不知道它存在）
             var order = new[] { QuestStatus.Ready, QuestStatus.Active,
@@ -191,27 +191,27 @@ namespace WitchShop.UI
         {
             var row = new VisualElement();
             row.AddToClassList("row");
-            row.style.height = 56;
+            row.AddToClassList("quest-row");
 
-            var (tag, color) = st switch
+            // ⚠️ 顏色一律走 class（SkinBase.uss 是舊配色、Skin8.uss 是彩色小膠囊）——
+            //    以前寫成 inline style.color，換成淺色羊皮紙底之後蓋不掉、字就看不見了。
+            var (tag, cls) = st switch
             {
-                QuestStatus.Ready     => ("可回報", new Color(1f, 0.87f, 0.45f)),
-                QuestStatus.Active    => ("進行中", new Color(0.78f, 0.90f, 0.78f)),
-                QuestStatus.Available => ("可接",   new Color(0.72f, 0.86f, 0.95f)),
-                _                     => ("已完成", new Color(0.52f, 0.50f, 0.48f)),
+                QuestStatus.Ready     => ("可回報", "quest-tag--ready"),
+                QuestStatus.Active    => ("進行中", "quest-tag--active"),
+                QuestStatus.Available => ("可接",   "quest-tag--avail"),
+                _                     => ("已完成", "quest-tag--done"),
             };
 
             var tagLabel = new Label(tag);
-            tagLabel.style.width = 58;
-            tagLabel.style.fontSize = 15;
-            tagLabel.style.color = color;
-            tagLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
+            tagLabel.AddToClassList("quest-tag");
+            tagLabel.AddToClassList(cls);
             row.Add(tagLabel);
 
             var title = new Label(d.Title);
             title.AddToClassList("col-name");
-            title.style.width = 105;
-            if (st == QuestStatus.Claimed) title.style.color = new Color(0.52f, 0.50f, 0.48f);
+            title.AddToClassList("quest-title");
+            if (st == QuestStatus.Claimed) title.AddToClassList("quest-title--done");
             row.Add(title);
 
             var obj = new Label(QuestLog.ObjectiveText(d));
@@ -220,19 +220,16 @@ namespace WitchShop.UI
 
             var prog = new Label(st == QuestStatus.Claimed ? "—" : QuestLog.ProgressText(d.Id));
             prog.AddToClassList("up-effect");
-            prog.style.width = 66;
+            prog.AddToClassList("quest-prog");
             row.Add(prog);
 
             var reward = new Label(QuestLog.RewardText(d));
             reward.AddToClassList("col-price");
-            reward.style.width = 118;
+            reward.AddToClassList("quest-reward");
             row.Add(reward);
 
             var giver = new Label(st == QuestStatus.Claimed ? "" : $"找 {d.Giver}");
-            giver.style.width = 96;
-            giver.style.fontSize = 15;
-            giver.style.color = new Color(0.72f, 0.69f, 0.65f);
-            giver.style.unityTextAlign = TextAnchor.MiddleCenter;
+            giver.AddToClassList("quest-giver");
             row.Add(giver);
 
             return row;
@@ -242,7 +239,7 @@ namespace WitchShop.UI
 
         void BuildItems()
         {
-            hintLabel.text = "Tab / Esc 關閉 · 手上或倉庫裡有的東西才會列出來";
+            hintLabel.text = "拿過的才會列出來";
 
             int shown = 0;
             foreach (var name in AllItemNames())
@@ -253,22 +250,24 @@ namespace WitchShop.UI
 
                 var row = new VisualElement();
                 row.AddToClassList("row");
-                row.style.height = 52;
+                row.AddToClassList("info-row");
 
                 var icon = new VisualElement();
-                icon.style.width = 34; icon.style.height = 34; icon.style.marginRight = 8;
+                icon.AddToClassList("stock-icon");
                 var sp = GameArt.Item(name);
                 if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
                 row.Add(icon);
 
                 var n = new Label(name);
                 n.AddToClassList("col-name");
-                n.style.width = 110;
+                n.AddToClassList("info-name");
                 row.Add(n);
 
-                var have = new Label($"×{Storage.AvailableOf(name)}");
-                have.AddToClassList("col-bag");
-                row.Add(have);
+                // 數量：小徽章（舊外觀就是一個「×3」）
+                var haveBox = new VisualElement();
+                haveBox.AddToClassList("info-have");
+                haveBox.Add(UiSkin.Badge($"×{Storage.AvailableOf(name)}"));
+                row.Add(haveBox);
 
                 var desc = new Label(Items.DescOf(name));
                 desc.AddToClassList("up-desc");
@@ -299,41 +298,36 @@ namespace WitchShop.UI
 
         void BuildVillagers()
         {
-            hintLabel.text = $"Tab / Esc 關閉 · 每天第一次跟同一個人聊天 +{Villagers.TalkPoints} 友誼";
+            hintLabel.text = $"每天第一次聊天 +{Villagers.TalkPoints} 友誼";
 
             foreach (var v in Villagers.All)
             {
                 var row = new VisualElement();
                 row.AddToClassList("row");
-                row.style.height = 62;
+                row.AddToClassList("vil-row");
 
                 var icon = new VisualElement();
-                icon.style.width = 44; icon.style.height = 44; icon.style.marginRight = 10;
+                icon.AddToClassList("vil-portrait");
                 var sp = string.IsNullOrEmpty(v.Portrait) ? null : GameArt.Portrait(v.Portrait);
                 if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
                 row.Add(icon);
 
                 var n = new Label(v.Name);
                 n.AddToClassList("col-name");
-                n.style.width = 100;
+                n.AddToClassList("vil-name");
                 row.Add(n);
 
                 var place = new Label(v.Place);
                 place.AddToClassList("up-effect");
-                place.style.width = 90;
+                place.AddToClassList("vil-place");
                 row.Add(place);
 
                 var desc = new Label(v.Desc);
                 desc.AddToClassList("up-desc");
                 row.Add(desc);
 
-                // 友誼度用實心/空心愛心表示
-                int hearts = Friendship.Hearts(v.Name);
-                var h = new Label(new string('♥', hearts) + new string('♡', Villagers.MaxHearts - hearts));
-                h.AddToClassList("col-price");
-                h.style.width = 100;
-                h.style.color = new Color(1f, 0.55f, 0.62f);
-                row.Add(h);
+                // 友誼度：實心/空心愛心（外觀開著是小圖，關著退回 ♥♡ 文字）
+                row.Add(UiSkin.Hearts(Friendship.Hearts(v.Name), Villagers.MaxHearts));
 
                 rowsBox.Add(row);
             }
@@ -345,14 +339,13 @@ namespace WitchShop.UI
         {
             var f = TimeSystem.FestivalToday();
             hintLabel.text = f != null
-                ? $"Tab / Esc 關閉 · 今天是「{f.Name}」—— {f.Desc}"
-                : "Tab / Esc 關閉 · 節日當天客人特別多";
+                ? $"今天是「{f.Name}」"
+                : "節日客人特別多";
 
             var head = new Label(
                 $"{TimeSystem.DateTextFull()}　·　{TimeSystem.SeasonDef.Desc}");
             head.AddToClassList("up-desc");
-            head.style.fontSize = 18;
-            head.style.marginBottom = 8;
+            head.AddToClassList("cal-head");
             rowsBox.Add(head);
 
             // 一個月 28 天，排成 4 列 × 7 格
@@ -360,42 +353,29 @@ namespace WitchShop.UI
             for (int r = 0; r < 4; r++)
             {
                 var line = new VisualElement();
-                line.style.flexDirection = FlexDirection.Row;
-                line.style.marginBottom = 6;
+                line.AddToClassList("cal-line");
 
                 for (int c = 0; c < 7; c++)
                 {
                     int day = r * 7 + c + 1;
                     var fest = Seasons.FestivalOn(month, day);
 
-                    var cell = new VisualElement();
-                    cell.style.width = 88;
-                    cell.style.height = 54;
-                    cell.style.marginRight = 6;
-                    cell.style.paddingLeft = 6;
-                    cell.style.justifyContent = Justify.Center;
-                    cell.style.borderTopWidth = cell.style.borderBottomWidth =
-                        cell.style.borderLeftWidth = cell.style.borderRightWidth = 2;
-
+                    // 格子外觀全部走 class（SkinBase：舊的描邊格；Skin8：凹槽／節日卡／今天金框）——
+                    // 以前是一整段 inline 顏色，換了淺色底之後蓋不掉。
                     bool isToday = day == today;
-                    var border = isToday ? new Color(1f, 0.88f, 0.5f)
-                               : fest != null ? new Color(0.62f, 0.86f, 0.68f)
-                               : new Color(1f, 1f, 1f, 0.12f);
-                    cell.style.borderTopColor = cell.style.borderBottomColor =
-                        cell.style.borderLeftColor = cell.style.borderRightColor = border;
-                    if (isToday) cell.style.backgroundColor = new Color(1f, 0.88f, 0.5f, 0.12f);
+                    var cell = new VisualElement();
+                    cell.AddToClassList("cal-cell");
+                    if (fest != null) cell.AddToClassList("cal-cell--fest");
+                    if (isToday) cell.AddToClassList("cal-cell--today");
 
                     var dl = new Label(day.ToString());
-                    dl.style.fontSize = 17;
-                    dl.style.color = isToday ? new Color(1f, 0.9f, 0.6f) : new Color(0.83f, 0.80f, 0.76f);
+                    dl.AddToClassList("cal-day");
                     cell.Add(dl);
 
                     if (fest != null)
                     {
                         var fl = new Label(fest.Name);
-                        fl.style.fontSize = 12;
-                        fl.style.color = new Color(0.68f, 0.92f, 0.74f);
-                        fl.style.whiteSpace = WhiteSpace.Normal;
+                        fl.AddToClassList("cal-fest");
                         cell.Add(fl);
                     }
 
@@ -410,7 +390,7 @@ namespace WitchShop.UI
             {
                 var nl = new Label($"下一個節日：{next.Name}（{next.Month} 月 {next.Day} 日）—— {next.Desc}");
                 nl.AddToClassList("up-desc");
-                nl.style.marginTop = 10;
+                nl.AddToClassList("cal-next");
                 rowsBox.Add(nl);
             }
         }

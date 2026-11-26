@@ -55,6 +55,28 @@ namespace WitchShop.Core
 
         static void Save() => SaveManager.SetString(Key, JsonUtility.ToJson(new Shape { items = All }));
 
+        /// <summary>
+        /// 上架清單的「件數／種類」變了就發（上架、下架、顧客買走、離店成交）。
+        /// ShopRoomView 訂閱它來重擺貨架上的商品 —— 不要每幀重建。
+        /// ⚠️ 改售價（SetPrice）不發：架上看起來不會變。
+        /// ⚠️ 靜態事件：訂閱者（場景物件）一定要在 OnDisable／OnDestroy 退訂，
+        ///    關掉 Domain Reload 進 Play 時由 <see cref="ResetStatics"/> 清掉（同 Sfx.Changed）。
+        /// </summary>
+        public static event Action Changed;
+
+        static void RaiseChanged()
+        {
+            try { Changed?.Invoke(); }
+            catch (Exception e) { Debug.LogWarning($"[ShopStock] Changed 的訂閱者出錯：{e.Message}"); }
+        }
+
+        /// <summary>關掉 Domain Reload 進 Play 時，靜態事件會留著上一輪（已銷毀）的訂閱者 —— 這裡清乾淨。</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            Changed = null;
+        }
+
         static Listing Find(string name)
         {
             foreach (var l in All) if (l.name == name) return l;
@@ -94,6 +116,7 @@ namespace WitchShop.Core
                 All.Add(new Listing(name, SuggestedPrice(name), 1));
             }
             Save();
+            RaiseChanged();
             return true;
         }
 
@@ -104,8 +127,15 @@ namespace WitchShop.Core
             {
                 if (All[i].name != name) continue;
                 All[i].count -= 1;
-                if (All[i].count <= 0) All.RemoveAt(i);
+                if (All[i].count <= 0)
+                {
+                    All.RemoveAt(i);
+                    // 下架（或賣完）了 → 它在店裡的指定陳列位置也清掉，下次再上架就照自動分配。
+                    // ⚠️ 要在 RaiseChanged 之前清：ShopRoomView 收到 Changed 會馬上重擺商品。
+                    ShopDisplay.Clear(name);
+                }
                 Save();
+                RaiseChanged();      // SellOne 也走這裡 → 顧客買走、離店成交都會發
                 return true;
             }
             return false;

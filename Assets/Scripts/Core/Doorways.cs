@@ -14,10 +14,24 @@ namespace WitchShop.Core
     public static class Doorways
     {
         /// <summary>
-        /// 城鎮小屋的門在整棟房子圖上的位置（物件原點在房子正中央底部）。
-        /// 拱門偏左 —— 沒有這個位移，觸發點會落在房子正中間，看起來像從牆壁進去。
+        /// 城鎮小屋的門口觸發點，相對物件原點 —— ⚠️ 原點是**圖片中心**（城鎮物件的 position
+        /// 都是圖片中心，不是房子底部）。cottage-home.png 是 290×258、scale 1：
+        /// 正面左下的拱門約在圖上 x 63~103（中心約 83），門前的圓石階約 x 36~115、y 218~254。
+        /// 觸發點放在石階正下方、圖片底緣往下 6px（圖上 (80, 264)）：
+        ///   x：80 − 145 ＝ −65；y：129 − 264 ＝ −135。
+        /// 建築的落地範圍底緣就是圖片底緣（世界 y 261），觸發點在它**外面**，
+        /// 玩家從正面就走得到 70px 自動觸發圈，Obstacles 不必在牆上挖通道。
+        /// （以前是 (−93, 12)，照「原點在底部」寫的，結果落在左牆半腰的屋簷上。）
         /// </summary>
-        static readonly Vector2 CottageDoor = new(-93f, 12f);
+        static readonly Vector2 CottageDoor = new(-65f, -135f);
+
+        /// <summary>
+        /// 開店／關店招牌（<see cref="ShopSignPost"/>）的落地點，同樣相對小屋的圖片中心。
+        /// 圖上約 (159, 273)：正面右邊轉角的前方草地、石階右側，世界約 (−524, 246)（再對齊偶數像素）。
+        /// ⚠️ 要在門口光圈（觸發點 (−65,−135) 為圓心的 76×30 橢圓）外面：x 至少離觸發點 76。
+        /// tools/check_walkable.py 與 tools/gen_shop_sign.py 的預覽都讀這一行。
+        /// </summary>
+        static readonly Vector2 CottageSign = new(14f, -144f);
 
         /// <summary>在指定場景補上該有的門（重複呼叫安全）。</summary>
         public static void Install(string scene)
@@ -38,6 +52,9 @@ namespace WitchShop.Core
                 d.doorX = CottageDoor.x;
                 d.doorY = CottageDoor.y;
             }
+            // 店門口的開店／關店招牌＋風鈴（純顯示；開關店的入口在上方工具列 UI/CornerHud）。見 ShopSignPost 檔頭。
+            if (cottage != null)
+                ShopSignPost.Ensure((Vector2)cottage.transform.position + CottageSign);
 
             // ── 三位可以交談 / 發任務的 NPC ────────────────────────
             // ⚠️ NpcName 必須跟 Data.Quests 的 Giver、Data.Villagers 的 Name 一致，

@@ -32,6 +32,10 @@ namespace WitchShop.UI
     ///
     /// 操作：**E 或空白鍵**往下一句（跟「跟東西互動」同一顆鍵，不用另外學），
     /// Esc 直接關掉。
+    ///
+    /// 外觀：像素外觀（<see cref="UiSkin.On"/>）時是木框＋羊皮紙（同其他面板），頭像放在紫布金框裡，
+    /// 名字是一塊壓在上框的紫布名牌（skin8/plate），選項是 skin 的按鈕（第一個綠、其他木），
+    /// 底下「[E][Space] 繼續」用鍵帽。外觀關著時照舊（HudExtraStyle 的 .dlg-*）。只有 Build 與那幾行字不同，操作完全一樣。
     /// </summary>
     public class Dialogue : MonoBehaviour
     {
@@ -47,6 +51,11 @@ namespace WitchShop.UI
 
         UIDocument doc;
         VisualElement root, box, portraitEl, choicesBox;
+        /// <summary>頭像外面那一層（像素外觀時是紫布金框；舊外觀時就是頭像本身）—— 顯示／隱藏切它。</summary>
+        VisualElement portraitBox;
+        /// <summary>「繼續」那一列（像素外觀時是 [E][Space] 繼續；舊外觀時就是 nextLabel 本身）—— 顯示／隱藏切它。</summary>
+        VisualElement nextBox;
+        bool skin;
         Label nameLabel, textLabel, nextLabel;
 
         List<DialogueLine> lines;
@@ -92,8 +101,10 @@ namespace WitchShop.UI
             openedFrame = Time.frameCount;
 
             nameLabel.text = speaker ?? "";
+            // 像素外觀的名字牌是一塊紫布，沒名字時整塊收起來（舊外觀的空 Label 本來就看不到）
+            if (skin) nameLabel.style.display = string.IsNullOrEmpty(speaker) ? DisplayStyle.None : DisplayStyle.Flex;
             var sp = string.IsNullOrEmpty(portrait) ? null : GameArt.Portrait(portrait);
-            portraitEl.style.display = sp != null ? DisplayStyle.Flex : DisplayStyle.None;
+            portraitBox.style.display = sp != null ? DisplayStyle.Flex : DisplayStyle.None;
             if (sp != null) portraitEl.style.backgroundImage = new StyleBackground(sp);
 
             anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
@@ -142,14 +153,18 @@ namespace WitchShop.UI
             choicesBox.Clear();
             bool hasChoices = l.Choices != null && l.Choices.Count > 0;
             choicesBox.style.display = hasChoices ? DisplayStyle.Flex : DisplayStyle.None;
-            nextLabel.style.display = hasChoices ? DisplayStyle.None : DisplayStyle.Flex;
+            nextBox.style.display = hasChoices ? DisplayStyle.None : DisplayStyle.Flex;
 
             if (!hasChoices)
             {
-                nextLabel.text = index < lines.Count - 1 ? "E / 空白鍵 繼續" : "E / 空白鍵 結束";
+                bool more = index < lines.Count - 1;
+                // 像素外觀：前面已經有 [E][Space] 鍵帽，只留兩個字
+                nextLabel.text = skin ? (more ? "繼續" : "結束")
+                                      : (more ? "E / 空白鍵 繼續" : "E / 空白鍵 結束");
                 return;
             }
 
+            int ci = 0;
             foreach (var (label, onPick) in l.Choices)
             {
                 var cb = onPick;
@@ -159,8 +174,15 @@ namespace WitchShop.UI
                     //    不先關的話新對話會被這一段的關閉蓋掉。
                     Close();
                     cb?.Invoke();
-                }) { text = label };
+                }) { text = label, focusable = false };   // ⚠️ 不拿焦點：不然之後按 Space 會「再點一次」
                 b.AddToClassList("dlg-choice");
+                if (skin)
+                {
+                    // skin 的按鈕：第一個（通常是「接受」）綠色，其他木頭色
+                    b.AddToClassList("btn");
+                    if (ci == 0) b.AddToClassList("btn-list");
+                }
+                ci++;
                 choicesBox.Add(b);
             }
         }
@@ -170,6 +192,8 @@ namespace WitchShop.UI
             root = doc.rootVisualElement;
             if (root == null) { Debug.LogError("[Dialogue] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudExtraStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關 UiSkin.Enabled）
+            skin = UiSkin.On;
             CjkFont.Apply(root);
             Sfx.BindClicks(root);         // 選項按鈕的 click 音（選完接著開新對話時會被 talk 蓋過）
 
@@ -183,7 +207,15 @@ namespace WitchShop.UI
 
             portraitEl = new VisualElement();
             portraitEl.AddToClassList("dlg-portrait");
-            box.Add(portraitEl);
+            portraitBox = portraitEl;
+            if (skin)
+            {
+                // 頭像的圖是 inline 背景，沒辦法同時當九宮格框 → 外面多包一層紫布金框
+                portraitBox = new VisualElement();
+                portraitBox.AddToClassList("sk-dlg-frame");
+                portraitBox.Add(portraitEl);
+            }
+            box.Add(portraitBox);
 
             var body = new VisualElement();
             body.AddToClassList("dlg-body");
@@ -203,7 +235,16 @@ namespace WitchShop.UI
 
             nextLabel = new Label();
             nextLabel.AddToClassList("dlg-next");
-            body.Add(nextLabel);
+            nextBox = nextLabel;
+            if (skin)
+            {
+                nextBox = new VisualElement();
+                nextBox.AddToClassList("sk-dlg-next-row");
+                nextBox.Add(UiSkin.KeyCap("E"));
+                nextBox.Add(UiSkin.KeyCap("Space"));
+                nextBox.Add(nextLabel);
+            }
+            body.Add(nextBox);
 
             root.style.display = DisplayStyle.None;
             anim = UIAnim.SlideUp(root, box);                 // 從下方滑上來；換句不動它（只有 Open/Close 會）

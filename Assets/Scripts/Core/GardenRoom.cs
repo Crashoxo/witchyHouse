@@ -41,7 +41,9 @@ namespace WitchShop.Core
             BuildPlots();
             BuildDoor();
             BuildHint();
-            TownFolk.Ensure(GardenData.FenceWalk, 2);   // 柵欄外經過的村民（路窄，兩個就夠熱鬧）
+            // 柵欄外經過的村民（路窄，兩個就夠熱鬧）。後花園沒開 Obstacles，用 polyline 模式：
+            // 只沿 FenceWalk 相鄰兩點走，不會兩點直線切進柵欄裡（見 GardenData.FenceWalk）。
+            TownFolk.Ensure(GardenData.FenceWalk, 2, polyline: true);
         }
 
         void ApplyBackground()

@@ -93,6 +93,7 @@ namespace WitchShop.UI
             root = doc.rootVisualElement;
             if (root == null) { Debug.LogError("[SeedPicker] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/ShopManageStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關在 UiSkin.Enabled）
             CjkFont.Apply(root);
             Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
@@ -126,9 +127,7 @@ namespace WitchShop.UI
             rowsBox.style.minHeight = 140;
             panel.Add(rowsBox);
 
-            var hint = new Label("Esc 取消");
-            hint.AddToClassList("hint");
-            panel.Add(hint);
+            UiSkin.Footer(panel, "取消", "Esc");
 
             anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
             built = true;
@@ -155,19 +154,31 @@ namespace WitchShop.UI
                 row.AddToClassList("row");
 
                 var icon = new VisualElement();
-                icon.style.width = 32; icon.style.height = 32; icon.style.marginRight = 10;
+                icon.AddToClassList("stock-icon");
                 var sp = GameArt.Item(s);
                 if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
                 row.Add(icon);
 
-                var name = new Label($"{s} ×{Inventory.CountOf(s)}");
+                // 名稱＋持有數徽章（舊外觀：名稱與「×3」各自一個字串，看起來跟以前差不多）
+                var name = new Label(s);
                 name.AddToClassList("col-name");
-                name.style.width = 150;
+                name.AddToClassList("seed-name");
                 row.Add(name);
+                row.Add(UiSkin.Badge($"×{Inventory.CountOf(s)}"));
 
-                var yieldLabel = new Label(f != null ? $"收成 {f.Yield} 朵" : "");
-                yieldLabel.AddToClassList("up-effect");
-                row.Add(yieldLabel);
+                // 收成：[花的小圖]×3（舊外觀：「收成 3 朵」）
+                VisualElement yieldCell;
+                if (f != null && UiSkin.On)
+                {
+                    yieldCell = UiSkin.IconCount(GameArt.Item(f.Flower), $"×{f.Yield}");
+                    yieldCell.AddToClassList("seed-yield");
+                }
+                else
+                {
+                    yieldCell = new Label(f != null ? $"收成 {f.Yield} 朵" : "");
+                    yieldCell.AddToClassList("up-effect");
+                }
+                row.Add(yieldCell);
 
                 var pick = new Button(() =>
                 {
@@ -182,6 +193,7 @@ namespace WitchShop.UI
 
                 rowsBox.Add(row);
             }
+            UiSkin.Stripe(rowsBox);
         }
     }
 }

@@ -29,3 +29,6 @@ crashlytics-build.properties
 .vs/
 .idea/
 .vscode/
+
+# Python 快取
+__pycache__/

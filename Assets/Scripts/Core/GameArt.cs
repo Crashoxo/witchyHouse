@@ -110,6 +110,69 @@ namespace WitchShop.Core
         /// </summary>
         public const float WitchScale = 1.6f;
 
+        // ──────────── 道具圖示（8-bit 像素風）────────────
+
+        /// <summary>
+        /// 開關：true ＝ 道具圖示改用 tools/gen_item_art.py 程式點陣畫的 8-bit 圖（Resources/items8/）；
+        /// false ＝ 退回原本那批尺寸不一的厚塗圖（items/、potions/、candy/item-*、garden/*-seed、花的走圖切格）。
+        /// 舊圖一張都沒刪，改這裡就好。
+        ///
+        /// ⚠️ items8 的規格（別的程式依賴）：每張都是 **96×96**（邏輯 24×24 × 4）、圖案水平置中、
+        ///    **底部貼齊**（最底下留 1 個邏輯格）、四周至少留 1 格透明。
+        ///    → UI 的方框直接撐滿也不會變形；貨架把它等比縮到約 24px 高，每件都「坐」在同一條線上；
+        ///    → 世界裡照原尺寸畫的地方（採集飄字、顧客泡泡、澆水的水滴）要用 <see cref="ItemIconWorld"/>
+        ///      換算縮放，不能再假設「最長邊＝內容大小」—— 圖案只佔 96 裡的約 80%。
+        /// ⚠️ 開著開關但 items8 裡缺某張（例如跑過 gen_item_art.py --restore），那件會自動退回舊圖，不會變成沒圖示。
+        /// </summary>
+        public static readonly bool UsePixelItems = true;
+
+        /// <summary>
+        /// 世界空間（PPU＝1）裡顯示一個道具圖示時，整張圖的邊長要縮到幾 px。傳入「舊圖時代」用的值。
+        /// 舊圖的內容幾乎貼滿整張圖，所以原本「最長邊縮到 34px」＝東西本身約 34px；
+        /// 8-bit 圖的內容約佔 96 的 20/24，要 40px 才看起來一樣大（40 × 20/24 ≈ 33）。
+        /// </summary>
+        public static float ItemIconWorld(float legacyPx) => UsePixelItems ? legacyPx * 40f / 34f : legacyPx;
+
+        // ──────────── 路人走路圖（8-bit 像素風）────────────
+
+        /// <summary>
+        /// 開關：true ＝ 村民／顧客改用 tools/gen_villager_art.py 程式點陣畫的走路圖（Resources/villagers8/）；
+        /// false ＝ 退回原本那批 AI 厚塗圖（Resources/villagers/，一張都沒刪）。
+        /// 開著但 villagers8 裡缺某位（例如跑過 gen_villager_art.py --restore），那位自動退回舊圖。
+        ///
+        /// ⚠️ villagers8 的規格（別的程式依賴）：每張 **336×324**、4 欄 × 3 列、每格 **84×108**
+        ///    （邏輯 28×36 × 3）；角色水平置中；**鞋底在格子底邊往上 3px**（最底下一個邏輯格留空），
+        ///    11 位、所有幀都一樣 —— 所以不同人的縮放與腳底偏移只看「新圖或舊圖」，見
+        ///    <see cref="VillagerArtScale"/>、<see cref="VillagerFootPad"/>。
+        /// </summary>
+        public static readonly bool UsePixelVillagers = true;
+
+        /// <summary>
+        /// 新走路圖在 <see cref="VillagerAnim.Scale"/> 之上**再乘**的倍數（舊圖是 1）。
+        /// 怎麼定的：新圖大人（法師、旅人）可見高 29～30 邏輯格 ×3 ＝ 87～90px，×1.1 ≈ 96～99px，
+        /// 比女巫（93px）略高；小魔女、兔子、鹿約 92～106px（含帽子／耳朵），青蛙、刺蝟、狐狸、妖精 76～83px。
+        /// ⚠️ tools/gen_villager_art.py 的 GAME_SCALE（實景合成預覽用）要跟著一起改。
+        /// </summary>
+        public const float PixelVillagerScale = 1.1f;
+
+        /// <summary>新走路圖：鞋底到格子底邊的距離（輸出 px、縮放前）。舊圖沒有統一的基準線，當 0。</summary>
+        const float PixelVillagerFootPadPx = 3f;
+
+        /// <summary>實際載到 villagers8 新圖的村民（其餘是舊圖）。</summary>
+        static readonly HashSet<string> pixelVillagers = new();
+
+        /// <summary>這位村民的圖要在 VillagerAnim 的縮放之上再乘多少（新圖 <see cref="PixelVillagerScale"/>、舊圖 1）。</summary>
+        public static float VillagerArtScale(string name) => pixelVillagers.Contains(name) ? PixelVillagerScale : 1f;
+
+        /// <summary>鞋底在格子底邊往上幾 px（縮放前）—— 影子要對準鞋底用（同女巫的 CharacterAnimator.FootPad）。</summary>
+        public static float VillagerFootPad(string name) => pixelVillagers.Contains(name) ? PixelVillagerFootPadPx : 0f;
+
+        /// <summary>
+        /// 影子寬度要用格子寬的幾成。新圖格子 84px 寬、身體約佔 20/28，用整格會讓影子比人寬一圈；
+        /// 舊圖維持原本的整格（之前實機調過）。
+        /// </summary>
+        public static float VillagerShadowRatio(string name) => pixelVillagers.Contains(name) ? 0.8f : 1f;
+
         // ──────────── 快取 ────────────
 
         static readonly Dictionary<string, Sprite> items = new();         // 材料/藥水名 → 圖
@@ -138,6 +201,9 @@ namespace WitchShop.Core
         static Sprite castFrame, sleepingFrame;          // 舊手繪女巫的墊底圖
         static Sprite dialogueBoxFrame, questScrollFrame, updateFrameArt;
         static Sprite brewRoomDayFrame, brewRoomNightFrame, gardenFrame, shopRoomFrame;
+        /// <summary>SVG 重畫的魔女房間（Resources/rooms/brew/）：Resources 路徑 → Sprite（樞紐照配置表放在落腳點）。</summary>
+        static readonly Dictionary<string, Sprite> brewArt = new();
+        static Sprite brewGlowSprite;
 
         static string outfitId = "";                     // ""＝預設造型
         static readonly HashSet<string> requested = new();
@@ -156,6 +222,28 @@ namespace WitchShop.Core
         {
             var t = Tex(path);
             if (t != null) map[key] = SheetSlicer.Whole(t);
+        }
+
+        /// <summary>
+        /// 載入一個道具圖示：開關開著且 items8/&lt;file&gt; 存在就用 8-bit 圖，否則走舊路徑。
+        /// </summary>
+        static void LoadItemIcon(string key, string legacyPath, string file)
+        {
+            if (TryPixelItem(key, file)) return;
+            LoadImg(items, key, legacyPath);
+        }
+
+        /// <summary>
+        /// 只試 items8；成功就登記進 items 並回 true。
+        /// ⚠️ 直接用 Resources.Load、不經 Tex() —— 缺圖時退回舊圖是預期中的情況，不該噴警告。
+        /// </summary>
+        static bool TryPixelItem(string key, string file)
+        {
+            if (!UsePixelItems) return false;
+            var t = Resources.Load<Texture2D>($"items8/{file}");
+            if (t == null) return false;
+            items[key] = SheetSlicer.Whole(t);
+            return true;
         }
 
         static Sprite LoadSingle(string path, Vector2? pivot = null)
@@ -214,10 +302,21 @@ namespace WitchShop.Core
             w8Sleep = LoadSingle(string.IsNullOrEmpty(id) ? "witch8/sleep" : $"witch8/{id}-sleep");
         }
 
-        /// <summary>載入一位村民的走路表，切成 [列][欄]（列＝面向，欄＝動畫幀）。</summary>
+        /// <summary>
+        /// 載入一位村民的走路表，切成 [列][欄]（列＝面向，欄＝動畫幀）。
+        /// 開關開著且 villagers8/&lt;name&gt; 存在就用 8-bit 新圖（見 <see cref="UsePixelVillagers"/>），否則舊圖。
+        /// 兩種圖的排法一樣（4 欄 × 3 列、下／側〔朝左〕／上），只有格子大小與基準線不同。
+        /// </summary>
         static void LoadVillager(string name)
         {
-            var t = Tex($"villagers/{name}");
+            // ⚠️ 新圖直接 Resources.Load、不經 Tex() —— 缺圖時退回舊圖是預期中的情況，不該噴警告
+            var t = UsePixelVillagers ? Resources.Load<Texture2D>($"villagers8/{name}") : null;
+            if (t != null) pixelVillagers.Add(name);
+            else
+            {
+                pixelVillagers.Remove(name);
+                t = Tex($"villagers/{name}");
+            }
             if (t == null) return;
             var rows = new Sprite[VillagerRows][];
             for (int r = 0; r < VillagerRows; r++)
@@ -265,10 +364,13 @@ namespace WitchShop.Core
             switch (name)
             {
                 case "common":
-                    foreach (var kv in Items.ItemFiles) LoadImg(items, kv.Key, $"items/{kv.Value}");
-                    foreach (var kv in Items.PotionItems) LoadImg(items, kv.Key, $"potions/{kv.Value}");
+                    // 道具圖示：items8 跟舊圖用**同一個檔名**（見 UsePixelItems），只換資料夾
+                    foreach (var kv in Items.ItemFiles) LoadItemIcon(kv.Key, $"items/{kv.Value}", kv.Value);
+                    foreach (var kv in Items.PotionItems) LoadItemIcon(kv.Key, $"potions/{kv.Value}", kv.Value);
                     // 糖果鎮進的貨也要在背包/貨架/顧客那邊看得到圖 → 放 common
-                    foreach (var kv in Items.CandyItems) LoadImg(items, kv.Key, $"candy/{kv.Value}");
+                    foreach (var kv in Items.CandyItems) LoadItemIcon(kv.Key, $"candy/{kv.Value}", kv.Value);
+                    // 花圃澆水的水花（GardenPlot.PlayWater 用 Item("水滴")）：舊版沒有這張圖、一直退回程式生成的小白點
+                    TryPixelItem("水滴", "water-drop");
                     foreach (var f in ClockFiles) LoadImg(clockParts, f, $"ui/clock/{f}");
                     foreach (var f in SeasonFiles) LoadImg(seasonIcons, f, $"ui/season/{f}");
                     dialogueBoxFrame = LoadSingle("ui/dialogue-box");
@@ -288,7 +390,10 @@ namespace WitchShop.Core
                     foreach (var f in GardenData.Flowers)
                     {
                         LoadFlower(f.Art, f.Flower);
-                        LoadImg(items, f.Seed, $"garden/{f.Art}-seed");
+                        // 花的收成圖示：LoadFlower 先登記走圖「盛開那一格」，有 8-bit 圖就蓋過去。
+                        // ⚠️ 只換道具圖示 —— 花圃上的成長走圖（flowers[]）與土壤磚還是原本那批。
+                        TryPixelItem(f.Flower, f.Art);
+                        LoadItemIcon(f.Seed, $"garden/{f.Art}-seed", $"{f.Art}-seed");
                     }
                     break;
 
@@ -329,9 +434,14 @@ namespace WitchShop.Core
                     break;
 
                 case "brew":
-                    for (int i = 0; i < CauldronFrameCount; i++) LoadIndexed(cauldron, i, $"cauldron/f{i}");
-                    brewRoomDayFrame = LoadSingle("rooms/brew-room-day");
-                    brewRoomNightFrame = LoadSingle("rooms/brew-room-night");
+                    if (Core.BrewRoom.UseSvgRoom) LoadBrewRoom();
+                    else
+                    {
+                        // 舊房間（整張背景圖＋舊鍋爐）：BrewRoom.UseSvgRoom = false 時才用
+                        for (int i = 0; i < CauldronFrameCount; i++) LoadIndexed(cauldron, i, $"cauldron/f{i}");
+                        brewRoomDayFrame = LoadSingle("rooms/brew-room-day");
+                        brewRoomNightFrame = LoadSingle("rooms/brew-room-night");
+                    }
                     // 造型立繪只有房間裡的衣櫃會用到，所以掛在 brew 組，不佔 common
                     // （資料表叫 OutfitCatalog 而不是 Outfits —— Core 命名空間裡有一個
                     //   同名的 Outfits 管「現在穿哪一套」，撞名時錯誤訊息完全看不出原因）
@@ -339,6 +449,32 @@ namespace WitchShop.Core
                         if (!string.IsNullOrEmpty(o.Portrait))
                             LoadImg(portraits, o.Portrait, $"portraits/{o.Portrait}");
                     break;
+            }
+        }
+
+        /// <summary>
+        /// 載入 SVG 重畫的魔女房間：房間殼（日／夜）、每件家具的每一幀、光暈。
+        /// 家具的樞紐照 Data.BrewRoomLayout 的 PivotX/PivotY（像素）放在落腳點 —— 物件的 position 直接擺落腳點。
+        /// 同一張圖給好幾件用（蠟燭）時樞紐一樣（同尺寸的落地範圍），載一次就好。
+        /// </summary>
+        static void LoadBrewRoom()
+        {
+            brewRoomDayFrame = LoadSingle(BrewRoomLayout.ShellDay);
+            brewRoomNightFrame = LoadSingle(BrewRoomLayout.ShellNight);
+            foreach (var p in BrewRoomLayout.Pieces)
+                foreach (var path in p.Frames)
+                {
+                    if (brewArt.ContainsKey(path)) continue;
+                    var t = Tex(path);
+                    if (t == null) continue;
+                    brewArt[path] = SheetSlicer.Whole(t, new Vector2(p.PivotX / t.width, p.PivotY / t.height));
+                }
+            var g = Tex(BrewRoomLayout.Glow);
+            if (g != null)
+            {
+                // 光暈是唯一的漸層圖：放大貼的時候要平滑，不能用像素風的 Point
+                g.filterMode = FilterMode.Bilinear;
+                brewGlowSprite = SheetSlicer.Whole(g);
             }
         }
 
@@ -469,6 +605,18 @@ namespace WitchShop.Core
         public static Sprite UpdateFrame => updateFrameArt;
         public static Sprite ShopRoom => shopRoomFrame;
         public static Sprite GardenRoom => gardenFrame;
+        /// <summary>藥水室的背景：舊房間是整張圖，SVG 房間是「牆＋地板」的房間殼（日／夜）。</summary>
         public static Sprite BrewRoom(bool night) => night ? brewRoomNightFrame : brewRoomDayFrame;
+
+        /// <summary>SVG 房間一件家具的所有幀（照 Frames 的順序；缺圖的位置是 null）。</summary>
+        public static Sprite[] BrewFrames(in BrewPiece p)
+        {
+            var arr = new Sprite[p.Frames.Length];
+            for (int i = 0; i < arr.Length; i++) arr[i] = brewArt.GetValueOrDefault(p.Frames[i]);
+            return arr;
+        }
+
+        /// <summary>SVG 房間的夜晚光暈（白色＋alpha 的徑向漸層，顏色由 SpriteRenderer.color 給）。</summary>
+        public static Sprite BrewGlow => brewGlowSprite;
     }
 }

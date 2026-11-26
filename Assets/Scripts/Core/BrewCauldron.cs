@@ -24,6 +24,7 @@ namespace WitchShop.Core
 
         SpriteRenderer sr;
         Transform art;                 // 掛 SpriteRenderer 的子物件（腳底錨點用）
+        bool footPivot;                // 新房間的圖：樞紐已經在落腳點，不用再往上推
         Sprite[] frames = System.Array.Empty<Sprite>();
         Transform player;
         GameObject hint;
@@ -52,6 +53,24 @@ namespace WitchShop.Core
 
         void OnDestroy() { if (Instance == this) Instance = null; }
 
+        /// <summary>
+        /// 換成 SVG 重畫的房間那組圖（BrewRoom.UseSvgRoom）：圖的樞紐已經放在落腳點、1:1 不縮放，
+        /// 排序由房間的配置表給（女巫的前後由 BrewRoom.PlayerOrder 插進來）。幀數跟舊圖一樣，播放邏輯不變。
+        /// </summary>
+        public void UseRoomArt(Sprite[] roomFrames, int sortingOrder)
+        {
+            footPivot = true;
+            artScale = 1f;
+            art.localScale = Vector3.one;
+            art.localPosition = Vector3.zero;
+            sr.sortingOrder = sortingOrder;
+            frames = roomFrames ?? System.Array.Empty<Sprite>();
+            ShowFrame(0);
+        }
+
+        /// <summary>夜晚的色調（房間整體乘的顏色）。</summary>
+        public void SetTint(Color c) { if (sr != null) sr.color = c; }
+
         void Start()
         {
             var p = GameObject.Find("Player");
@@ -66,7 +85,7 @@ namespace WitchShop.Core
             sr.sprite = f;
             // 腳底錨點：圖往上推半個顯示高度（每幀尺寸一樣，但第一次要算對）
             if (f != null)
-                art.localPosition = new Vector3(0f, f.rect.height * 0.5f * artScale, 0f);
+                art.localPosition = footPivot ? Vector3.zero : new Vector3(0f, f.rect.height * 0.5f * artScale, 0f);
         }
 
         bool InRange =>

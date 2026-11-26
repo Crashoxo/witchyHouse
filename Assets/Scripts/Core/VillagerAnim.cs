@@ -3,7 +3,8 @@ using UnityEngine;
 namespace WitchShop.Core
 {
     /// <summary>
-    /// 村民走路動畫：把 Resources/villagers/*.png（4 幀 × 3 面向）接到一個物件上。
+    /// 村民走路動畫：把 Resources/villagers8/*.png（8-bit 新圖）或 villagers/*.png（舊圖）
+    /// （都是 4 幀 × 3 面向）接到一個物件上。用哪張由 GameArt.UsePixelVillagers 決定。
     /// 店裡的顧客和城鎮街上走動的村民共用這支。
     ///
     /// 用法：生一個空物件 → AddComponent&lt;VillagerAnim&gt;().Init("frog") → 每幀餵
@@ -39,6 +40,10 @@ namespace WitchShop.Core
         ///
         /// 這個常數同時是**店裡顧客**的預設值（`CustomerManager.displayScale`）——
         /// 兩邊是同一批人，本來就該一樣大。只想動其中一邊就改那個欄位。
+        ///
+        /// ⚠️ 上面量的是**舊圖**。8-bit 新圖（Resources/villagers8，見 GameArt.UsePixelVillagers）
+        ///    格子與比例都不同，實際縮放＝這個值 × <see cref="GameArt.VillagerArtScale"/>
+        ///    （新圖 ×1.1：大人約 96～99px），所以這裡維持 1.0 不動、舊圖的比例也不會被弄壞。
         /// </summary>
         public const float Scale = 1.0f;
 
@@ -54,8 +59,22 @@ namespace WitchShop.Core
         int idx = -1;
         float height = 70f;
 
+        float width = 50f;
+
         /// <summary>顯示高度（像素）—— 對話泡要擺在頭頂時用。</summary>
         public float DisplayHeight => height;
+        /// <summary>顯示寬度（像素，含格子的透明邊）—— 店裡的排序（ShopRoomView.PlayerOrder）要用。</summary>
+        public float DisplayWidth => width;
+
+        /// <summary>
+        /// 排序覆寫：有設的話 LateUpdate 用它的回傳值當 sortingOrder，不再用 -y。
+        ///
+        /// 為什麼要有：店裡的長貨架是等距斜放的，單純比腳底 y 會在貨架兩端排錯
+        /// （人明明站在架子前面卻被架子蓋掉）。女巫在店裡是問 ShopRoomView.PlayerOrder，
+        /// 顧客走同一套就設這個（見 CustomerManager.Spawn）。
+        /// ⚠️ 只有店裡的顧客設 —— 城鎮的村民（TownFolk）保持 null，行為完全不變。
+        /// </summary>
+        public System.Func<int> orderOverride;
 
         /// <summary>指定要演哪位村民。name 取自 GameArt.VillagerNames()。</summary>
         public void Init(string name, float s = Scale)
@@ -104,8 +123,10 @@ namespace WitchShop.Core
 
         void LateUpdate()
         {
-            // YSort：站得低的畫在前面（同 ForestSceneBuilder 的作法）
-            if (sr != null) sr.sortingOrder = Mathf.RoundToInt(-transform.position.y);
+            // YSort：站得低的畫在前面（同 ForestSceneBuilder 的作法）；店裡的顧客改問覆寫掛勾
+            if (sr != null)
+                sr.sortingOrder = orderOverride != null ? orderOverride()
+                                                        : Mathf.RoundToInt(-transform.position.y);
         }
 
         void ApplyDir(int d, bool force = false)
@@ -117,13 +138,22 @@ namespace WitchShop.Core
             frames = f;
             idx = -1;                                    // 換面向 → 強制重畫一次
 
+            // 實際縮放＝呼叫端給的 scale × 這張圖自己的倍數（8-bit 新圖 GameArt.PixelVillagerScale、舊圖 1）。
+            // 分開乘是因為 CustomerManager.displayScale 是序列化欄位、場景裡存著舊值 —— 新舊圖的比例差
+            // 由 GameArt 依「實際載到哪張圖」決定，切開關或缺圖退回時兩邊都不會變形。
+            float k = scale * GameArt.VillagerArtScale(villager);
             var r = f[0].rect;
-            height = r.height * scale;
-            art.localScale = new Vector3(scale, scale, 1f);
-            art.localPosition = new Vector3(0f, height * 0.5f, 0f);   // 腳底錨點：圖往上推半身
+            height = r.height * k;
+            width = r.width * k;
+            art.localScale = new Vector3(k, k, 1f);
+            // 腳底錨點：圖往上推半個格子高 → 格子底邊＝position。
+            // 新圖的鞋底在格子底邊往上 3px（×k），跟女巫一樣**不把圖往下拉**（女巫的鞋底也在 position
+            // 上方 FootPad×1.6），兩邊站在同一個 y 時腳才對齊；那段落差交給影子的 footY 對準鞋底。
+            art.localPosition = new Vector3(0f, height * 0.5f, 0f);
 
-            // 腳下的影子（尺寸確定後才叫得準）。這裡的 position 本來就是落腳點 → 不用再補偏移
-            ShadowLayer.Follow(transform, r.width * scale);
+            // 腳下的影子（尺寸確定後才叫得準）：新圖格子兩側透明邊較寬 → 寬度打折，中心對準鞋底
+            ShadowLayer.Follow(transform, width * GameArt.VillagerShadowRatio(villager),
+                               GameArt.VillagerFootPad(villager) * k);
 
             ShowFrame(moving ? Mathf.FloorToInt(timer * Fps) % f.Length : 0);
         }

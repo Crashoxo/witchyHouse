@@ -184,6 +184,7 @@ namespace WitchShop.UI
             }
 
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/BagPanelStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關在 UiSkin.Enabled）
             CjkFont.Apply(root);          // ⚠️ 見 CjkFont：預設字型沒有中文字
             Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
@@ -208,6 +209,16 @@ namespace WitchShop.UI
             }
 
             anim = UIAnim.Pop(root, root.Q<VisualElement>("panel"), root.Q<VisualElement>("dim"));
+
+            // 底列：最前面插「[Esc] 關閉」鍵帽（UXML 的 footer 是現成的：全部存入 ─ spacer ─ hint）
+            var footer = root.Q<VisualElement>("footer");
+            if (footer != null)
+            {
+                UiSkin.AddKeys(footer, "關閉", "Esc");
+                var div = new VisualElement();
+                div.AddToClassList("sk-divider");
+                footer.parent.Insert(footer.parent.IndexOf(footer), div);   // 底列上面一條分隔線
+            }
             closeBtn.clicked += Close;
             stashAllBtn.clicked += StashAllInTab;
 
@@ -259,9 +270,10 @@ namespace WitchShop.UI
                 ? $"背包 {bagTypes}/{Upgrades.BagSlots()} 種　倉庫 {Storage.Types()}/{Storage.Capacity()} 種"
                 : $"{bagTypes}/{Upgrades.BagSlots()} 種";
 
+            // 原本是兩句說明；按鈕本身已經寫了「存入／取回／[1]」，這裡只留一句最短的提醒
             hintLabel.text = mode == BagMode.Storage
-                ? "Esc 關閉 · 存入／取回整疊搬，[1] 只搬一個"
-                : "Esc 關閉 · 背包裝不下時，把東西放進店裡左邊的櫥櫃";
+                ? "[1] ＝只搬一個"
+                : "裝不下 → 店裡的櫥櫃";
 
             stashAllBtn.style.display = mode == BagMode.Storage ? DisplayStyle.Flex : DisplayStyle.None;
 
@@ -278,6 +290,7 @@ namespace WitchShop.UI
                 return;
             }
             foreach (var name in items) rowsBox.Add(MakeRow(name));
+            UiSkin.Stripe(rowsBox);
         }
 
         VisualElement MakeRow(string name)

@@ -15,6 +15,8 @@ namespace WitchShop.UI
     /// Unity 這邊需要一個 UIDocument 才畫得出 UI Toolkit 的東西，也需要 MonoBehaviour
     /// 才能跑協程做淡入淡出 —— 所以做成一個自動生成的常駐單例，但**對外仍然只有
     /// 一個 static Show()**，呼叫端跟原版一樣簡單。
+    ///
+    /// 外觀：像素外觀開著時是一塊深木底座（hud-bar 九宮格）＋米白字，關著時是舊的深色半透明框（HudExtraStyle 的 .toast）。
     /// </summary>
     public class Toast : MonoBehaviour
     {
@@ -36,6 +38,19 @@ namespace WitchShop.UI
             Ensure().Spawn(text, seconds);
         }
 
+        /// <summary>
+        /// 一排圖示（＋最多兩三個字）的提示 —— 佈置模式用（使用者回饋「解釋的文字太多了」）。
+        /// <paramref name="icons"/> 是 <see cref="UiIcons"/> 的名稱；缺圖的那顆會留空位，不會壞。
+        /// </summary>
+        public static void ShowIcons(string[] icons, string text = null, float seconds = 1.8f)
+        {
+            if ((icons == null || icons.Length == 0) && string.IsNullOrEmpty(text)) return;
+            Ensure().SpawnIcons(icons, text, seconds);
+        }
+
+        /// <summary>圖示 Toast 裡每顆圖的高度（畫面 px）。</summary>
+        const float IconH = 34f;
+
         UIDocument doc;
         VisualElement layer;
 
@@ -52,6 +67,8 @@ namespace WitchShop.UI
 
             var root = doc.rootVisualElement;
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudExtraStyle"));
+            // 8-bit 外觀（總開關 UiSkin.Enabled）：深木底座＋米白字，跟下排背包列同一塊木頭（Skin8.uss 的 .sk .toast）
+            UiSkin.Apply(root);
             root.pickingMode = PickingMode.Ignore;      // 提示不擋滑鼠
             CjkFont.Apply(root);
 
@@ -73,6 +90,28 @@ namespace WitchShop.UI
             el.style.opacity = 0f;
             layer.Add(el);
 
+            StartCoroutine(Play(el, seconds));
+        }
+
+        void SpawnIcons(string[] icons, string text, float seconds)
+        {
+            if (layer == null) { Debug.Log($"[Toast] {string.Join(" ", icons ?? new string[0])} {text}"); return; }
+
+            var el = new VisualElement();
+            el.AddToClassList("toast");
+            el.AddToClassList("toast--icons");
+            el.pickingMode = PickingMode.Ignore;
+            el.style.opacity = 0f;
+            if (icons != null)
+                foreach (var n in icons) el.Add(UiIcons.Element(n, IconH, "toast-icon"));
+            if (!string.IsNullOrEmpty(text))
+            {
+                var l = new Label(text);
+                l.AddToClassList("toast-icon-text");
+                l.pickingMode = PickingMode.Ignore;
+                el.Add(l);
+            }
+            layer.Add(el);
             StartCoroutine(Play(el, seconds));
         }
 

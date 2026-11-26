@@ -94,6 +94,7 @@ namespace WitchShop.UI
                 return;
             }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/ShopManageStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關在 UiSkin.Enabled）
             CjkFont.Apply(root);
             Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
@@ -119,9 +120,7 @@ namespace WitchShop.UI
             spacer.AddToClassList("spacer");
             header.Add(spacer);
 
-            goldLabel = new Label();
-            goldLabel.AddToClassList("gold");
-            header.Add(goldLabel);
+            header.Add(UiSkin.GoldBox(out goldLabel));      // [金幣][數字]（舊外觀：「123 金」）
 
             var close = new Button(Close) { text = "×" };
             close.AddToClassList("close");
@@ -137,9 +136,7 @@ namespace WitchShop.UI
             rowsBox.AddToClassList("rows");
             panel.Add(rowsBox);
 
-            hintLabel = new Label();
-            hintLabel.AddToClassList("hint");
-            panel.Add(hintLabel);
+            hintLabel = UiSkin.Footer(panel, "關閉", "Esc");   // [Esc] 關閉 ……… 右邊放短資訊
 
             anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
             built = true;
@@ -159,11 +156,12 @@ namespace WitchShop.UI
         {
             if (!built) return;
 
-            goldLabel.text = $"{Wallet.Gold} 金";
+            goldLabel.text = UiSkin.MoneyText(Wallet.Gold);
             foreach (var b in tabsBox.Children()) b.EnableInClassList("active", (Tab)b.userData == tab);
 
             rowsBox.Clear();
             if (tab == Tab.Stock) BuildStock(); else BuildUpgrades();
+            UiSkin.Stripe(rowsBox);
         }
 
         /// <summary>目前可管理的品項：材料在前、藥水在後，只列「手上有的或已上架的」。</summary>
@@ -186,11 +184,13 @@ namespace WitchShop.UI
 
         void BuildStock()
         {
-            hintLabel.text = $"Esc 關閉 · 貨架上限 {ShopStock.Types}/{Upgrades.ShelfCap()} 種 · " +
-                             "上架後顧客才會上門";
+            hintLabel.text = $"貨架 {ShopStock.Types}/{Upgrades.ShelfCap()} 種";
 
             var head = new VisualElement();
             head.AddToClassList("head-row");
+            var iconGap = new VisualElement();                 // 對齊列上的道具圖
+            iconGap.AddToClassList("stock-icon");
+            head.Add(iconGap);
             head.Add(HeadLabel("品項", "col-name"));
             head.Add(HeadLabel("可用", "col-bag"));
             head.Add(HeadLabel("架上", "col-shelf"));
@@ -225,19 +225,29 @@ namespace WitchShop.UI
             var row = new VisualElement();
             row.AddToClassList("row");
 
-            row.Add(Col(name, "col-name", true));
+            var icon = new VisualElement();
+            icon.AddToClassList("stock-icon");
+            var sp = GameArt.Item(name);
+            if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
+            row.Add(icon);
+
+            var nameCol = Col(name, "col-name", true);
+            nameCol.AddToClassList("stock-name");
+            row.Add(nameCol);
             row.Add(Col(avail.ToString(), "col-bag", avail > 0));
             row.Add(Col(shelf.ToString(), "col-shelf", shelf > 0));
 
             var minus = new Button(() => { ShopStock.SetPrice(name, price - 1); Refresh(); }) { text = "－" };
-            minus.AddToClassList("btn"); minus.AddToClassList("btn-step");
+            minus.AddToClassList("btn"); minus.AddToClassList("btn-step"); minus.AddToClassList("sk-minus");
             minus.SetEnabled(shelf > 0);
             row.Add(minus);
 
-            row.Add(Col($"{price}金", "col-price", true));
+            var priceBox = UiSkin.Money(price);
+            priceBox.AddToClassList("col-price");
+            row.Add(priceBox);
 
             var plus = new Button(() => { ShopStock.SetPrice(name, price + 1); Refresh(); }) { text = "＋" };
-            plus.AddToClassList("btn"); plus.AddToClassList("btn-step");
+            plus.AddToClassList("btn"); plus.AddToClassList("btn-step"); plus.AddToClassList("sk-plus");
             plus.SetEnabled(shelf > 0);
             row.Add(plus);
 
@@ -276,7 +286,7 @@ namespace WitchShop.UI
 
         void BuildUpgrades()
         {
-            hintLabel.text = "Esc 關閉 · 升級立即生效";
+            hintLabel.text = "升級立即生效";
 
             foreach (var t in Upgrades.Tracks())
             {
@@ -284,25 +294,48 @@ namespace WitchShop.UI
                 var row = new VisualElement();
                 row.AddToClassList("row");
 
-                var nameLabel = new Label($"{d.Name} Lv.{Upgrades.Level(t)}");
+                // 名稱＋等級徽章（以前是「招牌 Lv.2」一整串字）
+                var nameBox = new VisualElement();
+                nameBox.AddToClassList("up-name-box");
+                var nameLabel = new Label(d.Name);
                 nameLabel.AddToClassList("up-name");
-                row.Add(nameLabel);
+                nameBox.Add(nameLabel);
+                var lv = UiSkin.Badge($"Lv.{Upgrades.Level(t)}");
+                lv.AddToClassList("up-lv");
+                nameBox.Add(lv);
+                row.Add(nameBox);
 
                 var desc = new Label(d.Desc);
                 desc.AddToClassList("up-desc");
                 row.Add(desc);
 
                 bool max = Upgrades.IsMax(t);
-                var effect = new Label(max
-                    ? Upgrades.EffectNow(t)
-                    : $"{Upgrades.EffectNow(t)} → {Upgrades.EffectNext(t)}");
-                effect.AddToClassList("up-effect");
-                row.Add(effect);
+                row.Add(EffectBox(t, max));
 
+                // 費用：金幣＋數字；滿級改成「✓ 滿級」小圖（舊外觀：「已滿級」文字）
                 int cost = Upgrades.Cost(t);
-                var costLabel = new Label(max ? "已滿級" : $"{cost} 金");
-                costLabel.AddToClassList("up-cost");
-                row.Add(costLabel);
+                if (max && UiSkin.On)
+                {
+                    var done = new VisualElement();
+                    done.AddToClassList("up-max");
+                    done.Add(UiSkin.Ico("check"));
+                    var dl = new Label("滿級");
+                    dl.AddToClassList("up-max-text");
+                    done.Add(dl);
+                    row.Add(done);
+                }
+                else if (max)
+                {
+                    var costLabel = new Label("已滿級");
+                    costLabel.AddToClassList("up-cost");
+                    row.Add(costLabel);
+                }
+                else
+                {
+                    var costBox = UiSkin.Money(cost);
+                    costBox.AddToClassList("up-cost");
+                    row.Add(costBox);
+                }
 
                 var buy = new Button(() =>
                 {
@@ -315,6 +348,33 @@ namespace WitchShop.UI
 
                 rowsBox.Add(row);
             }
+        }
+
+        /// <summary>
+        /// 效果欄：「現在 → 下一級」。外觀開著時中間的「→」換成綠色小箭頭圖；滿級只寫現在的值。
+        /// </summary>
+        static VisualElement EffectBox(Track t, bool max)
+        {
+            if (max || !UiSkin.On)
+            {
+                var effect = new Label(max
+                    ? Upgrades.EffectNow(t)
+                    : $"{Upgrades.EffectNow(t)} → {Upgrades.EffectNext(t)}");
+                effect.AddToClassList("up-effect");
+                return effect;
+            }
+            var box = new VisualElement();
+            box.AddToClassList("up-effect-box");
+            var now = new Label(Upgrades.EffectNow(t));
+            now.AddToClassList("up-effect");
+            now.AddToClassList("up-effect-now");
+            box.Add(now);
+            box.Add(UiSkin.Ico("arrow"));
+            var next = new Label(Upgrades.EffectNext(t));
+            next.AddToClassList("up-effect");
+            next.AddToClassList("up-effect-next");
+            box.Add(next);
+            return box;
         }
     }
 }

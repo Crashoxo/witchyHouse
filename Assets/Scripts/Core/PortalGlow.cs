@@ -81,6 +81,11 @@ namespace WitchShop.Core
             if (ground == null || !ground.TryGetComponent<SpriteRenderer>(out var gsr)) return;
             var b = gsr.bounds;
 
+            // 上緣：玩家的可走範圍往內縮了一個身高（Data.ArtFootprints.EdgeTop，女巫的頭才不會畫到地面外），
+            // 光圈若還在 26px 處，腳根本踩不到圈心。往下移到腳走得到的地方（略高於可走範圍的上緣）。
+            // 左右（內縮 22）與下緣（內縮 6）都比 26 小，維持原樣。
+            float topInset = Mathf.Max(DefaultInset, Data.ArtFootprints.EdgeTop - 10f);
+
             foreach (var g in Portals.Of(scene))
             {
                 // 左右側的邊 → At 是 y 座標；上下側 → At 是 x 座標
@@ -88,7 +93,7 @@ namespace WitchShop.Core
                 {
                     "left"  => new Vector2(b.min.x + DefaultInset, g.At),
                     "right" => new Vector2(b.max.x - DefaultInset, g.At),
-                    "top"   => new Vector2(g.At, b.max.y - DefaultInset),
+                    "top"   => new Vector2(g.At, b.max.y - topInset),
                     _       => new Vector2(g.At, b.min.y + DefaultInset),
                 };
                 portals.Add(MakeGlow(pos, EdgeRx, EdgeRy, null, $"前往 {SceneLabel(g.To)}"));

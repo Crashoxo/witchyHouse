@@ -46,7 +46,7 @@ public static class ShopSceneBuilder
         player.AddComponent<CharacterAnimator>();
         var pc = player.AddComponent<PlayerController>();
         pc.nextMapScene = "";        // 店裡沒有邊界出口，出去要走地板上的門（見 ShopRoom.Door*）
-        pc.clampToBounds = false;    // 改用 ShopRoom.ClampToFloor 的菱形夾取
+        pc.clampToBounds = false;    // 菱形地板改由 Obstacles 的地板多邊形夾（ShopRoom.WalkFloor），不用矩形
 
         Selection.activeGameObject = player;
 

@@ -24,7 +24,8 @@ namespace WitchShop.Core
             return new GameObject("SaleCounter").AddComponent<SaleCounter>();
         }
 
-        const float InteractRange = 90f;
+        /// <summary>按 E 的感應半徑。public 是給 Obstacles 的可達性自我檢查用（tools/check_shop_walk.py 也照這個值）。</summary>
+        public const float InteractRange = 90f;
 
         Transform player;
         GameObject hint;

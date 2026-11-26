@@ -18,8 +18,12 @@ namespace WitchShop.Core
     ///   ● 最短重播間隔 —— 同一個音效在間隔內再叫一次會被丟掉，
     ///     免得同一幀觸發十次疊成一聲爆音（例如一次搬一整排東西）。
     ///   ● 小幅隨機 pitch —— 腳步、對話 blip 這種一直重複的聲音才不會像機關槍。
-    ///   ● 總音量與靜音存進存檔（<see cref="Volume"/> / <see cref="Muted"/>），
-    ///     之後的設定介面直接接這兩個屬性。<c>M</c> 鍵切換靜音。
+    ///   ● 音效音量、音樂音量與靜音存進存檔（<see cref="Volume"/> / <see cref="MusicVolume"/> /
+    ///     <see cref="Muted"/>），設定面板（UI/SettingsPanel）直接接這三個屬性。
+    ///     **靜音同時管音樂與音效**（音樂由 <see cref="Bgm"/> 播，它看這裡的設定）。<c>M</c> 鍵切換靜音。
+    ///     任何一個變了都會發 <see cref="Changed"/>。
+    ///   ● 音量的存檔有**防抖**：連按 ＋／－ 時只改記憶體，最後一次變動後 0.5 秒才寫檔
+    ///     （SaveManager.SetString 會整包寫檔，每按一下就寫太浪費）；關遊戲時沒寫的也會補寫。
     ///   ● UI 按鈕的 click 音：面板建好時呼叫一次 <see cref="BindClicks"/>，
     ///     不用逐顆按鈕貼（見那支的說明）。
     ///
@@ -45,6 +49,9 @@ namespace WitchShop.Core
         /// <summary>存檔 key（刻意不列進 SaveManager.SaveKeys，理由見那邊的註解）。</summary>
         const string SaveKey = "witch.audio";
         const float DefaultVolume = 0.8f;
+        const float DefaultMusic = 0.5f;
+        /// <summary>音量最後一次變動後多久才寫檔（秒，unscaledTime）。</summary>
+        const float SaveDelay = 0.5f;
         /// <summary>沒特別指定時，同一個音效的最短重播間隔（秒）。</summary>
         const float DefaultGap = 0.05f;
 
@@ -82,11 +89,21 @@ namespace WitchShop.Core
         [Serializable]
         class Settings
         {
+            /// <summary>音效音量。</summary>
             public float volume = DefaultVolume;
+            /// <summary>音樂音量。舊存檔沒有這個欄位 —— JsonUtility 對缺的欄位保留預設值，不用 migration。</summary>
+            public float music = DefaultMusic;
+            /// <summary>靜音（音樂與音效一起）。</summary>
             public bool muted;
         }
 
         static Settings settings;
+        /// <summary>音量改過、還沒寫檔（見 <see cref="MarkDirty"/>）。</summary>
+        static bool dirty;
+        static float dirtyAt;
+
+        /// <summary>音效音量、音樂音量、靜音任何一個變了就發（給 Bgm 與設定面板）。</summary>
+        public static event Action Changed;
 
         static Settings Prefs
         {
@@ -105,36 +122,78 @@ namespace WitchShop.Core
                     settings = new Settings();
                 }
                 settings.volume = Mathf.Clamp01(settings.volume);
+                settings.music = Mathf.Clamp01(settings.music);
                 return settings;
             }
         }
 
-        static void SavePrefs() => SaveManager.SetString(SaveKey, JsonUtility.ToJson(Prefs));
+        static void SavePrefs()
+        {
+            dirty = false;
+            SaveManager.SetString(SaveKey, JsonUtility.ToJson(Prefs));
+        }
 
-        /// <summary>總音量 0..1（存檔）。給之後的設定介面用。</summary>
+        /// <summary>音量改了：先記著，由 <see cref="Update"/> 在最後一次變動後 <see cref="SaveDelay"/> 秒才寫檔。</summary>
+        static void MarkDirty()
+        {
+            dirty = true;
+            dirtyAt = Time.unscaledTime;
+            Ensure();                    // 寫檔是常駐物件的 Update 在做，保險起見確定它在
+        }
+
+        static void RaiseChanged()
+        {
+            try { Changed?.Invoke(); }
+            catch (Exception e) { Debug.LogWarning($"[Sfx] Changed 的訂閱者出錯：{e.Message}"); }
+        }
+
+        /// <summary>音效音量 0..1（存檔，防抖）。設定面板的「音效」那一列。</summary>
         public static float Volume
         {
             get => Prefs.volume;
-            set { Prefs.volume = Mathf.Clamp01(value); SavePrefs(); }
+            set
+            {
+                float v = Mathf.Clamp01(value);
+                if (Mathf.Approximately(v, Prefs.volume)) return;    // 沒變就什麼都不做
+                Prefs.volume = v;
+                MarkDirty();
+                RaiseChanged();
+            }
         }
 
-        /// <summary>靜音（存檔）。靜音時 Play 直接略過。</summary>
+        /// <summary>音樂音量 0..1（存檔，防抖）。Bgm 看這個；設定面板的「音樂」那一列。</summary>
+        public static float MusicVolume
+        {
+            get => Prefs.music;
+            set
+            {
+                float v = Mathf.Clamp01(value);
+                if (Mathf.Approximately(v, Prefs.music)) return;
+                Prefs.music = v;
+                MarkDirty();
+                RaiseChanged();
+            }
+        }
+
+        /// <summary>靜音（存檔，立刻寫）。**音樂與音效一起**：靜音時 Play 直接略過，Bgm 壓到 0。</summary>
         public static bool Muted
         {
             get => Prefs.muted;
             set
             {
+                if (Prefs.muted == value) return;
                 Prefs.muted = value;
-                SavePrefs();
+                SavePrefs();                                         // 順便把還沒寫的音量一起寫掉
                 if (value && instance != null) instance.StopAll();   // 正在響的長音（旋律）也一起收掉
+                RaiseChanged();
             }
         }
 
-        /// <summary>切換靜音並冒一則提示（M 鍵）。</summary>
+        /// <summary>切換靜音並冒一則提示（M 鍵、設定面板的靜音鈕）。</summary>
         public static void ToggleMute()
         {
             Muted = !Muted;
-            UI.Toast.Show(Muted ? "音效：靜音（M 切換）" : "音效：開啟（M 切換）");
+            UI.Toast.Show(Muted ? "聲音：靜音（M 切換）" : "聲音：開啟（M 切換）");
             if (!Muted) Play("ui-click");
         }
 
@@ -144,7 +203,7 @@ namespace WitchShop.Core
         /// 播一個音效。找不到檔案、靜音、或還在重播間隔內就什麼都不做。
         /// </summary>
         /// <param name="name">檔名（不含副檔名）。有變體的直接給基底名，例如 "step"。</param>
-        /// <param name="volume">這一次的音量倍率（再乘總音量）。</param>
+        /// <param name="volume">這一次的音量倍率（再乘音效音量 <see cref="Volume"/>）。</param>
         /// <param name="pitchJitter">隨機 pitch 幅度（±比例，0.1＝±10%）；負數＝用該音效的預設值。</param>
         public static void Play(string name, float volume = 1f, float pitchJitter = -1f)
         {
@@ -247,6 +306,8 @@ namespace WitchShop.Core
         {
             instance = null;
             settings = null;
+            dirty = false; dirtyAt = 0f;
+            Changed = null;
             clips.Clear(); missing.Clear(); lastAt.Clear(); lastVariant.Clear();
             lastCueFrame = -1; pendingClickFrame = -1;
         }
@@ -283,7 +344,18 @@ namespace WitchShop.Core
         void OnDestroy()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            FlushPrefs();
             if (instance == this) instance = null;
+        }
+
+        void OnApplicationQuit() => FlushPrefs();
+
+        /// <summary>還有沒寫進存檔的音量就現在寫（關遊戲、物件被收掉時）。</summary>
+        static void FlushPrefs()
+        {
+            if (!dirty) return;
+            try { SavePrefs(); }
+            catch (Exception e) { Debug.LogWarning($"[Sfx] 音量設定寫檔失敗：{e.Message}"); }
         }
 
         void OnSceneLoaded(Scene s, LoadSceneMode m) => SyncListener();
@@ -301,6 +373,9 @@ namespace WitchShop.Core
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.M)) ToggleMute();
+
+            // 音量存檔的防抖：最後一次變動後 SaveDelay 秒才寫（見 MarkDirty）
+            if (dirty && Time.unscaledTime - dirtyAt >= SaveDelay) FlushPrefs();
 
             // 延後的 click：同一幀已經有更具體的音效就不響（見 BindClicks）
             if (pendingClickFrame >= 0 && Time.frameCount > pendingClickFrame)

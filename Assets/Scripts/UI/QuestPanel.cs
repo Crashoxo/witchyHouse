@@ -16,6 +16,13 @@ namespace WitchShop.UI
     ///
     /// ⚠️ 字要用**深墨色**（rgb(88,52,32) 那組）—— 底是米色羊皮紙，
     ///    用平常那套淺色字會完全看不見。同樣的坑在時鐘的月/日數字踩過一次。
+    ///
+    /// ── 像素外觀（<see cref="UiSkin.On"/>）──────────────────────────
+    /// 底換成 skin8 的羊皮紙卷軸（scroll-paper 九宮格：上下兩根木軸），標題是紫布緞帶、關閉是 skin 的紅鈕。
+    /// 每條任務是一張清單列卡片，能用圖的不用句子：
+    ///   [勾選框][任務名]　／　[動詞][目標道具圖][進度條][2/5]　／　[→ 發任務的人]……[金幣 30][獎勵道具 ×1]
+    /// 可回報＝金框卡＋打勾＋金色進度條。底下 [Q][Esc] 關閉 …… 頁數。
+    /// 外觀關著時照舊（quest-scroll.png 底圖＋整句文字）。
     /// </summary>
     public class QuestPanel : MonoBehaviour
     {
@@ -37,6 +44,7 @@ namespace WitchShop.UI
         Label footLabel;
         int page;
         bool built;
+        bool skin;        // 這次用的是不是像素外觀（Build 時決定）
         UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         void Awake()
@@ -94,6 +102,8 @@ namespace WitchShop.UI
             root = doc.rootVisualElement;
             if (root == null) { Debug.LogError("[QuestPanel] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudExtraStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關 UiSkin.Enabled）
+            skin = UiSkin.On;
             CjkFont.Apply(root);
             Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
@@ -103,9 +113,11 @@ namespace WitchShop.UI
 
             scroll = new VisualElement();
             scroll.AddToClassList("quest-scroll");
-            // 底板：有捲軸美術就用它，沒有的話退回一張米色羊皮紙
+            // 底板：像素外觀＝Skin8 的 scroll-paper（這裡不寫 inline —— inline 的優先權比 uss 高，會把它蓋掉）；
+            // 舊外觀：有捲軸美術就用它，沒有的話退回一張米色羊皮紙
             var frame = GameArt.QuestScroll;
-            if (frame != null) scroll.style.backgroundImage = new StyleBackground(frame);
+            if (skin) { }
+            else if (frame != null) scroll.style.backgroundImage = new StyleBackground(frame);
             else
             {
                 scroll.style.backgroundColor = new Color(226 / 255f, 210 / 255f, 170 / 255f, 0.98f);
@@ -121,19 +133,27 @@ namespace WitchShop.UI
             title.AddToClassList("quest-title");
             scroll.Add(title);
 
-            var rule = new VisualElement();
-            rule.AddToClassList("quest-rule");
-            scroll.Add(rule);
+            if (!skin)                    // 像素外觀：標題是緞帶，不需要底下那條線
+            {
+                var rule = new VisualElement();
+                rule.AddToClassList("quest-rule");
+                scroll.Add(rule);
+            }
 
             listBox = new VisualElement();
             listBox.AddToClassList("quest-list");
             scroll.Add(listBox);
 
-            footLabel = new Label();
-            footLabel.AddToClassList("quest-foot");
-            scroll.Add(footLabel);
+            if (skin)
+                footLabel = UiSkin.Footer(scroll, "關閉", "Q", "Esc");   // [Q][Esc] 關閉 …… 頁數
+            else
+            {
+                footLabel = new Label();
+                footLabel.AddToClassList("quest-foot");
+                scroll.Add(footLabel);
+            }
 
-            var close = new Button(Close) { text = "×" };
+            var close = new Button(Close) { text = "×", focusable = false };
             close.AddToClassList("quest-close");
             scroll.Add(close);
 
@@ -152,7 +172,7 @@ namespace WitchShop.UI
                 var msg = new Label("目前沒有\n進行中的任務。\n\n去城鎮找頭頂\n有「！」的\nNPC 聊聊吧！");
                 msg.AddToClassList("quest-empty");
                 listBox.Add(msg);
-                footLabel.text = "Q / Esc 關閉";
+                footLabel.text = skin ? "" : "Q / Esc 關閉";
                 return;
             }
 
@@ -160,11 +180,14 @@ namespace WitchShop.UI
             page = Mathf.Clamp(page, 0, pages - 1);
 
             for (int i = page * PerPage; i < ids.Count && i < (page + 1) * PerPage; i++)
-                listBox.Add(Entry(ids[i]));
+                listBox.Add(skin ? SkinEntry(ids[i]) : Entry(ids[i]));
 
-            footLabel.text = pages > 1
-                ? $"‹ {page + 1} / {pages} ›　（← → 翻頁）　Q / Esc 關閉"
-                : "Q / Esc 關閉";
+            if (skin)
+                footLabel.text = pages > 1 ? $"‹ {page + 1}/{pages} ›" : "";   // 關閉的鍵帽已經在左邊
+            else
+                footLabel.text = pages > 1
+                    ? $"‹ {page + 1} / {pages} ›　（← → 翻頁）　Q / Esc 關閉"
+                    : "Q / Esc 關閉";
 
             // 多頁時用左右鍵翻
             if (pages > 1)
@@ -201,6 +224,104 @@ namespace WitchShop.UI
             box.Add(sub);
 
             return box;
+        }
+
+        /// <summary>
+        /// 像素外觀的一條任務（清單列卡片，三行）：
+        ///   [勾選框][任務名]
+        ///   [動詞][目標道具圖][進度條][2/5]
+        ///   [→ 發任務的人] …… [金幣 30][獎勵道具 ×1]
+        /// 可回報：卡片換金框（sk-q-ready）、勾選框打勾、進度條變金色。
+        /// </summary>
+        VisualElement SkinEntry(string id)
+        {
+            var d = QuestLog.Def(id);
+            var box = new VisualElement();
+            box.AddToClassList("quest-entry");
+            if (d == null) return box;
+
+            bool ready = QuestLog.StatusOf(id) == QuestStatus.Ready;
+            box.EnableInClassList("sk-q-ready", ready);
+
+            // ① [勾選框][任務名]
+            var l1 = Line(box, "sk-q-line--1");
+            var check = new VisualElement();
+            check.AddToClassList("sk-q-box");
+            l1.Add(check);
+            var title = new Label(d.Title);
+            title.AddToClassList("sk-q-title");
+            l1.Add(title);
+
+            // ② [動詞][目標圖][進度條][2/5]
+            var o = d.Objective;
+            var l2 = Line(box, "sk-q-line--2");
+            var verb = new Label(VerbOf(o.Kind));
+            verb.AddToClassList("sk-q-verb");
+            l2.Add(verb);
+            l2.Add(TargetIcon(o));
+            var bar = new VisualElement();
+            bar.AddToClassList("sk-q-bar");
+            var fill = new VisualElement();
+            fill.AddToClassList("sk-q-fill");
+            float frac = o.Count > 0 ? Mathf.Clamp01(QuestLog.Progress(id) / (float)o.Count) : 1f;
+            fill.style.width = Length.Percent(frac * 100f);
+            bar.Add(fill);
+            l2.Add(bar);
+            var num = new Label(QuestLog.ProgressText(id));
+            num.AddToClassList("sk-q-num");
+            l2.Add(num);
+
+            // ③ [→ 誰] …… [獎勵]
+            var l3 = Line(box, "sk-q-line--3");
+            l3.Add(UiSkin.Ico("arrow"));
+            var giver = new Label(d.Giver);
+            giver.AddToClassList("sk-q-giver");
+            l3.Add(giver);
+            var reward = new VisualElement();
+            reward.AddToClassList("sk-q-reward");
+            if (d.RewardGold > 0) reward.Add(UiSkin.Money(d.RewardGold, "sk-q-rewardnum"));
+            if (!string.IsNullOrEmpty(d.RewardItem) && d.RewardQty > 0)
+                reward.Add(UiSkin.IconCount(GameArt.Item(d.RewardItem), "×" + d.RewardQty));
+            l3.Add(reward);
+
+            return box;
+        }
+
+        static VisualElement Line(VisualElement box, string cls)
+        {
+            var l = new VisualElement();
+            l.AddToClassList("sk-q-line");
+            l.AddToClassList(cls);
+            box.Add(l);
+            return l;
+        }
+
+        /// <summary>目標動詞（同 QuestLog.ObjectiveText 的那組，只是不帶道具名與數量 —— 那兩個改用圖與進度表達）。</summary>
+        static string VerbOf(ObjKind k)
+        {
+            switch (k)
+            {
+                case ObjKind.Gather: return "採集";
+                case ObjKind.Sell: return "賣出";
+                case ObjKind.Brew: return "調配";
+                case ObjKind.Have: return "備齊";
+                default: return "存到";
+            }
+        }
+
+        /// <summary>目標的圖：指定道具＝道具圖；存錢＝金幣；沒指定道具時依種類給一個通用圖（賣＝籃子、調配＝藥瓶、其他＝葉子）。</summary>
+        static VisualElement TargetIcon(QuestObjective o)
+        {
+            if (o.Kind == ObjKind.Gold) return UiSkin.Coin();
+            var sp = string.IsNullOrEmpty(o.Item) ? null : GameArt.Item(o.Item);
+            if (sp != null)
+            {
+                var ic = new VisualElement();
+                ic.AddToClassList("sk-q-icon");
+                ic.style.backgroundImage = new StyleBackground(sp);
+                return ic;
+            }
+            return UiSkin.Ico(o.Kind == ObjKind.Sell ? "basket" : o.Kind == ObjKind.Brew ? "flask" : "leaf");
         }
     }
 }

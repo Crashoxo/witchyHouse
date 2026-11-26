@@ -21,6 +21,25 @@
     white-space: nowrap;
 }
 
+/* 圖示版 Toast（Toast.ShowIcons）：一排 8-bit 圖示＋最多兩三個字。 */
+.toast--icons {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px 14px;
+}
+.toast-icon { margin: 0 3px; }
+.toast-icon-text {
+    margin-left: 6px;
+    font-size: 20px;
+    color: rgb(248, 238, 220);
+}
+
+/* 圖示元素（UI/UiIcons.Element）：不要被 flex 壓扁。 */
+.ui-icon {
+    flex-shrink: 0;
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
 /* ── 換場黑幕 ───────────────────────────────────────── */
 
 .fade {
@@ -247,23 +266,71 @@
     font-size: 14px;
 }
 
-/* ── 左上角常駐 HUD（金幣 + 名聲）───────────────────── */
+/* ── 上方工具列（UI/CornerHud）──────────────────────────
+   [金幣] ┃ [名聲＋進度條] ┃ [開關店鈕][R 佈置提示（只在店裡）] ┃ [設定 (O)]
+   8-bit 風：直角、粗邊、雙色邊（左上亮、右下暗＝凸起；按下對調＝凹下）。
+   ⚠️ 這一段是**像素外觀關著時**的退路（只用 background-color／border）。像素外觀開著時（UiSkin.Enabled，預設）
+      CornerHud 會 UiSkin.Apply，由 Skin8.uss「上方工具列」那段用 skin8 的九宮格蓋過去（hud-bar 底座、金／紫／灰鈕）。
+   ⚠️ 尺寸都是 border-box（width／height 含 padding 與 border）。
+      版面數字（52px 高、各格寬）跟回報裡的 mockup 是同一組；改了要重算 Toast 的 top 有沒有被蓋到（76px）。
+   ⚠️ 按鈕的 :hover／:active 一律疊兩個 class 寫 —— 預設主題的 .unity-button:hover:active
+      權重比單一 class＋一個偽類高，不疊會被它蓋掉。 */
 
+/* 外框：一圈深色粗邊。整條工具列的範圍＝CornerHud.BlocksWorldClick 量的範圍。 */
 .hud-corner {
     position: absolute;
-    top: 12px;
-    left: 12px;
-    background-color: rgba(26, 22, 30, 0.72);
+    top: 8px;
+    left: 8px;
     border-width: 2px;
-    border-color: rgba(224, 200, 160, 0.6);
-    border-radius: 8px;
-    padding: 8px 14px;
+    border-color: rgb(18, 12, 22);
+}
+
+/* 內框：凸起的木條（左上亮、右下暗）。總高 48 ＋ 外框 2×2 ＝ 52px。 */
+.hud-tb {
+    flex-direction: row;
+    align-items: center;
+    height: 48px;
+    padding: 0 4px;
+    background-color: rgba(52, 40, 62, 0.94);
+    border-width: 2px;
+    border-top-color: rgb(236, 210, 156);
+    border-left-color: rgb(236, 210, 156);
+    border-bottom-color: rgb(124, 90, 58);
+    border-right-color: rgb(124, 90, 58);
+}
+
+/* 一格 */
+.hud-seg {
+    flex-direction: row;
+    align-items: center;
+    padding: 0 8px;
+}
+.hud-seg--gold { min-width: 88px; }
+/* 名聲：上字下條；固定最小寬，點數變多時後面的按鈕才不會一直往右推 */
+.hud-seg--rep {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    min-width: 188px;
+}
+
+/* 分隔：暗 2px＋亮 2px＝刻進木頭的一條凹槽 */
+.hud-sep {
+    width: 4px;
+    height: 30px;
+    background-color: rgb(18, 12, 22);
+    border-right-width: 2px;
+    border-right-color: rgba(236, 210, 156, 0.45);
 }
 
 .hud-gold {
-    font-size: 22px;
+    margin: 0;
+    padding: 0;
+    font-size: 20px;
     color: rgb(255, 224, 130);
     -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    white-space: nowrap;
     transform-origin: 0% 50%;     /* 字靠左，彈一下（UIAnim.Bump）時從左邊放大，不然字會左右晃 */
 }
 /* 金額變動時短暫閃一下（UIAnim.Bump 帶的 class；顏色的 transition 寫在 AnimStyle 的 .uia-bump）。
@@ -272,24 +339,144 @@
 .hud-gold--down { color: rgb(244, 150, 140); }
 
 .hud-rep {
-    font-size: 14px;
-    color: rgb(206, 196, 178);
-    margin-top: 2px;
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+    color: rgb(214, 202, 182);
+    white-space: nowrap;
 }
 
-/* 名聲進度條 */
-.hud-bar {
-    width: 140px;
-    height: 6px;
-    margin-top: 5px;
-    background-color: rgba(255, 255, 255, 0.14);
-    border-radius: 3px;
+/* 名聲進度條：直角、深色細框。
+   ⚠️ class 叫 hud-rep-bar，不叫 hud-bar：hud-bar 是下排背包列底座的 class（Skin8 的 .sk .hud-bar 是一整塊木頭九宮格），
+      工具列套上像素外觀（UiSkin.Apply）之後同名就會被它蓋掉。 */
+.hud-rep-bar {
+    height: 8px;
+    margin-top: 4px;
+    background-color: rgb(84, 70, 90);
+    border-width: 1px;
+    border-color: rgb(18, 12, 22);
 }
-
 .hud-bar-fill {
-    height: 6px;
+    height: 100%;
     background-color: rgb(255, 200, 110);
-    border-radius: 3px;
+}
+
+/* ── 開店／關店鈕：[招牌 32px][P 鍵帽 24px]，寬 2+6+32+4+24+6+2 ＝ 76、高 40 ──
+   亮的招牌（金黃底）＝開店；暗的招牌（夜藍底）＝關店。
+   ⚠️ 元素上不要寫 transition-property：切換時的 UIAnim.Bump 靠 .uia-bump 的 scale transition。 */
+.hud-shop {
+    flex-direction: row;
+    align-items: center;
+    height: 40px;
+    margin: 0;
+    padding: 0 6px;
+    border-width: 2px;
+    border-radius: 0;
+}
+.hud-shop-icon { margin: 0; }
+.hud-shop-key { margin: 0 0 0 4px; }
+
+.hud-shop.hud-shop--open {
+    background-color: rgb(168, 116, 32);
+    border-top-color: rgb(255, 230, 150);
+    border-left-color: rgb(255, 230, 150);
+    border-bottom-color: rgb(96, 60, 18);
+    border-right-color: rgb(96, 60, 18);
+}
+.hud-shop.hud-shop--open:hover { background-color: rgb(198, 142, 46); }
+.hud-shop.hud-shop--open:active,
+.hud-shop.hud-shop--open:hover:active {
+    background-color: rgb(140, 94, 24);
+    border-top-color: rgb(96, 60, 18);
+    border-left-color: rgb(96, 60, 18);
+    border-bottom-color: rgb(255, 230, 150);
+    border-right-color: rgb(255, 230, 150);
+    translate: 0px 2px;
+}
+
+.hud-shop.hud-shop--closed {
+    background-color: rgb(58, 50, 104);
+    border-top-color: rgb(156, 146, 226);
+    border-left-color: rgb(156, 146, 226);
+    border-bottom-color: rgb(26, 22, 54);
+    border-right-color: rgb(26, 22, 54);
+}
+.hud-shop.hud-shop--closed:hover { background-color: rgb(78, 68, 136); }
+.hud-shop.hud-shop--closed:active,
+.hud-shop.hud-shop--closed:hover:active {
+    background-color: rgb(46, 40, 86);
+    border-top-color: rgb(26, 22, 54);
+    border-left-color: rgb(26, 22, 54);
+    border-bottom-color: rgb(156, 146, 226);
+    border-right-color: rgb(156, 146, 226);
+    translate: 0px 2px;
+}
+
+/* 佈置模式中：停用（不能開店），整顆變淡 */
+.hud-shop.hud-shop--open:disabled,
+.hud-shop.hud-shop--closed:disabled { opacity: 0.4; }
+
+/* 開店中按了 R（CornerHud.NudgeShop）：抖一下的同時閃紅框 */
+.hud-shop.hud-shop--open.hud-shop--nudge,
+.hud-shop.hud-shop--closed.hud-shop--nudge { border-color: rgb(255, 96, 86); }
+
+/* 佈置提示 [R 鍵帽(+鎖)][木槌]：緊貼開關店鈕右邊，只在店裡顯示（CornerHud.Update 開關）。
+   寬 2+4+(28+4)+(28+4)+4+2 ＝ 76、高 2+2+28+2+2 ＝ 36。開店中 R 與木槌變灰上鎖。 */
+.hud-edit {
+    flex-direction: row;
+    align-items: center;
+    margin-left: 6px;
+    padding: 2px 4px;
+    background-color: rgba(255, 206, 110, 0.18);
+    border-width: 2px;
+    border-color: rgb(255, 206, 110);
+    transform-origin: 0% 50%;
+}
+.hud-edit-icon { margin: 0 2px; }
+.hud-edit-keybox { margin: 0 2px; }
+.hud-edit-keybox .hud-edit-icon { margin: 0; }
+/* 鎖頭疊在 R 鍵帽右下角 */
+.hud-edit-lock {
+    position: absolute;
+    right: -5px;
+    bottom: -4px;
+}
+/* 開店中：框變暗灰、R 與木槌變淡（鎖頭維持亮的） */
+.hud-edit--locked {
+    background-color: rgba(0, 0, 0, 0.22);
+    border-color: rgb(120, 110, 124);
+}
+.hud-edit--locked .hud-edit-dim { opacity: 0.45; }
+/* 開店中按了 R：閃一下紅框（UIAnim.Bump 帶的 class）。⚠️ 要寫在 --locked 後面才蓋得過 */
+.hud-edit--nudge { border-color: rgb(255, 96, 86); }
+
+/* 「設定 (O)」：高 28 的小按鈕，不搶眼。 */
+.hud-settings {
+    height: 28px;
+    margin: 0;
+    padding: 0 8px;
+    font-size: 13px;
+    color: rgb(230, 218, 198);
+    background-color: rgb(70, 56, 80);
+    border-width: 2px;
+    border-radius: 0;
+    border-top-color: rgb(150, 128, 160);
+    border-left-color: rgb(150, 128, 160);
+    border-bottom-color: rgb(30, 22, 36);
+    border-right-color: rgb(30, 22, 36);
+}
+.hud-btn.hud-settings:hover {
+    color: rgb(252, 242, 224);
+    background-color: rgb(94, 78, 108);
+}
+.hud-btn.hud-settings:active,
+.hud-btn.hud-settings:hover:active {
+    background-color: rgb(56, 44, 64);
+    border-top-color: rgb(30, 22, 36);
+    border-left-color: rgb(30, 22, 36);
+    border-bottom-color: rgb(150, 128, 160);
+    border-right-color: rgb(150, 128, 160);
+    translate: 0px 2px;
 }
 
 /* ── 睡覺過場 ───────────────────────────────────────── */
@@ -347,12 +534,40 @@
     -unity-font-style: bold;
 }
 
-.tray-hint {
-    font-size: 14px;
-    color: rgb(186, 178, 168);
-    margin-left: 14px;
+.tray-title-icon { margin-right: 4px; }
+
+/* 提示列：一排圖示組（ShopRoomTray.SetHint）。原本是 rich text 句子，玩家說字太多 → 純圖示。
+   深色底＋金色左邊條保留（玩家之前說提示看不到）。 */
+.tray-hints {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-left: 10px;
+    padding: 4px 8px;
     flex-grow: 1;
-    white-space: normal;
+    flex-shrink: 1;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-left-width: 4px;
+    border-color: rgb(255, 206, 110);
+    border-radius: 6px;
+}
+.hint-group {
+    flex-direction: row;
+    align-items: center;
+    margin: 2px 6px 2px 0;
+    padding: 1px 3px;
+    border-radius: 5px;
+}
+.hint-icon { margin: 0 1px; }
+/* 拖曳中正在講的那條圖例：亮底 */
+.hint-group--hot { background-color: rgba(255, 255, 255, 0.16); }
+/* 放不下的原因：紅底 */
+.hint-group--bad { background-color: rgba(200, 40, 40, 0.55); }
+.hint-sep {
+    width: 2px;
+    height: 26px;
+    margin: 0 8px 0 2px;
+    background-color: rgba(255, 255, 255, 0.22);
 }
 
 .tray-items {
@@ -390,6 +605,46 @@
     padding: 12px;
     white-space: normal;
 }
+
+/* ── 第一次進店的圖解卡（UI/ShopEditIntroCard）────────── */
+
+.intro-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(10, 8, 16, 0.55);
+}
+.intro-card {
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 16px;
+    background-color: rgba(26, 22, 30, 0.96);
+    border-width: 3px;
+    border-color: rgb(214, 196, 232);
+    border-radius: 10px;
+}
+.intro-step {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 96px;
+    height: 112px;
+    padding: 6px;
+    background-color: rgba(255, 255, 255, 0.07);
+    border-width: 2px;
+    border-color: rgba(228, 216, 198, 0.45);
+    border-radius: 8px;
+}
+.intro-num {
+    font-size: 14px;
+    color: rgb(255, 214, 120);
+    -unity-font-style: bold;
+    margin-bottom: 2px;
+}
+.intro-row { flex-direction: row; align-items: center; }
+.intro-icon { margin: 2px; }
+.intro-arrow { margin: 0 4px; }
 
 /* ── 每日結算（睡醒時蓋在黑幕上的帳單）─────────────────── */
 

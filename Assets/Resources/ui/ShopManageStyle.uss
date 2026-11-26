@@ -100,3 +100,62 @@
 .up-cost   { width: 90px;  font-size: 17px; color: rgb(255, 224, 130); -unity-text-align: middle-center; }
 
 .hint { font-size: 15px; color: rgb(184, 176, 166); margin-top: 10px; }
+
+/* 設定面板（SettingsPanel）：音量條是 10 個小方塊自己畫的（內建 Slider 執行期沒有主題，看不到拖曳鈕）。
+   深色底 → 滿格用亮的琥珀色、空格用淡淡的米色框。 */
+.set-row   { height: 52px; }
+.set-label { width: 76px; font-size: 20px; color: rgb(244, 236, 224); }
+.set-bar   { flex-direction: row; align-items: center; margin-left: 8px; margin-right: 2px; }
+.set-cell {
+    width: 20px; height: 22px; margin-right: 4px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-width: 1px; border-color: rgba(228, 216, 198, 0.35);
+    border-radius: 2px;
+}
+.set-cell:hover  { border-color: rgba(255, 232, 180, 0.85); }
+.set-cell--on    { background-color: rgb(255, 204, 112); border-color: rgb(255, 232, 170); }
+.set-pct   { width: 60px; font-size: 18px; color: rgb(255, 224, 130); -unity-text-align: middle-right; }
+.set-mute  { width: 120px; margin-left: 8px; background-color: rgb(78, 118, 92); }
+.set-mute:hover { background-color: rgb(96, 142, 112); }
+.set-mute--on   { background-color: rgb(120, 60, 70); }
+.set-mute--on:hover { background-color: rgb(150, 74, 86); }
+
+/* 衣櫃面板（WardrobePanel）：左欄造型清單 200、右欄大立繪預覽。面板寬 640 → 內容 588 ＝ 200 ＋ 16 ＋ 372。
+   選取中沿用分頁的 active 色（暖棕）＋亮米色框；「穿著中」小標用上架鈕的綠。
+   立繪框墊比面板亮一階的底色，黑袍才看得出輪廓；框內的圖固定 196×264 原尺寸。 */
+.wd-body    { flex-direction: row; align-items: flex-start; }
+.wd-list    { width: 200px; margin-right: 16px; flex-shrink: 0; }
+.wd-item {
+    flex-direction: row; align-items: center;
+    height: 48px; margin-bottom: 6px; padding-left: 12px; padding-right: 8px;
+    background-color: rgb(64, 56, 50);
+    border-width: 2px; border-color: rgba(228, 216, 198, 0.25);
+}
+.wd-item:hover   { background-color: rgb(84, 74, 66); }
+.wd-item--sel    { background-color: rgb(118, 92, 58); border-color: rgb(255, 224, 160); }
+.wd-item--sel:hover { background-color: rgb(134, 104, 66); }
+.wd-item-name    { flex-grow: 1; font-size: 18px; color: rgb(244, 236, 224); }
+.wd-tag {
+    font-size: 12px; color: rgb(236, 246, 236);
+    background-color: rgb(78, 118, 92);
+    padding: 1px 6px; border-radius: 3px;
+}
+.wd-preview { flex-grow: 1; flex-shrink: 1; align-items: center; }
+.wd-frame {
+    width: 216px; height: 284px; padding: 8px; flex-shrink: 0;
+    align-items: center; justify-content: center;
+    background-color: rgb(84, 74, 64);
+    border-width: 2px; border-color: rgba(228, 216, 198, 0.45);
+}
+.wd-art  { flex-shrink: 0; }
+.wd-name {
+    align-self: stretch; margin-top: 8px;
+    font-size: 24px; color: rgb(250, 238, 220); -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+.wd-desc {
+    align-self: stretch; min-height: 40px; margin-top: 4px;
+    font-size: 15px; color: rgb(200, 190, 178);
+    white-space: normal; -unity-text-align: upper-center;
+}
+.wd-wear { width: 120px; margin-top: 8px; margin-left: 0; }

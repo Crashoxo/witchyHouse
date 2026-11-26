@@ -12,6 +12,10 @@ namespace WitchShop.UI
     ///
     /// 版面比例（D、MedallionY、RibbonY…）是原專案對切好的 face.png 目視量出來的，
     /// 原封照抄，換美術才需要動。
+    ///
+    /// 外觀：**鐘面本身（ui/clock/*）兩種外觀都一樣、不動**。像素外觀（<see cref="UiSkin.On"/>）只換盤面底下那兩行字：
+    /// 改成靠右疊放的兩顆深木膠囊（時刻大、日期小；Skin8.uss 的 .sk-clock-*），跟工具列、下排背包列同一個語彙。
+    /// 外觀關著時照舊是直接印在畫面上的兩行字（HudExtraStyle 的 .clock-text／.clock-date）。
     /// </summary>
     public class ClockHud : MonoBehaviour
     {
@@ -78,6 +82,7 @@ namespace WitchShop.UI
             var root = doc.rootVisualElement;
             if (root == null) return;
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudExtraStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關 UiSkin.Enabled）：只影響盤面底下的時刻／日期
             root.pickingMode = PickingMode.Ignore;
             CjkFont.Apply(root);
 
@@ -113,14 +118,27 @@ namespace WitchShop.UI
             monthLabel = AddNumber(MonthX);
             dayLabel = AddNumber(DayX);
 
-            timeLabel = new Label();
-            timeLabel.AddToClassList("clock-text");
-            dial.Add(timeLabel);
-
-            // 盤面上的月/日是兩個小數字，不夠清楚 —— 底下再給一行完整日期
-            dateLabel = new Label();
-            dateLabel.AddToClassList("clock-date");
-            dial.Add(dateLabel);
+            // 盤面上的月/日是兩個小數字，不夠清楚 —— 底下再給時刻與一行完整日期
+            timeLabel = new Label { pickingMode = PickingMode.Ignore };
+            dateLabel = new Label { pickingMode = PickingMode.Ignore };
+            if (UiSkin.On)
+            {
+                // 像素外觀：盤面正下方、靠右疊兩顆膠囊（寬度跟著字）
+                var info = new VisualElement { pickingMode = PickingMode.Ignore };
+                info.AddToClassList("sk-clock-info");
+                dial.Add(info);
+                timeLabel.AddToClassList("sk-clock-time");
+                dateLabel.AddToClassList("sk-clock-date");
+                info.Add(timeLabel);
+                info.Add(dateLabel);
+            }
+            else
+            {
+                timeLabel.AddToClassList("clock-text");
+                dial.Add(timeLabel);
+                dateLabel.AddToClassList("clock-date");
+                dial.Add(dateLabel);
+            }
 
             built = true;
             Refresh();

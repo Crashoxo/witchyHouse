@@ -1,0 +1,1081 @@
+/*
+    8-bit 像素風 UI 外觀：暖棕木框＋羊皮紙內裡＋深紫布金滾邊的標題緞帶。
+
+    由 UI/UiSkin.cs 的 UiSkin.Apply(root) 疊在各面板原本的樣式表（ShopManageStyle／BagPanelStyle／HudStyle）之後，
+    同時在根上加 `sk` class —— 這裡**每一條規則都以 `.sk` 開頭**：
+      * 特異度比舊樣式多一個 class，`.sk .btn` 蓋得過 `.btn-list`、`.sk .btn:hover` 蓋得過 `.btn-list:hover`；
+      * UiSkin.Enabled = false 時根上沒有 `sk`，這整張就不作用 → 退回舊外觀。
+    圖在 Resources/ui/skin8/，由 tools/gen_ui_skin.py 產生（離線預覽：tools/preview_ui_skin.py）。
+
+    ── 全域約定 ─────────────────────────────────────────────
+      * 文字配色擇一並全域一致：**羊皮紙上一律深色墨水字**（墨 rgb(74,47,37)、次要 rgb(122,90,68)）；
+        只有「顏色很飽和的小東西」（按鈕、緞帶、徽章、HUD 格子）上面用米白字＋深色 1px 落影。
+      * 所有跟像素圖對齊的尺寸都是 **3 的倍數**：圖是 3 倍放大輸出的（1 邏輯格＝3 px），
+        九宮格的邊照圖原尺寸畫（-unity-slice-scale: 1px）。見 gen_ui_skin.py 檔頭「為什麼是 ×3」。
+      * 九宮格數字（-unity-slice-*，單位是圖的像素）必須跟 gen_ui_skin.py 的 SLICES ×3 一致：
+        `python tools/gen_ui_skin.py --check` 會逐條比對。只換圖的狀態（:hover、:active）沿用一般狀態那條的 slice。
+      * ⚠️ UI Toolkit 的 USS 不是完整 CSS：沒有 gap、box-shadow、:nth-child（交錯列由 UiSkin.Stripe 加 sk-alt）；
+        resource("…") 不帶副檔名；transition 只在 AnimStyle.uss 用，這裡不碰 opacity/scale/translate 以免跟 UIAnim 打架
+        （唯一例外是 .sk-tip 與 .title 的 translate，它們不是 UIAnim 控制的元素）。
+*/
+
+/* ════════════════════════ 面板 ════════════════════════ */
+
+/* 九宮格木框：框寬 21（7 格），四角金色四角星。內容離框 9。 */
+.sk .panel {
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    background-image: resource("ui/skin8/panel");
+    -unity-slice-left: 27; -unity-slice-top: 27; -unity-slice-right: 27; -unity-slice-bottom: 27;
+    -unity-slice-scale: 1px;
+    padding: 30px 30px 24px 30px;
+}
+
+/* ── 標題列：整列往上拉，壓在木框的上緣 ──
+   panel 的 padding-top 30、header margin-top -40 → header 佔 -10..26（木框上緣是 0..21）。
+   關閉鈕與金幣袋垂直置中在木框上；標題緞帶絕對定位、水平置中。 */
+.sk .header {
+    margin-top: -40px;
+    height: 36px;
+    margin-bottom: 9px;
+    align-items: center;
+}
+
+/* 標題緞帶：深紫布＋金滾邊、兩端燕尾。高 51 ＝ 圖原高（上下不拉伸），左右 slice 27 是整條尾巴。
+   布面在圖的第 1～13 列（3..42 px，中線 22.5），元素中線 25.5 → padding-bottom 6 讓字落在布面正中。
+   top -9：緞帶在面板座標 -19..32，布面 -16..23 剛好蓋住木框上緣（0..21）。 */
+.sk .title {
+    position: absolute;
+    left: 50%;
+    top: -9px;
+    translate: -50% 0;
+    height: 51px;
+    min-width: 150px;
+    padding: 0 36px 6px 36px;
+    background-image: resource("ui/skin8/ribbon");
+    -unity-slice-left: 27; -unity-slice-top: 15; -unity-slice-right: 27; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+    font-size: 21px;
+    color: rgb(255, 248, 230);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    text-shadow: 0px 2px 0px rgb(42, 27, 36);
+}
+
+/* 關閉鈕：紅色小方鈕，× 畫在圖裡（按鈕上的「×」文字設透明，留著給舊外觀用）。往右推一點壓在框角上。 */
+.sk .close {
+    width: 36px; height: 36px;
+    margin: 0 -21px 0 6px;
+    padding: 0;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/close");
+    color: rgba(0, 0, 0, 0);
+}
+.sk .close:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/close-hover"); }
+.sk .close:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/close-down"); }
+
+/* 金幣袋（ShopManage／城鎮商店的 .gold、背包的 .cap）：深木小膠囊，壓在木框上。 */
+.sk .gold-box,
+.sk .cap {
+    height: 30px;
+    padding: 0 12px 0 6px;
+    margin-right: 6px;
+    background-image: resource("ui/skin8/badge");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+}
+.sk .cap { padding: 0 12px 0 12px; font-size: 15px; color: rgb(255, 248, 230); -unity-text-align: middle-center; }
+.sk .gold { margin: 0 0 0 3px; font-size: 18px; color: rgb(255, 226, 140); -unity-font-style: bold; }
+
+/* ════════════════════════ 分頁 ════════════════════════ */
+/* 分頁列底下一條 3px 深木線；每個分頁往下延伸 3 蓋在線上（分頁有固定高度，超出容器內容區的部分照樣畫）：
+   沒選的分頁圖最底下一列就是同色的線（看起來線沒斷），選中的分頁最底下是內裡色 → 跟下面的內容連成同一張紙。 */
+.sk .tabs {
+    height: 39px;                 /* ⚠️ border-box：含底線 3 → 內容高 36 */
+    margin-bottom: 9px;
+    border-bottom-width: 3px;
+    border-color: rgb(112, 63, 41);
+    padding: 0 6px;
+}
+.sk .tab {
+    height: 33px;
+    margin: 6px 6px 0 0;          /* 6..39：壓住底線（線在 36..39） */
+    padding: 0 6px 3px 6px;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/tab");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+    font-size: 16px;
+    color: rgb(122, 90, 68);
+}
+.sk .tab:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/tab-hover"); color: rgb(74, 47, 37); }
+.sk .tab:hover:active { background-color: rgba(0, 0, 0, 0); }
+.sk .tab.active,
+.sk .tab.active:hover {
+    height: 36px;
+    margin-top: 3px;              /* 3..39：比沒選的高一階 */
+    background-image: resource("ui/skin8/tab-on");
+    color: rgb(74, 47, 37);
+    -unity-font-style: bold;
+    font-size: 17px;
+}
+
+/* ════════════════════════ 清單列 ════════════════════════ */
+/* 卡片：淡棕細框＋上緣高光＋最底下 3px 落影（所以 padding-bottom 3，內容才置中在卡面上）。 */
+.sk .rows { margin-top: 0; }
+.sk .row {
+    height: 57px;                 /* 卡面 54 ＋ 落影 3；放得下 48 的道具圖（＝道具圖 24 邏輯格 ×2） */
+    margin-bottom: 3px;
+    padding: 0 12px 3px 9px;
+    border-bottom-width: 0;
+    background-image: resource("ui/skin8/row");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+}
+.sk .row.sk-alt { background-image: resource("ui/skin8/row-alt"); }
+.sk .row:hover { background-image: resource("ui/skin8/row-hover"); }
+/* ⚠️ 不可用的列（sk-off）**不換卡、不淡字**：名稱與材料數字要照樣看得清楚（實機回饋：整列淡掉看不清楚）。
+   只有按鈕換停用樣式、成品圖稍微淡一點；缺什麼由紅色的材料小卡表達。row-off 圖留著備用。 */
+
+/* 欄位標頭：不是卡片，只是一排小字 */
+.sk .head-row {
+    height: 24px;
+    padding: 0 12px 0 9px;
+    border-bottom-width: 0;
+}
+.sk .head-label { font-size: 13px; color: rgb(150, 116, 84); }
+
+.sk .stock-icon { width: 48px; height: 48px; margin-right: 9px; }
+.sk .head-row .stock-icon { height: 0; }
+
+/* ── 字（羊皮紙上：深色墨水字）── */
+.sk .col-name,
+.sk .up-name,
+.sk .row-name,
+.sk .brew-name { font-size: 17px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+.sk .col-bag,
+.sk .col-shelf,
+.sk .row-count { font-size: 17px; color: rgb(74, 47, 37); }
+.sk .col-price,
+.sk .up-cost { font-size: 17px; color: rgb(146, 94, 16); -unity-font-style: bold; }
+.sk .up-desc { font-size: 13px; color: rgb(122, 90, 68); }
+.sk .up-effect { font-size: 14px; color: rgb(63, 110, 44); }
+.sk .dimmed,
+.sk .row-count.empty,
+.sk .row-side.empty { color: rgb(176, 160, 138); }
+.sk .row-side { font-size: 15px; }
+.sk .row-side.bag { color: rgb(63, 110, 44); }
+.sk .row-side.kept { color: rgb(146, 94, 16); }
+.sk .empty-msg { font-size: 17px; color: rgb(140, 108, 80); }
+
+/* ── 金幣＋數字（UiSkin.Money）── */
+.sk .sk-coin {
+    width: 21px; height: 21px;
+    margin-right: 3px;
+    background-image: resource("ui/skin8/coin");
+}
+.sk .sk-money-num { font-size: 17px; color: rgb(146, 94, 16); -unity-font-style: bold; }
+.sk .col-price.sk-money,
+.sk .brew-price { justify-content: center; }
+
+/* ── 數量徽章 ── */
+.sk .sk-badge,
+.sk .row-count {
+    min-width: 27px;
+    height: 24px;
+    padding: 0 7px;
+    background-image: resource("ui/skin8/badge");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+    font-size: 14px;
+    color: rgb(255, 248, 230);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+.sk .row-count { width: auto; }
+.sk .row-count.empty { background-image: none; color: rgb(176, 160, 138); }
+
+/* ── 小圖示（UiSkin.Ico）：一律原尺寸，不縮放 ── */
+/* 鎖頭／打勾／箭頭用另一支產生器的 icons8（96×96 ＝ 24 邏輯格 ×4），顯示 24 ＝ 邏輯 1:1 */
+.sk .sk-ico--lock      { width: 24px; height: 24px; background-image: resource("ui/icons8/lock"); }
+.sk .sk-ico--check     { width: 24px; height: 24px; background-image: resource("ui/icons8/st_ok"); }
+.sk .sk-ico--heart     { width: 21px; height: 21px; margin: 0 1px; background-image: resource("ui/skin8/heart"); }
+.sk .sk-ico--heart-off { width: 21px; height: 21px; margin: 0 1px; background-image: resource("ui/skin8/heart-off"); }
+.sk .sk-ico--arrow     { width: 24px; height: 24px; margin: 0 3px; background-image: resource("ui/icons8/arrow"); }
+
+/* ── 道具小圖＋數量 ── */
+.sk .sk-iconcount-text { font-size: 15px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+
+/* ════════════════════════ 製作清單（BrewPanel）════════════════════════ */
+/* 一列：[成品 48] [名稱] [材料小卡 ×N] [金幣 售價] [熬 1] [熬 N]
+   列高 57（卡面 54 ＋ 落影 3）。成品圖 48 ＝ 道具圖 24 邏輯格 ×2，最銳利。 */
+.sk .brew-row { height: 57px; }
+.sk .brew-icon { width: 48px; height: 48px; margin-right: 9px; }
+.sk .brew-name { width: 108px; }
+.sk .brew-price { width: 66px; }
+
+/* 材料小卡：[材料圖 24][持有/需要]。夠＝綠字、不夠＝紅字＋淡紅底。 */
+.sk .sk-chip {
+    height: 33px;
+    padding: 0 7px 0 3px;
+    margin-right: 6px;
+    background-image: resource("ui/skin8/chip");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+}
+.sk .sk-chip--short { background-image: resource("ui/skin8/chip-short"); }
+.sk .sk-chip-icon { width: 24px; height: 24px; margin-right: 3px; }
+.sk .sk-chip-num { font-size: 15px; color: rgb(63, 122, 44); -unity-font-style: bold; }
+.sk .sk-chip--short .sk-chip-num { color: rgb(179, 38, 58); }
+
+/* 做不出來的列：只有成品圖稍微淡一點（按鈕自己會換停用圖）；名稱、價格、材料小卡照常。 */
+.sk .sk-off .brew-icon { opacity: 0.7; }
+
+/* 浮動說明：深木小膠囊＋米色字 */
+.sk .sk-tip {
+    padding: 4px 10px 6px 10px;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    background-image: resource("ui/skin8/badge");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+    font-size: 14px;
+    color: rgb(255, 248, 230);
+}
+
+/* ════════════════════════ 按鈕 ════════════════════════ */
+/* 九宮格：左右 12、上 12、下 15（下緣含 2 格「唇」＝按鈕厚度，所以 padding-bottom 3 讓字置中在臉上）。
+   按下：唇剩 1 格、臉往下沉 1 格 → padding 上下對調，字跟著往下 3。
+   顏色：綠＝做／上架／存入（主要）、金＝要花錢的（買、升級）、木＝次要（撤下、取回、±）。 */
+.sk .btn {
+    height: 36px;
+    margin: 0 0 0 6px;            /* 內建主題的 .unity-button 有自己的 margin，明確歸零 */
+    padding: 0 9px 3px 9px;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/btn-wood");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+    font-size: 15px;
+    color: rgb(255, 248, 230);
+    -unity-font-style: bold;
+    text-shadow: 0px 1px 0px rgb(42, 27, 36);
+    opacity: 1;
+}
+.sk .btn:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-wood-hover"); }
+.sk .btn:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-wood-down"); padding: 3px 9px 0 9px; }
+
+.sk .btn-list,
+.sk .btn-keep,
+.sk .set-mute { background-image: resource("ui/skin8/btn-green"); }
+.sk .btn-list:hover,
+.sk .btn-keep:hover,
+.sk .set-mute:hover { background-image: resource("ui/skin8/btn-green-hover"); }
+.sk .btn-list:hover:active,
+.sk .btn-keep:hover:active,
+.sk .set-mute:hover:active { background-image: resource("ui/skin8/btn-green-down"); }
+
+.sk .btn-buy { background-image: resource("ui/skin8/btn-gold"); color: rgb(74, 47, 37); text-shadow: 0px 1px 0px rgb(255, 240, 190); }
+.sk .btn-buy:hover { background-image: resource("ui/skin8/btn-gold-hover"); }
+.sk .btn-buy:hover:active { background-image: resource("ui/skin8/btn-gold-down"); }
+.sk .btn-buy .sk-money-num,
+.sk .btn-buy .btn-money-text { color: rgb(74, 47, 37); }
+
+.sk .btn-pull,
+.sk .btn-take,
+.sk .set-mute--on { background-image: resource("ui/skin8/btn-wood"); }
+.sk .btn-pull:hover,
+.sk .btn-take:hover,
+.sk .set-mute--on:hover { background-image: resource("ui/skin8/btn-wood-hover"); }
+.sk .btn-pull:hover:active,
+.sk .btn-take:hover:active,
+.sk .set-mute--on:hover:active { background-image: resource("ui/skin8/btn-wood-down"); }
+
+/* 按鈕裡放「短字＋金幣＋數字」（UiSkin.MoneyButtonContent） */
+.sk .btn-money { flex-direction: row; }
+.sk .btn-money-text { font-size: 15px; color: rgb(255, 248, 230); -unity-font-style: bold; margin-right: 4px; }
+.sk .btn-money .sk-coin { margin-right: 2px; }
+.sk .btn-money .sk-money-num { font-size: 15px; }
+
+/* ± 小鈕：符號畫在圖裡（程式在按鈕上加 sk-minus／sk-plus），文字透明 */
+.sk .btn-step {
+    width: 33px; height: 33px;
+    padding: 0;
+    background-image: resource("ui/skin8/step-minus");
+    color: rgba(0, 0, 0, 0);
+    text-shadow: 0px 0px 0px rgba(0, 0, 0, 0);
+}
+.sk .btn-step:hover { background-image: resource("ui/skin8/step-minus-hover"); }
+.sk .btn-step:hover:active { background-image: resource("ui/skin8/step-minus-down"); padding: 0; }
+.sk .btn-step.sk-plus { background-image: resource("ui/skin8/step-plus"); }
+.sk .btn-step.sk-plus:hover { background-image: resource("ui/skin8/step-plus-hover"); }
+.sk .btn-step.sk-plus:hover:active { background-image: resource("ui/skin8/step-plus-down"); }
+
+/* ── 停用：一律放在按鈕區最後面（同特異度時後寫的贏），而且多帶一個 :disabled 墊高特異度 ── */
+.sk .btn:disabled,
+.sk .btn:disabled:hover {
+    background-image: resource("ui/skin8/btn-off");
+    color: rgb(244, 238, 226);
+    text-shadow: 0px 1px 0px rgb(143, 132, 116);
+    opacity: 1;
+}
+.sk .btn:disabled .sk-money-num,
+.sk .btn:disabled .btn-money-text { color: rgb(244, 238, 226); }
+.sk .btn-step:disabled,
+.sk .btn-step:disabled:hover { background-image: resource("ui/skin8/step-minus-off"); color: rgba(0, 0, 0, 0); }
+.sk .btn-step.sk-plus:disabled,
+.sk .btn-step.sk-plus:disabled:hover { background-image: resource("ui/skin8/step-plus-off"); }
+
+/* ════════════════════════ 捲軸 ════════════════════════ */
+/* ScrollView 內建的直捲軸：拿掉上下箭頭，軌道是羊皮紙凹槽、把手是小木條（滑過變金）。
+   ⚠️ 內建主題（UnityDefaultRuntimeTheme）有自己的寬度、邊框與位置；這裡把會影響外觀的屬性全部明確寫一次，
+      不依賴主題的預設值。把手的高度與 top 是 Scroller 程式每幀算的，這裡只管 left/width。 */
+.sk .unity-scroller--vertical {
+    width: 15px;
+    margin-left: 6px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+.sk .unity-scroller--vertical .unity-scroller__low-button,
+.sk .unity-scroller--vertical .unity-scroller__high-button { display: none; }
+.sk .unity-scroller--vertical > .unity-scroller__slider { margin: 0; }
+.sk .unity-scroller--vertical .unity-base-slider__tracker {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    width: auto;
+    margin: 0;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/scroll-track");
+    -unity-slice-left: 6; -unity-slice-top: 12; -unity-slice-right: 6; -unity-slice-bottom: 12;
+    -unity-slice-scale: 1px;
+}
+.sk .unity-scroller--vertical .unity-base-slider__dragger {
+    left: 0;
+    width: 15px;
+    min-height: 36px;
+    margin: 0;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/scroll-thumb");
+    -unity-slice-left: 6; -unity-slice-top: 12; -unity-slice-right: 6; -unity-slice-bottom: 12;
+    -unity-slice-scale: 1px;
+}
+.sk .unity-scroller--vertical .unity-base-slider__dragger:hover { background-image: resource("ui/skin8/scroll-thumb-hover"); }
+.sk .unity-scroller--vertical .unity-base-slider__dragger-border { border-width: 0; background-color: rgba(0, 0, 0, 0); }
+
+/* ════════════════════════ 底部：分隔線＋鍵帽 ════════════════════════ */
+.sk .sk-divider {
+    height: 15px;
+    margin-top: 3px;
+    background-image: resource("ui/skin8/divider");
+    -unity-slice-left: 15; -unity-slice-top: 6; -unity-slice-right: 15; -unity-slice-bottom: 6;
+    -unity-slice-scale: 1px;
+}
+.sk .sk-footer,
+.sk .footer { margin-top: 0; height: 30px; align-items: center; }
+.sk .sk-key {
+    min-width: 36px;
+    height: 27px;
+    padding: 0 6px 3px 6px;
+    margin-right: 3px;
+    border-width: 0;
+    background-image: resource("ui/skin8/keycap");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 12;
+    -unity-slice-scale: 1px;
+    font-size: 12px;
+    color: rgb(74, 47, 37);
+    -unity-font-style: bold;
+}
+.sk .sk-foot-text { margin-left: 3px; font-size: 14px; color: rgb(122, 90, 68); }
+.sk .sk-foot-info,
+.sk .hint { font-size: 14px; color: rgb(122, 90, 68); margin-top: 0; }
+
+/* ════════════════════════ 經營商店：升級分頁 ════════════════════════ */
+.sk .up-name-box { width: 120px; }
+.sk .up-lv { margin-left: 0; }
+/* 效果欄「現在 → 下一級」：放不下就折成兩行（[現在 →] / [下一級]），所以開 wrap、寬 210 */
+.sk .up-effect-box { width: 210px; flex-wrap: wrap; }
+.sk .up-effect-box .up-effect { font-size: 13px; }
+.sk .up-desc { white-space: normal; }
+.sk .up-effect-now { color: rgb(122, 90, 68); }
+.sk .up-effect-next { color: rgb(63, 122, 44); -unity-font-style: bold; }
+.sk .up-max-text { font-size: 14px; color: rgb(63, 110, 44); -unity-font-style: bold; margin-left: 2px; }
+
+/* ════════════════════════ 手札（PlayerInfoPanel）════════════════════════ */
+/* 任務狀態：彩色小膠囊＋米白字 */
+.sk .quest-tag {
+    width: 60px; height: 27px;
+    margin-right: 9px;
+    background-image: resource("ui/skin8/tag-grey");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+    font-size: 13px;
+    color: rgb(255, 248, 230);
+    -unity-font-style: bold;
+    text-shadow: 0px 1px 0px rgb(42, 27, 36);
+}
+.sk .quest-tag--ready  { background-image: resource("ui/skin8/tag-gold"); color: rgb(74, 47, 37); text-shadow: 0px 1px 0px rgb(255, 240, 190); }
+.sk .quest-tag--active { background-image: resource("ui/skin8/tag-green"); }
+.sk .quest-tag--avail  { background-image: resource("ui/skin8/tag-blue"); }
+.sk .quest-tag--done   { background-image: resource("ui/skin8/tag-grey"); }
+.sk .quest-title--done { color: rgb(176, 160, 138); }
+.sk .quest-giver { font-size: 13px; color: rgb(122, 90, 68); }
+
+/* 日曆：一般日＝凹槽、節日＝綠標小卡、今天＝金框卡片 */
+.sk .cal-head { color: rgb(74, 47, 37); font-size: 16px; }
+.sk .cal-cell {
+    width: 87px; height: 54px;
+    padding-left: 9px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/well");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 12;
+    -unity-slice-scale: 1px;
+}
+.sk .cal-cell--fest {
+    background-image: resource("ui/skin8/row");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+}
+.sk .cal-cell--today {
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/row-sel");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+}
+.sk .cal-day { font-size: 16px; color: rgb(122, 90, 68); -unity-font-style: bold; }
+.sk .cal-cell--today .cal-day { color: rgb(146, 94, 16); }
+.sk .cal-fest { font-size: 12px; color: rgb(63, 110, 44); -unity-font-style: bold; }
+
+/* ════════════════════════ 城鎮商店 ════════════════════════ */
+.sk .ts-icon { width: 48px; height: 48px; margin-right: 9px; }
+.sk .ts-icon--big { width: 48px; height: 48px; }
+.sk .ts-profit { font-size: 14px; color: rgb(63, 122, 44); -unity-font-style: bold; }
+.sk .ts-headgap { height: 0; }                 /* 標頭的空白只要寬度（要排在 .sk .ts-icon 後面才蓋得掉 48 高） */
+.sk .ts-unplaced { font-size: 13px; color: rgb(122, 90, 68); margin-left: 6px; }
+.sk .ts-owned .sk-badge { font-size: 13px; }
+
+/* ════════════════════════ 手札 ════════════════════════ */
+.sk .vil-row { height: 63px; }
+.sk .vil-portrait { width: 48px; height: 48px; margin-right: 9px; }
+.sk .info-have .sk-badge { min-width: 33px; }
+
+/* ════════════════════════ 種子選單 ════════════════════════ */
+.sk .seed-name { width: 108px; }
+.sk .seed-yield { margin-left: 15px; }
+
+/* ════════════════════════ 背包／倉庫 ════════════════════════ */
+.sk .row-icon { width: 48px; height: 48px; margin-right: 9px; }
+
+/* ════════════════════════ 設定 ════════════════════════ */
+.sk .set-row { height: 54px; }
+.sk .set-label { font-size: 17px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+.sk .set-cell {
+    width: 18px; height: 21px;
+    margin-right: 3px;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/cell-off");
+}
+.sk .set-cell:hover { border-width: 0; background-image: resource("ui/skin8/cell-on"); opacity: 0.6; }
+.sk .set-cell--on,
+.sk .set-cell--on:hover { background-image: resource("ui/skin8/cell-on"); opacity: 1; }
+.sk .set-pct { font-size: 16px; color: rgb(146, 94, 16); -unity-font-style: bold; }
+
+/* ════════════════════════ 衣櫃 ════════════════════════ */
+.sk .wd-item {
+    height: 48px;
+    margin-bottom: 3px;
+    padding: 0 9px 3px 12px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/row");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+}
+.sk .wd-item:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/row-hover"); }
+.sk .wd-item--sel,
+.sk .wd-item--sel:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/row-sel"); }
+.sk .wd-item-name { font-size: 17px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+.sk .wd-tag {
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/tag-green");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+    font-size: 12px;
+    color: rgb(255, 248, 230);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    text-shadow: 0px 1px 0px rgb(42, 27, 36);
+}
+.sk .wd-frame {
+    border-width: 0;
+    padding: 12px;
+    width: 222px; height: 290px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/slot");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 12;
+    -unity-slice-scale: 1px;
+}
+.sk .wd-name { font-size: 22px; color: rgb(74, 47, 37); }
+.sk .wd-desc { font-size: 14px; color: rgb(122, 90, 68); }
+
+/* ════════════════════════ 下排背包 HUD（InventoryHud）════════════════════════ */
+/* 一條木頭底座（hud-bar，九宮格 slice 18）托著一排深紫布＋金框的格子（slot，slice 12）。
+   格子 66：框 9＋內側 48（＝道具圖 24 邏輯格 ×2，最銳利、不壓框）。空格換成不鑲金的木框（slot-empty）。
+   .hud 本身仍是整條寬、置中、可換行（HudStyle.uss），底座是程式加的一層 .hud-bar。 */
+.sk .hud { bottom: 12px; }
+.sk .hud-bar {
+    padding: 9px 12px 9px 12px;
+    background-image: resource("ui/skin8/hud-bar");
+    -unity-slice-left: 18; -unity-slice-top: 18; -unity-slice-right: 18; -unity-slice-bottom: 18;
+    -unity-slice-scale: 1px;
+}
+.sk .slot {
+    width: 66px; height: 66px;
+    margin: 3px;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/slot");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 12;
+    -unity-slice-scale: 1px;
+}
+.sk .slot.slot--empty { background-image: resource("ui/skin8/slot-empty"); }
+.sk .slot-icon { width: 48px; height: 48px; }
+.sk .slot-name { font-size: 13px; color: rgb(255, 248, 230); }
+.sk .slot-count {
+    right: -6px; bottom: -6px;    /* 壓在格子右下角外緣，不蓋到道具圖 */
+    min-width: 24px;
+    height: 24px;
+    margin: 0;
+    padding: 0 6px;
+    background-image: resource("ui/skin8/badge");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+    font-size: 13px;
+    color: rgb(255, 248, 230);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+/* ── 下排道具列「魔女腰包」（第三輪；InventoryHud 在外觀開著時改用這組 class，上面 .hud-bar／.slot 留給別的面板）──
+   [belt-end--l 18×78][belt-slot 51×60]×N[belt-end--r 18×78]，一個接一個排、沒有間距：布條上下兩道金虛線
+   畫在每張圖裡，剛好接得上（所以是固定尺寸的圖，不是九宮格 —— 針腳拉長會變實線）。
+   總寬 ＝ 36 ＋ 51×N：12 格 648、15 格 801、18 格 954（960×640 也放得下，不換行）。
+   道具圖 48×48 疊在口袋的 (3, 6)；數量是金扣子（belt-badge，slice 9）壓在口袋右下、布條下緣；
+   剛拿到東西的那格換奶油白襯裡（belt-slot--new）＋右上角冒一顆星（belt-spark），約 1.2 秒後收掉。
+   ⚠️ 這些元素上不要寫 transition：拿到東西時的 UIAnim.Bump 靠 .uia-bump 的 scale。 */
+.sk .hud-belt {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    flex-shrink: 0;
+}
+.sk .belt-end { width: 18px; height: 78px; flex-shrink: 0; }
+.sk .belt-end--l { background-image: resource("ui/skin8/belt-end-l"); }
+.sk .belt-end--r { background-image: resource("ui/skin8/belt-end-r"); }
+.sk .belt-slot {
+    width: 51px; height: 60px;
+    flex-shrink: 0;
+    margin: 0; padding: 0;
+    background-image: resource("ui/skin8/belt-pocket");
+}
+.sk .belt-slot.belt-slot--empty { background-image: resource("ui/skin8/belt-pocket-empty"); }
+.sk .belt-slot.belt-slot--new { background-image: resource("ui/skin8/belt-pocket-new"); }
+.sk .belt-icon { position: absolute; left: 3px; top: 6px; width: 48px; height: 48px; }
+.sk .belt-name {
+    position: absolute; left: 3px; top: 6px; width: 48px; height: 48px;
+    margin: 0; padding: 0;
+    font-size: 11px;
+    color: rgb(74, 47, 37);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+.sk .belt-count {
+    position: absolute;
+    right: 0; bottom: -3px;
+    min-width: 21px;
+    height: 21px;
+    margin: 0;
+    padding: 0 6px;
+    background-image: resource("ui/skin8/belt-badge");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+    font-size: 13px;
+    color: rgb(74, 47, 37);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+.sk .belt-spark {
+    position: absolute;
+    right: -6px; top: -6px;
+    width: 27px; height: 27px;
+    background-image: resource("ui/skin8/belt-spark");
+}
+
+/* ════════════════════════ 之後要套的通用類別（這一輪沒有面板用到）════════════════════════
+   任務簿、每日結算、對話框、公告板、Toast、時鐘、佈置托盤的樣式在 HudExtraStyle.uss（這一輪不動）。
+   之後要套：那些面板 Build 時呼叫 UiSkin.Apply(root)，再把它們的元素加上下面這幾個 class（或在這裡寫 `.sk .那個class` 蓋掉）。 */
+.sk .sk-panel {
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    background-image: resource("ui/skin8/panel");
+    -unity-slice-left: 27; -unity-slice-top: 27; -unity-slice-right: 27; -unity-slice-bottom: 27;
+    -unity-slice-scale: 1px;
+    padding: 30px;
+}
+.sk .sk-card {
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/row");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+    padding: 6px 12px 9px 12px;
+}
+.sk .sk-ink { color: rgb(74, 47, 37); }
+.sk .sk-ink-soft { color: rgb(122, 90, 68); }
+
+/* 「全賣 [金]84」這種按鈕裡有金額的：寬度照內容（舊 .btn-buy 寫死 88 會把數字擠出去） */
+.sk .btn-buy.btn-money { width: auto; min-width: 88px; }
+
+/* ════════════════════════ 第二輪：還沒套的那幾個介面 ════════════════════════
+   任務簿、每日結算、對話框、公告板、Toast、時鐘周圍、佈置托盤、上方工具列。
+   這些面板在 Build 時看 UiSkin.On：開著就走新的版面（新 class 都在這裡與 SkinBase.uss），
+   關著就照舊建 HudExtraStyle 那一套 —— 所以這裡只寫 `.sk …`，HudExtraStyle 的舊規則一條都沒刪。
+   配色約定同上：羊皮紙上深色墨水字；**疊在遊戲畫面上的 HUD（工具列、托盤、Toast、時鐘膠囊）一律深木底＋米白字**，
+   跟下排背包列的底座（hud-bar）是同一個語彙。離線預覽：tools/preview_ui_skin2.py。 */
+
+/* ── 共用小圖（UiSkin.Ico）：第二輪新畫的，一律原尺寸（邏輯格 ×3）顯示 ── */
+.sk .sk-ico--gear   { width: 33px; height: 33px; background-image: resource("ui/skin8/ico-gear"); }
+.sk .sk-ico--star   { width: 27px; height: 27px; background-image: resource("ui/skin8/ico-star"); }
+.sk .sk-ico--basket { width: 27px; height: 27px; background-image: resource("ui/skin8/ico-basket"); }
+.sk .sk-ico--sack   { width: 27px; height: 27px; background-image: resource("ui/skin8/ico-sack"); }
+.sk .sk-ico--leaf   { width: 27px; height: 27px; background-image: resource("ui/skin8/ico-leaf"); }
+.sk .sk-ico--flask  { width: 27px; height: 27px; background-image: resource("ui/skin8/ico-flask"); }
+.sk .sk-ico--bullet { width: 15px; height: 15px; background-image: resource("ui/skin8/ico-bullet"); }
+
+/* ════════════════════════ 任務簿（QuestPanel）════════════════════════ */
+/* 靠右的羊皮紙卷軸：上下各一根木軸（scroll-paper，slice 上下 21 ＝ 軸 15＋紙捲進去的陰影）。
+   標題緞帶壓在上軸、關閉鈕壓在右上軸頭。內容離紙邊 21（紙緣在 3..6）。 */
+.sk .quest-scroll {
+    width: 312px;
+    height: 576px;
+    max-height: 96%;
+    margin-right: 15px;
+    padding: 51px 21px 27px 21px;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    background-image: resource("ui/skin8/scroll-paper");
+    -unity-slice-left: 12; -unity-slice-top: 21; -unity-slice-right: 12; -unity-slice-bottom: 21;
+    -unity-slice-scale: 1px;
+}
+/* ⚠️ 一定要帶 .quest-scroll：手札的任務列也有 .quest-title */
+.sk .quest-scroll .quest-title {
+    position: absolute;
+    left: 50%;
+    top: -6px;
+    translate: -50% 0;
+    width: auto;
+    height: 51px;
+    min-width: 150px;
+    padding: 0 36px 6px 36px;
+    background-image: resource("ui/skin8/ribbon");
+    -unity-slice-left: 27; -unity-slice-top: 15; -unity-slice-right: 27; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+    font-size: 21px;
+    color: rgb(255, 248, 230);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    text-shadow: 0px 2px 0px rgb(42, 27, 36);
+}
+.sk .quest-close {
+    top: 3px; right: 0;
+    width: 36px; height: 36px;
+    padding: 0; margin: 0;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/close");
+    color: rgba(0, 0, 0, 0);
+}
+.sk .quest-close:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/close-hover"); }
+.sk .quest-close:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/close-down"); }
+
+/* 一條任務：清單列卡片；可回報＝金框卡（row-sel）＋打勾。 */
+.sk .quest-entry {
+    margin-bottom: 6px;
+    padding: 6px 9px 9px 9px;
+    border-bottom-width: 0;
+    background-image: resource("ui/skin8/row");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+}
+.sk .quest-entry.sk-q-ready { background-image: resource("ui/skin8/row-sel"); }
+.sk .sk-q-line { min-height: 24px; }
+.sk .sk-q-line--2,
+.sk .sk-q-line--3 { margin-top: 3px; }
+.sk .sk-q-box { background-image: resource("ui/skin8/qbox"); }
+/* 目標圖跟動詞之間留 3（道具圖的 .sk-q-icon 自己有 margin-left；skin 小圖與金幣要另外補） */
+.sk .sk-q-line--2 .sk-ico { margin-left: 3px; }
+.sk .sk-q-line--2 .sk-coin { margin-left: 3px; margin-right: 0; }
+.sk .sk-q-ready .sk-q-box { background-image: resource("ui/skin8/qbox-on"); }
+.sk .sk-q-title { font-size: 16px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+.sk .sk-q-verb { font-size: 13px; color: rgb(122, 90, 68); }
+.sk .sk-q-num { font-size: 14px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+.sk .sk-q-ready .sk-q-num { color: rgb(63, 122, 44); }
+/* 進度條：羊皮紙凹槽（框 3 淡棕、底深米）＋綠色填充（上緣 3 亮一階）；可回報時換金色 */
+.sk .sk-q-bar {
+    height: 12px;
+    border-width: 3px;
+    border-color: rgb(180, 140, 88);
+    background-color: rgb(215, 187, 133);
+}
+.sk .sk-q-fill {
+    background-color: rgb(111, 158, 75);
+    border-top-width: 3px;
+    border-top-color: rgb(167, 204, 115);
+}
+.sk .sk-q-ready .sk-q-fill { background-color: rgb(220, 174, 76); border-top-color: rgb(251, 224, 138); }
+.sk .sk-q-giver { font-size: 13px; color: rgb(122, 90, 68); }
+.sk .sk-q-ready .sk-q-giver { color: rgb(146, 94, 16); -unity-font-style: bold; }
+.sk .sk-q-line--3 .sk-ico--arrow { margin: 0 3px 0 0; }
+.sk .sk-q-rewardnum { font-size: 14px; }
+.sk .sk-q-reward .sk-iconcount-text { font-size: 14px; }
+.sk .quest-empty { font-size: 15px; color: rgb(122, 90, 68); }
+
+/* ════════════════════════ 每日結算（DaySummaryPanel）════════════════════════ */
+/* 標題列沿用 .header＋.title（同其他面板的緞帶）。數字格三欄：寬 136、間隔 6（每列第 3 格 margin-right 0，程式標 sk-day-tile--end）。 */
+.sk .day-card {
+    width: 480px;
+    max-width: 90%;
+    padding: 30px 30px 24px 30px;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0; border-radius: 0;
+    background-image: resource("ui/skin8/panel");
+    -unity-slice-left: 27; -unity-slice-top: 27; -unity-slice-right: 27; -unity-slice-bottom: 27;
+    -unity-slice-scale: 1px;
+}
+.sk .day-date { height: 21px; margin: 0 0 9px 0; font-size: 14px; color: rgb(122, 90, 68); }
+.sk .day-note { margin: 0 0 9px 0; font-size: 14px; color: rgb(179, 38, 58); }
+.sk .day-plus  { color: rgb(63, 122, 44); }
+.sk .day-minus { color: rgb(179, 38, 58); }
+.sk .sk-day-tile {
+    width: 136px; height: 57px;
+    margin: 0 6px 6px 0;
+    padding: 0 9px 3px 9px;
+    background-image: resource("ui/skin8/row");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+}
+.sk .sk-day-tile--end { margin-right: 0; }
+.sk .sk-day-ico { width: 27px; height: 27px; margin-right: 6px; flex-shrink: 0; align-items: center; justify-content: center; }
+.sk .sk-day-ico .sk-coin { margin-right: 0; }
+.sk .sk-day-num { font-size: 18px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+/* 數字的正負色：要跟 .sk-day-num／.sk-day-netnum 疊在一起寫（同特異度時後寫的贏，單寫 .day-plus 會被它們蓋掉） */
+.sk .sk-day-num.day-plus,
+.sk .sk-day-netnum.day-plus { color: rgb(63, 122, 44); }
+.sk .sk-day-num.day-minus,
+.sk .sk-day-netnum.day-minus { color: rgb(179, 38, 58); }
+.sk .sk-day-cap { font-size: 12px; color: rgb(122, 90, 68); margin-top: -3px; }
+.sk .day-list { max-height: 168px; min-height: 39px; }
+.sk .day-item {
+    height: 39px;
+    margin-bottom: 3px;
+    padding: 0 9px 3px 6px;
+    border-bottom-width: 0;
+    background-image: resource("ui/skin8/row");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+}
+.sk .day-item.sk-alt { background-image: resource("ui/skin8/row-alt"); }
+.sk .day-icon { width: 24px; height: 24px; margin-right: 6px; flex-shrink: 0; }
+.sk .day-item-name { font-size: 14px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+.sk .sk-day-goldnum { font-size: 15px; }
+.sk .day-empty { font-size: 14px; color: rgb(122, 90, 68); }
+.sk .sk-day-net {
+    height: 48px;
+    margin-top: 6px;
+    padding: 0 12px 3px 12px;
+    background-image: resource("ui/skin8/row-sel");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+}
+.sk .sk-day-net-label { font-size: 15px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+.sk .sk-day-netnum { font-size: 21px; -unity-font-style: bold; color: rgb(146, 94, 16); }
+.sk .sk-day-wallet { height: 24px; margin-top: 3px; }
+.sk .sk-day-wallet-label { font-size: 13px; color: rgb(122, 90, 68); margin-right: 6px; }
+.sk .sk-day-walletnum { font-size: 14px; }
+
+/* ════════════════════════ 對話框（Dialogue）════════════════════════ */
+/* 木框＋羊皮紙；頭像放在紫布金框（slot）裡；名字牌（plate）壓在上框，跟著台詞欄的左緣。 */
+.sk .dlg-box {
+    margin-bottom: 33px;
+    padding: 33px 30px 24px 30px;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0; border-radius: 0;
+    background-image: resource("ui/skin8/panel");
+    -unity-slice-left: 27; -unity-slice-top: 27; -unity-slice-right: 27; -unity-slice-bottom: 27;
+    -unity-slice-scale: 1px;
+}
+.sk .sk-dlg-frame {
+    width: 102px; height: 102px;
+    padding: 9px;
+    margin-right: 15px;
+    background-image: resource("ui/skin8/slot");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 12;
+    -unity-slice-scale: 1px;
+}
+.sk .dlg-portrait { width: 84px; height: 84px; margin: 0; border-width: 0; border-radius: 0; }
+.sk .dlg-name {
+    position: absolute;
+    top: -48px; left: 0;
+    height: 33px;
+    margin: 0;
+    padding: 0 15px 3px 15px;
+    background-image: resource("ui/skin8/plate");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+    font-size: 17px;
+    color: rgb(255, 248, 230);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    text-shadow: 0px 2px 0px rgb(42, 27, 36);
+}
+.sk .dlg-text { font-size: 19px; color: rgb(74, 47, 37); min-height: 57px; }
+.sk .dlg-choices { margin-top: 9px; }
+/* 選項是 .btn（第一個再加 .btn-list ＝ 綠），這裡只調尺寸；要排在按鈕區後面才蓋得過 .sk .btn 的 margin／padding */
+.sk .dlg-choice { height: 36px; margin: 0 9px 0 0; padding: 0 18px 3px 18px; font-size: 16px; }
+.sk .dlg-choice:hover:active { padding: 3px 18px 0 18px; }
+.sk .sk-dlg-next-row { height: 27px; margin-top: 6px; }
+.sk .dlg-next { margin: 0 0 0 3px; font-size: 14px; color: rgb(122, 90, 68); -unity-text-align: middle-left; }
+
+/* ════════════════════════ 開場公告板（UpdatePanel）════════════════════════ */
+/* 木框＋緞帶標題「更新」；條目前面一顆小金菱形；底下真的 OK 鈕（舊外觀是底圖上畫好的鈕＋透明可點區）。 */
+.sk .update-panel {
+    width: 600px;
+    max-width: 88%;
+    padding: 30px 30px 24px 30px;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/panel");
+    -unity-slice-left: 27; -unity-slice-top: 27; -unity-slice-right: 27; -unity-slice-bottom: 27;
+    -unity-slice-scale: 1px;
+}
+.sk .sk-upd-date { height: 21px; margin-bottom: 9px; font-size: 14px; color: rgb(122, 90, 68); -unity-text-align: middle-center; }
+.sk .sk-upd-line { margin-bottom: 6px; }
+.sk .sk-upd-line .sk-ico--bullet { margin: 3px 9px 0 0; }
+.sk .sk-upd-text { font-size: 15px; color: rgb(74, 47, 37); }
+.sk .sk-upd-ok-row { margin-top: 6px; }
+.sk .sk-upd-ok { width: 120px; margin: 0; }
+
+/* ════════════════════════ Toast ════════════════════════ */
+/* 疊在遊戲畫面上 → 跟下排背包列同一塊深木底座（hud-bar，slice 18）＋米白字。 */
+.sk .toast {
+    padding: 9px 21px 12px 21px;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    background-image: resource("ui/skin8/hud-bar");
+    -unity-slice-left: 18; -unity-slice-top: 18; -unity-slice-right: 18; -unity-slice-bottom: 18;
+    -unity-slice-scale: 1px;
+    font-size: 18px;
+    color: rgb(255, 248, 230);
+    text-shadow: 0px 2px 0px rgb(42, 27, 36);
+}
+.sk .toast--icons { padding: 9px 15px 9px 15px; }
+.sk .toast-icon-text { font-size: 18px; color: rgb(255, 248, 230); text-shadow: 0px 2px 0px rgb(42, 27, 36); }
+
+/* ════════════════════════ 時鐘周圍（ClockHud）════════════════════════ */
+/* 鐘面本身（ui/clock/*）一律不動；底下改成兩顆靠右的深木膠囊：時刻（大）、日期（小）。 */
+.sk .sk-clock-info { top: 154px; }
+.sk .sk-clock-time {
+    height: 27px;
+    margin-bottom: 3px;
+    padding: 0 9px;
+    background-image: resource("ui/skin8/badge");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+    font-size: 16px;
+    color: rgb(255, 248, 230);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+.sk .sk-clock-date {
+    height: 24px;
+    padding: 0 9px;
+    background-image: resource("ui/skin8/badge");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+    font-size: 13px;
+    color: rgb(236, 224, 200);
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+
+/* ════════════════════════ 佈置托盤（ShopRoomTray）════════════════════════ */
+/* 底座＝下排背包列的 hud-bar；托盤格＝紫布金框（slot），滑過換 slot-sel；名稱改成滑過時的浮動說明（在格子上方）。
+   提示列換成亮的羊皮紙膠囊（chip）＋左邊 3 px 金條 —— 玩家說過「提示看不到」，所以在深木底上要亮。 */
+.sk .tray {
+    margin-bottom: 12px;
+    padding: 12px 15px 12px 15px;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0; border-radius: 0;
+    background-image: resource("ui/skin8/hud-bar");
+    -unity-slice-left: 18; -unity-slice-top: 18; -unity-slice-right: 18; -unity-slice-bottom: 18;
+    -unity-slice-scale: 1px;
+}
+.sk .tray-head { margin-bottom: 9px; }
+.sk .tray-hints {
+    margin-left: 9px;
+    padding: 3px 6px 3px 9px;
+    border-width: 0;
+    border-left-width: 3px;
+    border-color: rgb(220, 174, 76);
+    border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/chip");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+}
+.sk .hint-group { border-radius: 0; }
+.sk .hint-group--hot { background-color: rgba(233, 194, 92, 0.45); }
+.sk .hint-group--bad { background-color: rgba(220, 51, 68, 0.55); }
+.sk .hint-sep { width: 3px; height: 27px; margin: 0 9px 0 3px; background-color: rgb(180, 140, 88); }
+.sk .tray-item {
+    width: 66px; height: 66px;
+    margin: 3px;
+    padding: 9px;
+    justify-content: center;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/slot");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 12;
+    -unity-slice-scale: 1px;
+}
+.sk .tray-item:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/slot-sel"); }
+.sk .tray-item:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/slot"); }
+.sk .tray-icon { width: 48px; height: 48px; -unity-background-scale-mode: scale-to-fit; }
+.sk .tray-item .sk-badge { position: absolute; right: -6px; bottom: -6px; font-size: 13px; }
+.sk .tray-empty { font-size: 15px; color: rgb(236, 224, 200); }
+
+/* ════════════════════════ 上方工具列（CornerHud）════════════════════════ */
+/* 跟下排背包列同一塊底座（hud-bar，slice 18）；按鈕用 skin 的九宮格鈕：
+   開店＝金、關店＝紫（夜色）、佈置中停用＝灰；R 佈置提示：可按＝金膠囊、上鎖＝深木膠囊；設定＝木鈕 [齒輪][O]。
+   ⚠️ 舊樣式（HudExtraStyle 的 .hud-*）是兩個 class 疊的狀態規則，這裡一律再多一個 .sk（三個 class）才蓋得過。
+   ⚠️ 不要在這些元素上寫 transition：開關店時的 UIAnim.Bump 靠 .uia-bump 的 scale。 */
+.sk .hud-corner {
+    top: 9px; left: 9px;
+    padding: 9px 12px 9px 12px;
+    border-width: 0;
+    background-image: resource("ui/skin8/hud-bar");
+    -unity-slice-left: 18; -unity-slice-top: 18; -unity-slice-right: 18; -unity-slice-bottom: 18;
+    -unity-slice-scale: 1px;
+}
+.sk .hud-tb { height: 36px; padding: 0; border-width: 0; background-color: rgba(0, 0, 0, 0); }
+.sk .hud-seg { padding: 0 9px; }
+.sk .hud-seg--gold { min-width: 102px; }
+.sk .hud-seg--rep { min-width: 204px; flex-direction: row; align-items: center; }
+/* 分隔：暗 3＋亮 3 ＝ 刻進木頭的凹槽 */
+.sk .hud-sep {
+    width: 6px; height: 30px;
+    background-color: rgb(75, 41, 28);
+    border-right-width: 3px;
+    border-right-color: rgb(149, 90, 56);
+}
+.sk .hud-gold { font-size: 20px; }
+.sk .hud-seg--gold .sk-coin { margin-right: 3px; }
+.sk .hud-seg--rep .sk-ico--star { margin-right: 6px; }
+.sk .hud-rep { flex-grow: 1; font-size: 13px; color: rgb(236, 224, 200); }
+.sk .sk-hud-rep-num { font-size: 12px; color: rgb(214, 186, 140); margin-left: 6px; }
+/* 名聲進度條：深色凹槽（框 3 外輪廓色、底深木）＋金色填充（上緣 3 亮金） */
+.sk .hud-rep-bar {
+    height: 12px;
+    margin-top: 3px;
+    border-width: 3px;
+    border-color: rgb(42, 27, 36);
+    background-color: rgb(75, 41, 28);
+}
+.sk .hud-bar-fill {
+    background-color: rgb(220, 174, 76);
+    border-top-width: 3px;
+    border-top-color: rgb(251, 224, 138);
+}
+
+/* 開店／關店鈕：[招牌 24][P 24]，高 36（九宮格同 .btn：slice 12／12／12／15，按下時字與圖往下 3） */
+.sk .hud-shop {
+    height: 36px;
+    padding: 0 9px 3px 9px;
+    border-width: 0; border-radius: 0;
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+}
+.sk .hud-shop-key { margin: 0 0 0 3px; }
+.sk .hud-shop.hud-shop--open { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-gold"); }
+.sk .hud-shop.hud-shop--open:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-gold-hover"); }
+.sk .hud-shop.hud-shop--open:active,
+.sk .hud-shop.hud-shop--open:hover:active {
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/btn-gold-down");
+    padding: 3px 9px 0 9px;
+    translate: 0px 0px;
+}
+.sk .hud-shop.hud-shop--closed { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-purple"); }
+.sk .hud-shop.hud-shop--closed:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-purple-hover"); }
+.sk .hud-shop.hud-shop--closed:active,
+.sk .hud-shop.hud-shop--closed:hover:active {
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/btn-purple-down");
+    padding: 3px 9px 0 9px;
+    translate: 0px 0px;
+}
+/* 佈置中：停用（灰鈕、圖淡一點）。⚠️ 排在 hover／active 後面 */
+.sk .hud-shop.hud-shop--open:disabled,
+.sk .hud-shop.hud-shop--closed:disabled,
+.sk .hud-shop.hud-shop--open:disabled:hover,
+.sk .hud-shop.hud-shop--closed:disabled:hover { background-image: resource("ui/skin8/btn-off"); opacity: 0.8; }
+/* 開店中按了 R：抖一下的同時整顆染紅（九宮格鈕沒有邊框可以閃，改用圖的染色） */
+.sk .hud-shop.hud-shop--open.hud-shop--nudge,
+.sk .hud-shop.hud-shop--closed.hud-shop--nudge { -unity-background-image-tint-color: rgb(255, 140, 130); }
+
+/* R 佈置提示：[R 24(+鎖)][3][木槌 24]。可按＝金膠囊；開店中上鎖＝深木膠囊（R 與木槌淡掉，舊規則 .hud-edit--locked .hud-edit-dim 沿用） */
+.sk .hud-edit {
+    height: 36px;
+    margin-left: 6px;
+    padding: 0 6px 3px 6px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/tag-gold");
+    -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
+    -unity-slice-scale: 1px;
+}
+.sk .hud-edit.hud-edit--locked { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/badge"); }
+.sk .hud-edit-icon { margin: 0; }
+.sk .hud-edit-keybox { margin: 0 3px 0 0; }
+.sk .hud-edit.hud-edit--nudge { -unity-background-image-tint-color: rgb(255, 140, 130); }
+
+/* 設定：木鈕 [齒輪 33][O 鍵帽 24]（按鈕文字留給舊外觀，像素外觀時程式設成空字串） */
+.sk .hud-btn.hud-settings {
+    height: 36px;
+    padding: 0 9px 3px 3px;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/btn-wood");
+    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
+    -unity-slice-scale: 1px;
+}
+.sk .hud-btn.hud-settings:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-wood-hover"); }
+.sk .hud-btn.hud-settings:active,
+.sk .hud-btn.hud-settings:hover:active {
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/btn-wood-down");
+    padding: 3px 9px 0 3px;
+    translate: 0px 0px;
+}
+.sk .hud-settings .sk-key {
+    min-width: 24px; height: 24px;
+    margin: 0;
+    padding: 0 0 3px 0;
+    font-size: 12px;
+}

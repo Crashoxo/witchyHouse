@@ -30,6 +30,12 @@ namespace WitchShop.UI
     ///
     /// ⚠️ sortingOrder = 60：要蓋在所有面板（≤20）與 Toast（50）之上，
     ///    但低於睡覺黑幕（90）與換場黑幕（100）—— 開場的淡入還是該蓋過公告板。
+    ///
+    /// ── 像素外觀（<see cref="UiSkin.On"/>）──────────────────────────
+    /// 不用那張厚塗風的底圖：改成跟其他面板同一套木框＋羊皮紙（skin8/panel）＋紫布緞帶標題「更新」，
+    /// 每條前面一顆小金菱形、底下一顆**真的** OK 鈕（skin 的綠鈕）。尺寸交給 USS（寬 600、高度照內容），
+    /// 所以 <see cref="OnGeometry"/>／<see cref="FitBody"/> 那套「照底圖比例算字級」在這個外觀下不跑。
+    /// 外觀關著時照舊用底圖（update-frame.png 保留不刪）。滑入滑出、按鍵關閉、Modal 都是同一套。
     /// </summary>
     public class UpdatePanel : MonoBehaviour
     {
@@ -68,6 +74,7 @@ namespace WitchShop.UI
         Label dateLabel, bodyLabel;
         float openedAt;
         bool closing;
+        bool skin;         // 這次用的是不是像素外觀（Build 時決定）
         bool ownedModal;   // ModalOpen 是不是我開的（別把別人的關掉）
 
         void Awake()
@@ -98,7 +105,10 @@ namespace WitchShop.UI
             root = doc.rootVisualElement;
             if (root == null) { Debug.LogError("[UpdatePanel] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudExtraStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關 UiSkin.Enabled）
+            skin = UiSkin.On;
             CjkFont.Apply(root);
+            Sfx.BindClicks(root);         // OK 鈕的 click 音（像素外觀才有真的按鈕）
 
             ownedModal = !UIState.ModalOpen;
             if (ownedModal) UIState.ModalOpen = true;
@@ -113,10 +123,65 @@ namespace WitchShop.UI
 
             panel = new VisualElement();
             panel.AddToClassList("update-panel");
+            if (skin) BuildSkin();
+            else BuildArt(layer);
+            layer.Add(panel);
+
+            // 從上方滑進來：先推到畫面外，下一幀再回到 0 讓 transition 跑起來
+            panel.style.translate = new StyleTranslate(new Translate(0, Length.Percent(-160f)));
+            panel.schedule.Execute(() =>
+                panel.style.translate = new StyleTranslate(new Translate(0, Length.Percent(0f))))
+                 .StartingIn(16);
+        }
+
+        /// <summary>
+        /// 像素外觀：[緞帶「更新」] / 日期 / [◆ 一條] × N / 分隔線 / [OK]。
+        /// 條目文字來自 <see cref="UpdateNotes.Lines"/>（開頭的「· 」拿掉，改用小金菱形）。
+        /// </summary>
+        void BuildSkin()
+        {
+            var header = new VisualElement();
+            header.AddToClassList("header");
+            panel.Add(header);
+            var title = new Label("更新");
+            title.AddToClassList("title");
+            header.Add(title);
+
+            dateLabel = new Label(UpdateNotes.Date);
+            dateLabel.AddToClassList("sk-upd-date");
+            panel.Add(dateLabel);
+
+            foreach (var raw in UpdateNotes.Lines)
+            {
+                var line = new VisualElement();
+                line.AddToClassList("sk-upd-line");
+                line.Add(UiSkin.Ico("bullet"));
+                var t = new Label(raw.TrimStart('·', ' ', '　'));
+                t.AddToClassList("sk-upd-text");
+                line.Add(t);
+                panel.Add(line);
+            }
+
+            var div = new VisualElement();
+            div.AddToClassList("sk-divider");
+            panel.Add(div);
+
+            var okRow = new VisualElement();
+            okRow.AddToClassList("sk-upd-ok-row");
+            var ok = new Button(Close) { text = "OK", focusable = false };
+            ok.AddToClassList("btn");
+            ok.AddToClassList("btn-list");
+            ok.AddToClassList("sk-upd-ok");
+            okRow.Add(ok);
+            panel.Add(okRow);
+        }
+
+        /// <summary>舊外觀：整張底圖（木框＋UPDATE 招牌＋畫好的 OK 鈕），內文照底圖比例擺。</summary>
+        void BuildArt(VisualElement layer)
+        {
             var art = GameArt.UpdateFrame;
             if (art != null) panel.style.backgroundImage = new StyleBackground(art);
             else panel.AddToClassList("update-panel--bare");   // 沒圖也要有個框，別開天窗
-            layer.Add(panel);
 
             inner = new VisualElement();
             inner.AddToClassList("update-inner");
@@ -145,12 +210,6 @@ namespace WitchShop.UI
 
             // 面板大小要跟著畫面走（底圖等比），字級再跟著面板高度縮
             layer.RegisterCallback<GeometryChangedEvent>(OnGeometry);
-
-            // 從上方滑進來：先推到畫面外，下一幀再回到 0 讓 transition 跑起來
-            panel.style.translate = new StyleTranslate(new Translate(0, Length.Percent(-160f)));
-            panel.schedule.Execute(() =>
-                panel.style.translate = new StyleTranslate(new Translate(0, Length.Percent(0f))))
-                 .StartingIn(16);
         }
 
         /// <summary>畫面大小變了就重算面板尺寸與字級（底圖等比，字跟著面板高度）。</summary>

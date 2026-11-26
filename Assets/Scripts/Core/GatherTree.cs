@@ -257,8 +257,10 @@ namespace WitchShop.Core
                 var isr = icon.AddComponent<SpriteRenderer>();
                 isr.sprite = frame;
                 isr.sortingOrder = 9001;
-                // 縮到最長邊 34px（原版同樣的算法）
-                float k = 34f / Mathf.Max(frame.rect.width, frame.rect.height);
+                // 縮到最長邊 34px（原版同樣的算法）。
+                // ⚠️ 8-bit 道具圖（GameArt.UsePixelItems）四周留了透明邊、圖案只佔約 80%，
+                //    所以經 ItemIconWorld 換成 40px，東西本身才跟舊圖一樣約 34px 大。
+                float k = GameArt.ItemIconWorld(34f) / Mathf.Max(frame.rect.width, frame.rect.height);
                 icon.transform.localScale = new Vector3(k, k, 1f);
             }
 

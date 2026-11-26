@@ -33,6 +33,16 @@ namespace WitchShop.Core
         public bool flip;
         /// <summary>對齊哪個角（見 FurnitureAnchor）。舊存檔沒這欄＝0＝Front。</summary>
         public int anchor;
+        /// <summary>
+        /// 這件家具的持久身分（存進 witch.room）。架上商品的「玩家指定位置」（ShopDisplay）靠它記
+        /// 「擺在哪一件家具上」—— 同款貨架可以有好幾座，id＋格座標又會在搬動時變，都不能當身分。
+        ///
+        /// ⚠️ 0 ＝還沒發號：舊存檔、從托盤剛拿出來的、Check/ClearanceOk 臨時造來驗格子的。
+        ///    真正寫進存檔的一律由 RoomLayout 補發（Load / SetPlaced），呼叫端不用管。
+        /// ⚠️ 任何「複製一份 PlacedFurniture」的地方都要帶著 uid（<see cref="Clone"/>），
+        ///    不然一存檔就換了新身分，架上商品的指定位置會全部失效。
+        /// </summary>
+        public int uid;
 
         /// <summary>
         /// 轉向後的實際佔地。
@@ -56,6 +66,9 @@ namespace WitchShop.Core
         { this.id = id; this.gx = gx; this.gy = gy; this.flip = flip; this.anchor = anchor; }
 
         public FurnitureAnchor Anchor => (FurnitureAnchor)Mathf.Clamp(anchor, 0, 2);
+
+        /// <summary>完整複製一份（含 uid）。快照、整批覆寫都走這支，欄位才不會漏帶。</summary>
+        public PlacedFurniture Clone() => new(id, gx, gy, flip, anchor) { uid = uid };
     }
 
     /// <summary>
@@ -94,6 +107,8 @@ namespace WitchShop.Core
             public List<string> ownedKeys = new();
             public List<int> ownedCounts = new();
             public List<PlacedFurniture> placed = new();
+            /// <summary>下一個要發的家具 uid（只增不減，收回托盤的號碼不回收 —— 免得舊的商品指定認錯家具）。</summary>
+            public int nextUid = 1;
         }
 
         static SaveShape data;
@@ -111,7 +126,35 @@ namespace WitchShop.Core
             s.ownedCounts.Add(1);
             s.placed.Add(new PlacedFurniture("sale_table",
                 ShopRoom.DefaultSaleCell.gx, ShopRoom.DefaultSaleCell.gy));
+            AssignUids(s);
             return s;
+        }
+
+        /// <summary>
+        /// 幫還沒有 uid（＝0）或號碼重複的家具補發新號，回傳補了幾件。
+        ///
+        /// ⚠️ 重複也要重發：JsonUtility 讀壞檔、或哪天有人手改存檔，兩件同號會讓商品指定
+        ///    同時對到兩座貨架。先到先得 —— 清單裡第一件保留原號，後面的換新號。
+        /// ⚠️ nextUid 要先拉到「現有最大號＋1」：舊存檔沒有 nextUid 欄（讀進來是預設 1），
+        ///    直接從 1 開始發會跟已經有號的撞號。
+        /// </summary>
+        static int AssignUids(SaveShape s)
+        {
+            int max = 0;
+            foreach (var p in s.placed) if (p.uid > max) max = p.uid;
+            if (s.nextUid <= max) s.nextUid = max + 1;
+            if (s.nextUid < 1) s.nextUid = 1;
+
+            int fixedCount = 0;
+            var seen = new HashSet<int>();
+            foreach (var p in s.placed)
+            {
+                if (p.uid > 0 && seen.Add(p.uid)) continue;
+                p.uid = s.nextUid++;
+                seen.Add(p.uid);
+                fixedCount++;
+            }
+            return fixedCount;
         }
 
         static SaveShape Load()
@@ -137,9 +180,15 @@ namespace WitchShop.Core
                             var d = p == null ? null : Furniture.ById(p.id);
                             if (d == null) continue;
                             if (!ShopRoom.Fits(p.gx, p.gy, d.W, d.H)) continue;   // 房間改過大小的舊存檔
-                            clean.placed.Add(new PlacedFurniture(d.Id, p.gx, p.gy, p.flip, p.anchor));
+                            clean.placed.Add(new PlacedFurniture(d.Id, p.gx, p.gy, p.flip, p.anchor) { uid = p.uid });
                         }
+                        clean.nextUid = o.nextUid;
                         EnsureSaleTable(clean);
+                        // 舊存檔（還沒有 uid 欄）讀進來全是 0 → 補發並馬上存回去，
+                        // 之後每次讀到的號碼才一樣（不存回去的話，下次啟動又重發一次，商品指定就對不上了）。
+                        // ⚠️ 不能呼叫 Save()：它讀的是 Data，而 Data 正在初始化（會無窮遞迴）。
+                        if (AssignUids(clean) > 0)
+                            SaveManager.SetString(Key, JsonUtility.ToJson(clean));
                         return clean;
                     }
                 }
@@ -195,7 +244,30 @@ namespace WitchShop.Core
 
         public static int OwnedCount(string id) => GetOwned(Data, id);
 
+        /// <summary>
+        /// 擺出來的家具清單。⚠️ 是**淺複本**：清單是新的，裡面的 PlacedFurniture 跟存檔資料是同一批物件
+        /// （佈置模式拖曳時就是直接改這些物件）。要「之後拿來還原」的快照請用 <see cref="PlacedSnapshot"/>。
+        /// </summary>
         public static List<PlacedFurniture> PlacedList() => new(Data.placed);
+
+        /// <summary>
+        /// 擺出來的家具的**深複本**（每件都 Clone，含 uid）—— 佈置模式按 Esc 還原用的快照。
+        /// ⚠️ 不能用 PlacedList()：拖曳會直接改清單裡的物件，淺複本的快照會跟著被改掉，Esc 就還原不回去。
+        /// </summary>
+        public static List<PlacedFurniture> PlacedSnapshot()
+        {
+            var outList = new List<PlacedFurniture>(Data.placed.Count);
+            foreach (var p in Data.placed) outList.Add(p.Clone());
+            return outList;
+        }
+
+        /// <summary>依 uid 找擺出來的家具（沒有＝收回托盤了或號碼不存在，回 null）。</summary>
+        public static PlacedFurniture ByUid(int uid)
+        {
+            if (uid <= 0) return null;
+            foreach (var p in Data.placed) if (p.uid == uid) return p;
+            return null;
+        }
 
         public static int PlacedCountOf(string id)
         {
@@ -391,8 +463,21 @@ namespace WitchShop.Core
         /// </summary>
         public static bool ArtFits(string id, Vector2 anchor, bool flipped)
         {
+            if (!ArtRect(id, anchor, flipped, out var r)) return true;
+            return ShopRoom.RectOnFloor(r.xMin, r.xMax, r.yMin)
+                && ShopRoom.RectInsideRoom(r.xMin, r.xMax, r.yMin, r.yMax);
+        }
+
+        /// <summary>
+        /// 家具圖擺在 anchor（腳底）時，**真正畫到東西的範圍**在世界上的矩形（沒有圖回 false）。
+        /// 穿牆判斷（<see cref="ArtFits"/>）與女巫的前後排序（ShopRoomView.PlayerOrder 判斷「圖有沒有疊到」）共用。
+        /// ⚠️ 跟 ShopRoomView.MakeGrounded 的擺法一致：圖的底緣在 anchor.y、左右以 anchor.x 置中、縮放 1。
+        /// </summary>
+        public static bool ArtRect(string id, Vector2 anchor, bool flipped, out Rect rect)
+        {
+            rect = default;
             var sp = GameArt.FurnitureArt(id);
-            if (sp == null) return true;
+            if (sp == null) return false;
 
             float w = sp.rect.width, h = sp.rect.height;
             float x0 = 0f, y0 = 0f, x1 = w, y1 = h;
@@ -402,12 +487,9 @@ namespace WitchShop.Core
             if (flipped) { float l = w - x1, r = w - x0; x0 = l; x1 = r; }   // 翻面＝左右鏡像
 
             float left = anchor.x - w / 2f + x0;
-            float right = anchor.x - w / 2f + x1;
             float bottom = anchor.y + y0;
-            float top = anchor.y + y1;
-
-            return ShopRoom.RectOnFloor(left, right, bottom)
-                && ShopRoom.RectInsideRoom(left, right, bottom, top);
+            rect = new Rect(left, bottom, x1 - x0, y1 - y0);
+            return true;
         }
 
         /// <summary>放不下的原因，講成玩家看得懂的一句話。</summary>
@@ -479,11 +561,18 @@ namespace WitchShop.Core
             return false;
         }
 
-        /// <summary>整批覆寫（佈置模式按「完成」時用）。</summary>
+        /// <summary>
+        /// 整批覆寫（佈置模式每次放下／翻面／收回／取消時用）。
+        ///
+        /// ⚠️ 會**重建全新的 PlacedFurniture 物件**（Clone）—— 呼叫端手上的舊物件從此跟存檔脫鉤，
+        ///    要找回同一件請用 uid（<see cref="ByUid"/>），不要靠 ReferenceEquals。
+        /// ⚠️ uid 照帶；uid 為 0 的（剛從托盤拿出來）在這裡發新號。
+        /// </summary>
         public static void SetPlaced(List<PlacedFurniture> list)
         {
             Data.placed = new List<PlacedFurniture>();
-            foreach (var p in list) Data.placed.Add(new PlacedFurniture(p.id, p.gx, p.gy, p.flip, p.anchor));
+            foreach (var p in list) if (p != null) Data.placed.Add(p.Clone());
+            AssignUids(Data);
             Save();
         }
 

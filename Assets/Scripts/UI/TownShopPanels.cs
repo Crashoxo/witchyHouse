@@ -63,9 +63,10 @@ namespace WitchShop.UI
         protected void RefreshAll()
         {
             if (!built) return;
-            goldLabel.text = $"{Wallet.Gold} 金";
+            goldLabel.text = UiSkin.MoneyText(Wallet.Gold);
             hintLabel.text = Hint;
             Refresh();
+            UiSkin.Stripe(rowsBox);
         }
 
         void Build()
@@ -73,6 +74,7 @@ namespace WitchShop.UI
             root = doc.rootVisualElement;
             if (root == null) { Debug.LogError($"[{GetType().Name}] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/ShopManageStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關在 UiSkin.Enabled）
             CjkFont.Apply(root);
             Sfx.BindClicks(root);         // 所有按鈕的 click 音
 
@@ -96,9 +98,7 @@ namespace WitchShop.UI
             spacer.AddToClassList("spacer");
             header.Add(spacer);
 
-            goldLabel = new Label();
-            goldLabel.AddToClassList("gold");
-            header.Add(goldLabel);
+            header.Add(UiSkin.GoldBox(out goldLabel));      // [金幣][數字]（舊外觀：「123 金」）
 
             var close = new Button(Close) { text = "×" };
             close.AddToClassList("close");
@@ -115,9 +115,7 @@ namespace WitchShop.UI
             rowsBox.AddToClassList("rows");
             panel.Add(rowsBox);
 
-            hintLabel = new Label();
-            hintLabel.AddToClassList("hint");
-            panel.Add(hintLabel);
+            hintLabel = UiSkin.Footer(panel, "關閉", "Esc");   // [Esc] 關閉 ……… 右邊放一句短提醒
 
             root.style.display = DisplayStyle.None;
             anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
@@ -126,11 +124,33 @@ namespace WitchShop.UI
 
         // ── 給子類用的小工具 ────────────────────────────────────
 
-        protected static VisualElement Icon(Sprite sp, float size = 34f)
+        /// <summary>
+        /// 列最前面的圖示。尺寸走 class（舊外觀 34／40、像素外觀 48）——
+        /// ⚠️ 以前是 inline 的 style.width，inline 優先權最高，uss 改不動。
+        /// </summary>
+        protected static VisualElement Icon(Sprite sp, bool big = false)
         {
             var el = new VisualElement();
-            el.style.width = size; el.style.height = size; el.style.marginRight = 8;
+            el.AddToClassList("ts-icon");
+            if (big) el.AddToClassList("ts-icon--big");
             if (sp != null) el.style.backgroundImage = new StyleBackground(sp);
+            return el;
+        }
+
+        /// <summary>價格欄：金幣圖示＋數字（舊外觀：「12 金」），套 col-price 的欄寬。</summary>
+        protected static VisualElement Price(int amount)
+        {
+            var m = UiSkin.Money(amount);
+            m.AddToClassList("col-price");
+            return m;
+        }
+
+        /// <summary>欄位標頭最前面的空白，寬度＝列圖示（標頭字才對得齊下面的欄）。</summary>
+        protected static VisualElement HeadGap()
+        {
+            var el = new VisualElement();
+            el.AddToClassList("ts-icon");
+            el.AddToClassList("ts-headgap");
             return el;
         }
 
@@ -174,7 +194,7 @@ namespace WitchShop.UI
         void OnDestroy() { if (Instance == this) Instance = null; }
 
         protected override string Title => "雜貨鋪 · 收購";
-        protected override string Hint => "Esc 關閉 · 收購價比你自己店裡賣得低，想賺多還是要自己做生意";
+        protected override string Hint => "自己開店賣得更貴";
 
         protected override void Refresh()
         {
@@ -182,7 +202,8 @@ namespace WitchShop.UI
 
             var head = new VisualElement();
             head.AddToClassList("head-row");
-            head.Add(Col("品項", "head-label col-name"));
+            head.Add(HeadGap());
+            head.Add(Col("品項", "head-label col-name", 120f));
             head.Add(Col("持有", "head-label col-bag"));
             head.Add(Col("單價", "head-label col-price"));
             rowsBox.Add(head);
@@ -200,12 +221,18 @@ namespace WitchShop.UI
                 row.AddToClassList("row");
                 row.Add(Icon(GameArt.Item(name)));
                 row.Add(Col(name, "col-name", 120f));
-                row.Add(Col(have.ToString(), "col-bag"));
-                row.Add(Col($"{price} 金", "col-price"));
+                var haveBox = new VisualElement();                      // 持有：小徽章
+                haveBox.AddToClassList("col-bag");
+                haveBox.AddToClassList("ts-cell");
+                haveBox.Add(UiSkin.Badge($"×{have}"));
+                row.Add(haveBox);
+                row.Add(Price(price));
 
                 row.Add(Act("賣 1", "btn-list", true, () => Sell(name, price, 1)));
-                row.Add(Act($"賣全部（{have * price} 金）", "btn-buy", true,
-                            () => Sell(name, price, have)));
+                // 「全賣 [金]84」：按鈕裡直接看得到一共換多少（舊外觀：「賣全部（84 金）」）
+                var sellAll = Act("", "btn-buy", true, () => Sell(name, price, have));
+                UiSkin.MoneyButtonContent(sellAll, "全賣", have * price, $"賣全部（{have * price} 金）");
+                row.Add(sellAll);
                 rowsBox.Add(row);
             }
 
@@ -261,10 +288,10 @@ namespace WitchShop.UI
         protected override string Title => "花店";
         protected override string Hint => tab switch
         {
-            Tab.Seeds => "Esc 關閉 · 種子種在後花園，開花後可以自己賣或拿去調藥水",
-            Tab.Decor => "Esc 關閉 · 買來的裝飾要回自己店裡才擺得出來",
-            Tab.Shelf => "Esc 關閉 · 貨架佔 1×2 格，靠左後牆那排最好看",
-            _         => "Esc 關閉 · 販售桌是上架商品用的，顧客會走到桌前來買",
+            Tab.Seeds => "種在後花園",
+            Tab.Decor => "回店裡佈置",
+            Tab.Shelf => "靠左後牆最好看",
+            _         => "回店裡佈置",
         };
 
         protected override void Refresh()
@@ -307,13 +334,14 @@ namespace WitchShop.UI
                 var def = f;
                 var row = new VisualElement();
                 row.AddToClassList("row");
-                row.style.height = 52;
+                row.AddToClassList("ts-row");
 
                 row.Add(Icon(GameArt.Item(def.Seed)));
                 row.Add(Col(def.Seed, "col-name", 120f));
                 row.Add(Col(def.Desc, "up-desc"));
-                row.Add(Col($"收成 {def.Yield} 朵", "up-effect"));
-                row.Add(Col($"{def.SeedPrice} 金", "col-price"));
+                // 收成：[花的小圖]×3（舊外觀沒有圖示時就是「收成 3 朵」）
+                row.Add(YieldCell(def.Flower, def.Yield));
+                row.Add(Price(def.SeedPrice));
 
                 bool canBuy = Wallet.Gold >= def.SeedPrice;
                 row.Add(Act("買 1", "btn-buy", canBuy, () =>
@@ -332,7 +360,8 @@ namespace WitchShop.UI
         {
             var head = new VisualElement();
             head.AddToClassList("head-row");
-            head.Add(Col("家具", "head-label col-name"));
+            head.Add(HeadGap());
+            head.Add(Col("家具", "head-label col-name", 120f));
             head.Add(Col("佔地", "head-label up-effect"));
             head.Add(Col("售價", "head-label col-price"));
             rowsBox.Add(head);
@@ -348,14 +377,14 @@ namespace WitchShop.UI
 
                 var row = new VisualElement();
                 row.AddToClassList("row");
-                row.style.height = 56;
+                row.AddToClassList("ts-row--big");
 
-                row.Add(Icon(GameArt.FurnitureArt(def.Id), 40f));
+                row.Add(Icon(GameArt.FurnitureArt(def.Id), true));
                 row.Add(Col(def.Name, "col-name", 120f));
                 row.Add(Col(def.Desc, "up-desc"));
                 row.Add(Col($"{def.W}×{def.H} 格", "up-effect"));
-                row.Add(Col($"{def.Price} 金", "col-price"));
-                row.Add(Col(owned > 0 ? $"已有 {owned}（未擺 {unplaced}）" : "", "up-effect"));
+                row.Add(Price(def.Price));
+                row.Add(OwnedCell(owned, unplaced, true));
 
                 bool canBuy = Wallet.Gold >= def.Price;
                 row.Add(Act("買 1", "btn-buy", canBuy, () =>
@@ -369,6 +398,37 @@ namespace WitchShop.UI
             }
         }
 
+        /// <summary>收成欄：花的小圖＋「×3」；外觀關著維持原本的「收成 3 朵」。</summary>
+        static VisualElement YieldCell(string flower, int yield)
+        {
+            if (!UiSkin.On) return Col($"收成 {yield} 朵", "up-effect");
+            var cell = UiSkin.IconCount(GameArt.Item(flower), $"×{yield}");
+            cell.AddToClassList("ts-yield");
+            return cell;
+        }
+
+        /// <summary>
+        /// 已擁有欄：外觀開著是「有 N」小徽章（還沒擺出來的再加一個「未擺 M」）；關著維持原本那句字。
+        /// </summary>
+        static VisualElement OwnedCell(int owned, int unplaced, bool showUnplaced)
+        {
+            if (!UiSkin.On)
+                return Col(owned <= 0 ? "" : showUnplaced ? $"已有 {owned}（未擺 {unplaced}）" : $"已有 {owned}", "up-effect");
+            var cell = new VisualElement();
+            cell.AddToClassList("ts-owned");
+            if (owned > 0)
+            {
+                cell.Add(UiSkin.Badge($"有 {owned}"));
+                if (unplaced > 0)
+                {
+                    var u = new Label($"未擺 {unplaced}");
+                    u.AddToClassList("ts-unplaced");
+                    cell.Add(u);
+                }
+            }
+            return cell;
+        }
+
         void BuildDecor()
         {
             foreach (var d in Decor.Catalog)
@@ -378,12 +438,12 @@ namespace WitchShop.UI
 
                 var row = new VisualElement();
                 row.AddToClassList("row");
-                row.style.height = 52;
+                row.AddToClassList("ts-row");
 
                 row.Add(Icon(GameArt.Decoration(def.Id)));
                 row.Add(Col(def.Name, "col-name", 130f));
-                row.Add(Col(owned > 0 ? $"已有 {owned}" : "", "up-effect"));
-                row.Add(Col($"{def.Price} 金", "col-price"));
+                row.Add(OwnedCell(owned, 0, false));
+                row.Add(Price(def.Price));
 
                 bool canBuy = Wallet.Gold >= def.Price;
                 row.Add(Act("買 1", "btn-buy", canBuy, () =>
@@ -422,7 +482,7 @@ namespace WitchShop.UI
         void OnDestroy() { if (Instance == this) Instance = null; }
 
         protected override string Title => shopTitle;
-        protected override string Hint => "Esc 關閉 · 買回去擺自己店裡賣，賺的是價差";
+        protected override string Hint => "買回店裡賣，賺價差";
 
         public void Open(string title)
         {
@@ -438,9 +498,10 @@ namespace WitchShop.UI
 
             var head = new VisualElement();
             head.AddToClassList("head-row");
-            head.Add(Col("商品", "head-label col-name"));
+            head.Add(HeadGap());
+            head.Add(Col("商品", "head-label col-name", 130f));
             head.Add(Col("進價", "head-label col-price"));
-            head.Add(Col("你店裡建議售價", "head-label up-effect"));
+            head.Add(Col("店裡售價", "head-label up-effect"));
             rowsBox.Add(head);
 
             foreach (var (name, price) in Candy.Goods)
@@ -453,13 +514,27 @@ namespace WitchShop.UI
                 row.AddToClassList("row");
                 row.Add(Icon(GameArt.Item(n)));
                 row.Add(Col(n, "col-name", 130f));
-                row.Add(Col($"{cost} 金", "col-price"));
-                row.Add(Col(resale > 0 ? $"{resale} 金（賺 {resale - cost}）" : "", "up-effect"));
+                row.Add(Price(cost));
+                row.Add(ResaleCell(resale, cost));
 
                 bool canBuy = Wallet.Gold >= cost;
                 row.Add(Act("買 1", "btn-buy", canBuy, () => Buy(n, cost)));
                 rowsBox.Add(row);
             }
+        }
+
+        /// <summary>店裡售價欄：[金幣]120 ＋綠字「+30」（舊外觀：「120 金（賺 30）」）。</summary>
+        static VisualElement ResaleCell(int resale, int cost)
+        {
+            if (resale <= 0) return Col("", "up-effect");
+            if (!UiSkin.On) return Col($"{resale} 金（賺 {resale - cost}）", "up-effect");
+            var cell = new VisualElement();
+            cell.AddToClassList("ts-resale");
+            cell.Add(UiSkin.Money(resale));
+            var p = new Label($"+{resale - cost}");
+            p.AddToClassList("ts-profit");
+            cell.Add(p);
+            return cell;
         }
 
         void Buy(string name, int cost)

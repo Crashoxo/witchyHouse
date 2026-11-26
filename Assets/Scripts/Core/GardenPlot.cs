@@ -118,11 +118,25 @@ namespace WitchShop.Core
                     fromDy * 0.7f + (Random.value - 0.5f) * 10f + 20f, 0f);
 
                 var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite = GameArt.Item("水滴");     // 沒有這張圖的話下面會退回小方塊
-                if (sr.sprite == null) sr.sprite = Dot();
-                sr.color = new Color32(150, 210, 255, 230);
                 sr.sortingOrder = 9200;
-                go.transform.localScale = Vector3.one * (2f + Random.value * 1.5f);
+                // 水滴大小：舊的小白點是 4px × (2~3.5) ＝ 8~14px 見方，新的水滴圖示要縮到差不多大。
+                float size = 8f + Random.value * 6f;
+                var drop = GameArt.Item("水滴");     // 8-bit 水滴（GameArt.UsePixelItems）；沒有就退回小白點
+                if (drop != null)
+                {
+                    sr.sprite = drop;
+                    // ⚠️ 96×96 的圖裡水滴本身只佔約 17/24 高（四周留透明邊）→ 用內容高度換算，
+                    //    直接拿 2~3.5 倍去乘 96px 的圖會變成兩三百 px 的大水球。
+                    //    圖本身已經是藍色、不再乘藍色（乘了會變暗變髒），只留一點透明。
+                    sr.color = new Color32(255, 255, 255, 230);
+                    go.transform.localScale = Vector3.one * (size / (drop.rect.height * DropContentFrac));
+                }
+                else
+                {
+                    sr.sprite = Dot();
+                    sr.color = new Color32(150, 210, 255, 230);
+                    go.transform.localScale = Vector3.one * (size / 4f);
+                }
 
                 // 往花圃落下
                 go.AddComponent<FloatAway>().Begin(
@@ -130,6 +144,9 @@ namespace WitchShop.Core
                     0.35f + Random.value * 0.15f, 0.4f);
             }
         }
+
+        /// <summary>items8/water-drop.png 裡水滴（含外框）佔整張圖高的比例（tools/gen_item_art.py 的 draw_water_drop）。</summary>
+        const float DropContentFrac = 17f / 24f;
 
         static Sprite dot;
 

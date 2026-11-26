@@ -34,7 +34,23 @@ namespace WitchShop.UI
 
         UIDocument doc;
         VisualElement hud;
+        /// <summary>
+        /// 格子實際放在這一層：像素外觀時它是一條木頭底座（Skin8 的 .hud-bar），舊外觀時沒有樣式、只負責換行置中。
+        /// ⚠️ 不能直接把底座圖掛在 .hud 上：.hud 是整條螢幕寬（left 0／right 0），底座會變成橫跨全螢幕的木條；
+        ///    多包一層、讓它照內容縮寬，再由 .hud 的 justify-content: center 置中。
+        /// </summary>
+        VisualElement bar;
         int builtCap = -1;      // 目前排出來的格數（偵測背包升級後重建）
+
+        /// <summary>
+        /// true ＝ 魔女腰包版面：[左端][口袋]×N[右端] 一個接一個排（每格 51×60、兩端 18×78，全是固定尺寸的圖，
+        /// 布條的金虛線剛好接起來）。12／15／18 格總寬 648／801／954，960 寬的畫面也放得下、不換行。
+        /// false ＝ 舊外觀（UiSkin 關著）：照舊用 .hud-bar＋.slot。
+        /// </summary>
+        bool belt;
+
+        /// <summary>剛拿到東西的那格（奶油白襯裡＋右上角一顆星）亮多久。</summary>
+        const long NewGlowMs = 1200;
 
         void Awake()
         {
@@ -52,6 +68,7 @@ namespace WitchShop.UI
 
             var root = doc.rootVisualElement;
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀：深紫布＋金框的格子（總開關在 UiSkin.Enabled）
             root.pickingMode = PickingMode.Ignore;      // HUD 不吃滑鼠，點地面才點得到
             CjkFont.Apply(root);
 
@@ -59,6 +76,14 @@ namespace WitchShop.UI
             hud.AddToClassList("hud");
             hud.pickingMode = PickingMode.Ignore;
             root.Add(hud);
+
+            // 像素外觀開著 → 魔女腰包（.hud-belt 與 belt-* 的圖，見 Skin8.uss）；關著 → 舊的 .hud-bar＋.slot。
+            // ⚠️ 腰包不共用 .hud-bar／.slot：那兩組 class 與圖還有上方工具列、Toast、托盤、背包面板在用。
+            belt = UiSkin.On;
+            bar = new VisualElement();
+            bar.AddToClassList(belt ? "hud-belt" : "hud-bar");
+            bar.pickingMode = PickingMode.Ignore;
+            hud.Add(bar);
 
             GameArt.OnReady(Refresh);
         }
@@ -96,7 +121,7 @@ namespace WitchShop.UI
         public void Refresh()
         {
             if (hud == null) return;
-            hud.Clear();
+            bar.Clear();
 
             int cap = Upgrades.BagSlots();
             builtCap = cap;
@@ -105,10 +130,13 @@ namespace WitchShop.UI
             lastCounts = new System.Collections.Generic.Dictionary<string, int>();
             foreach (var st in items) lastCounts[st.name] = st.count;
 
+            if (belt) { RefreshBelt(cap, items, prev); return; }
+
             for (int i = 0; i < cap; i++)
             {
                 var slot = new VisualElement();
                 slot.AddToClassList("slot");
+                slot.EnableInClassList("slot--empty", i >= items.Count);   // 空格：換一張暗一點的底
 
                 if (i < items.Count)
                 {
@@ -137,7 +165,7 @@ namespace WitchShop.UI
                     }
                 }
 
-                hud.Add(slot);
+                bar.Add(slot);
 
                 // 數量變多（含新撿到的一種）→ 那一格彈一下。變少（賣掉、收進倉庫）不彈。
                 if (prev != null && i < items.Count)
@@ -146,6 +174,77 @@ namespace WitchShop.UI
                     if (items[i].count > before) UIAnim.Bump(slot);
                 }
             }
+        }
+
+        /// <summary>魔女腰包版面（像素外觀）：兩端的扣子＋一格一個縫出來的口袋。行為跟舊版一樣，只是換 class。</summary>
+        void RefreshBelt(int cap, System.Collections.Generic.List<Stack> items,
+                         System.Collections.Generic.Dictionary<string, int> prev)
+        {
+            bar.Add(BeltPart("belt-end", "belt-end--l"));
+
+            for (int i = 0; i < cap; i++)
+            {
+                bool full = i < items.Count;
+                var slot = BeltPart("belt-slot", full ? null : "belt-slot--empty");
+
+                if (full)
+                {
+                    var st = items[i];
+                    var sp = GameArt.Item(st.name);
+                    if (sp != null)
+                    {
+                        var icon = BeltPart("belt-icon");
+                        icon.style.backgroundImage = new StyleBackground(sp);
+                        slot.Add(icon);
+                    }
+                    else
+                    {
+                        var nameLabel = new Label(st.name);
+                        nameLabel.AddToClassList("belt-name");
+                        nameLabel.pickingMode = PickingMode.Ignore;
+                        slot.Add(nameLabel);
+                    }
+
+                    if (st.count > 1)
+                    {
+                        var count = new Label(st.count.ToString());
+                        count.AddToClassList("belt-count");
+                        count.pickingMode = PickingMode.Ignore;
+                        slot.Add(count);
+                    }
+                }
+
+                bar.Add(slot);
+
+                // 數量變多（含新撿到的一種）→ 那一格彈一下，並亮一下（奶油白襯裡＋星星）。變少不彈。
+                if (prev != null && full)
+                {
+                    prev.TryGetValue(items[i].name, out int before);
+                    if (items[i].count > before)
+                    {
+                        slot.AddToClassList("belt-slot--new");
+                        var spark = BeltPart("belt-spark");
+                        slot.Add(spark);
+                        slot.schedule.Execute(() =>
+                        {
+                            slot.RemoveFromClassList("belt-slot--new");
+                            spark.RemoveFromHierarchy();
+                        }).StartingIn(NewGlowMs);
+                        UIAnim.Bump(slot);
+                    }
+                }
+            }
+
+            bar.Add(BeltPart("belt-end", "belt-end--r"));
+        }
+
+        static VisualElement BeltPart(string cls, string extra = null)
+        {
+            var el = new VisualElement();
+            el.AddToClassList(cls);
+            if (extra != null) el.AddToClassList(extra);
+            el.pickingMode = PickingMode.Ignore;
+            return el;
         }
     }
 }

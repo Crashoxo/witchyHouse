@@ -9,7 +9,10 @@ namespace WitchShop.Core
     /// 原本顧客只由 <see cref="CustomerManager"/> 產生，而它是**進 shop 場景才生出來的** ——
     /// 所以玩家一去採集、逛街、煉藥，店就等於關門，架上的東西一件也賣不掉。這一支補上那段空窗：
     /// 用**跟在場時完全一樣的規則**（招牌等級 × 名聲 × 節日的來客間隔、08:00–20:00 的營業時間、
-    /// 架上有貨才成交）在背景成交，只是沒有走進來的那位村民、沒有對話泡。
+    /// 門口招牌翻成 OPEN（<see cref="ShopSign.Serving"/>）、架上有貨才成交）在背景成交，
+    /// 只是沒有走進來的那位村民、沒有對話泡。
+    /// ⚠️ 關店（招牌 CLOSED）出門就是真的不做生意 —— 玩家佈置完忘了開店，回來會發現一件都沒賣，
+    ///    這是刻意的（門口招牌關著時會一直晃，提醒他）。
     ///
     /// ⚠️ 刻意**不做離線收益**（關掉遊戲的那段時間不算）—— 這個遊戲的時間本來就只在遊玩時前進
     ///    （<see cref="TimeDriver"/> 每幀推 <see cref="TimeSystem"/>），關了遊戲時間就停，
@@ -58,7 +61,8 @@ namespace WitchShop.Core
             if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == ShopScene) return;
             // 開著視窗時整個遊戲是停的（時間也不走），成交也要跟著停
             if (UIState.ModalOpen) return;
-            if (!DailyLog.IsShopOpen()) { timer = 0f; return; }
+            // 營業時間外、或門口招牌翻成 CLOSED（ShopSign）都不做背景成交 —— 跟在店裡時同一個判斷
+            if (!ShopSign.Serving) { timer = 0f; return; }
             if (ShopStock.Types == 0) { timer = 0f; return; }
 
             // 來客間隔：跟 CustomerManager 同一條式子

@@ -42,8 +42,7 @@ namespace WitchShop.Data
         public const float RoomH = 640f;
 
         /// <summary>格子中心的世界座標。</summary>
-        public static Vector2 TileCenter(int gx, int gy) =>
-            new(OriginX + (gx - gy) * TileW / 2f, OriginY - (gx + gy) * TileH / 2f);
+        public static Vector2 TileCenter(int gx, int gy) => GridToWorld(gx, gy);
 
         /// <summary>格子的「下角」＝落地點（家具/裝飾的錨點對在這裡）。</summary>
         public static Vector2 TileFront(int gx, int gy) =>
@@ -88,6 +87,16 @@ namespace WitchShop.Data
         public static Cell ClampCell(int gx, int gy, int fw, int fh) =>
             new(Mathf.Clamp(gx, 0, GridW - fw), Mathf.Clamp(gy, 0, GridH - fh));
 
+        /// <summary>連續格座標 → 世界座標（<see cref="ToGrid"/> 的反函數；格子中心是整數、磚緣是 ±0.5）。</summary>
+        public static Vector2 GridToWorld(float gx, float gy) =>
+            new(OriginX + (gx - gy) * TileW / 2f, OriginY - (gx + gy) * TileH / 2f);
+
+        /// <summary>
+        /// 女巫的落腳點離最外圈磚緣至少留幾格（避免整個人站到磚外）。
+        /// <see cref="ClampToFloor"/> 與 <see cref="WalkFloor"/> 共用這個值，兩邊的邊界才會一模一樣。
+        /// </summary>
+        public const float FloorMargin = 0.18f;
+
         /// <summary>
         /// 把落腳點夾在地板菱形內。
         ///
@@ -95,14 +104,72 @@ namespace WitchShop.Data
         ///    最大矩形只有地板的一小塊（地板本身 768×384），玩家會被關在正中間。
         ///    所以改成換算成格座標後夾住 col/row，再換算回來。
         ///    margin 是離最外圈磚緣留幾格（避免整個人站到磚外）。
+        /// 女巫本人現在改走 Obstacles（地板多邊形＝<see cref="WalkFloor"/>），這支留給佈置模式拖裝飾用。
         /// </summary>
-        public static Vector2 ClampToFloor(float x, float y, float margin = 0.18f)
+        public static Vector2 ClampToFloor(float x, float y, float margin = FloorMargin)
         {
             var g = ToGrid(x, y);
             float lo = -0.5f + margin;
             float c = Mathf.Clamp(g.x, lo, GridW - 0.5f - margin);
             float r = Mathf.Clamp(g.y, lo, GridH - 0.5f - margin);
-            return new Vector2(OriginX + (c - r) * TileW / 2f, OriginY - (c + r) * TileH / 2f);
+            return GridToWorld(c, r);
+        }
+
+        /// <summary>
+        /// 女巫在店裡的可走範圍：地板菱形往內縮 margin 格之後的四個頂點（世界座標，順時針：上、右、下、左）。
+        /// 給 Obstacles.Begin 的 walkPolygon 用。
+        ///
+        /// 跟 <see cref="ClampToFloor"/> 是**同一塊區域**：格座標 gx、gy 各自夾在
+        /// [-0.5+margin, GridW/GridH-0.5-margin]，在世界上就是一個平行四邊形（等距下是菱形）。
+        /// ⚠️ 兩者只差在「點在外面時夾到哪」：ClampToFloor 是在格座標裡各軸分別夾，
+        ///    Obstacles.ClampWalk 是取多邊形邊上最近的點 —— 範圍一樣，推牆時的滑動方向略有不同，玩家感覺不出來。
+        /// </summary>
+        public static Vector2[] WalkFloor(float margin = FloorMargin)
+        {
+            float lo = -0.5f + margin;
+            float hx = GridW - 0.5f - margin, hy = GridH - 0.5f - margin;
+            return new[]
+            {
+                GridToWorld(lo, lo),   // 上角（兩面牆交會處）
+                GridToWorld(hx, lo),   // 右角
+                GridToWorld(hx, hy),   // 下角
+                GridToWorld(lo, hy),   // 左角
+            };
+        }
+
+        /// <summary>
+        /// 家具的碰撞範圍每一邊往內縮幾格（只影響碰撞，不影響擺放規則與畫面）。
+        ///
+        /// 為什麼要縮：一格的等距菱形只有 64×32，**兩條平行磚緣之間的垂直距離只有 ≈28.6px**
+        /// （(32,-16) 投影到磚緣法線上）。女巫腳底是半徑 11 的圓，兩側各吃掉 11 → 一格走道只剩 ≈6.6px，
+        /// 斜著走、或滑鼠點地自動走時幾乎一定會卡住。貨架前規定只留一格走道，這條一定要走得過。
+        ///
+        /// 縮 0.2 格之後：一格走道（兩側都是家具）淨寬 28.6 ×（1 + 2×0.2）≈ 40.1px，
+        /// 扣掉 22px 的身寬還剩 ≈18px 的餘裕；家具靠地板邊緣時那一格的淨寬更大（地板邊只縮 FloorMargin）。
+        /// 離線驗證：tools/check_shop_walk.py（改這個值要一起改那邊）。
+        ///
+        /// ⚠️ 代價：兩件家具**斜對角相鄰**（只在一個角點相碰）時，中間那個角縫只有 64×0.2 ≈12.8px，
+        ///    女巫過不去 —— 這跟畫面一致（兩件家具在那裡是頂著的），而且旁邊兩格是正常的四向連通，繞得過去。
+        ///    要讓角縫也能鑽，得縮到 0.35 格以上，家具看起來就會「站在東西裡面」了，不划算。
+        /// ⚠️ 女巫的圖會跟家具的圖疊到一點（約 0.2 格）—— 那是排序（ShopRoomView.PlayerOrder）要處理的，不是碰撞。
+        /// </summary>
+        public const float FurnitureInset = 0.2f;
+
+        /// <summary>
+        /// 佔地 w×h 格、擺在 (gx,gy) 的家具的碰撞多邊形（世界座標四個頂點，順時針：上、右、下、左）。
+        /// 格座標從 (gx-0.5+inset, gy-0.5+inset) 到 (gx+w-0.5-inset, gy+h-0.5-inset)，換算成世界座標是等距平行四邊形。
+        /// </summary>
+        public static Vector2[] FootprintPoly(int gx, int gy, int w, int h, float inset = FurnitureInset)
+        {
+            float x0 = gx - 0.5f + inset, x1 = gx + w - 0.5f - inset;
+            float y0 = gy - 0.5f + inset, y1 = gy + h - 0.5f - inset;
+            return new[]
+            {
+                GridToWorld(x0, y0),   // 上角（後角）
+                GridToWorld(x1, y0),   // 右角
+                GridToWorld(x1, y1),   // 下角（前角）
+                GridToWorld(x0, y1),   // 左角
+            };
         }
 
         /// <summary>

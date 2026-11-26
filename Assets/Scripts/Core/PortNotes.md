@@ -21,6 +21,25 @@
   ＝地板＋兩面斜牆，跟 gen_shop_room.py 同一組點）。量的是 `Data.FurnitureBounds`
   的不透明範圍，不是整張 PNG（透明邊很大又不置中）。家具能不能放一律問 `RoomLayout.Check()`。
 
+## 碰撞
+
+- **戶外地圖（main/town/candy）、藥水室（brew）、店裡（shop）有、只擋玩家**：`Obstacles.Resolve(from, to)`，
+  `PlayerController` 鍵盤與點地走路都過它。村民／顧客／小動物不套。後花園只夾矩形。
+  兩個房間的可走範圍是地板多邊形（藥水室 `BrewRoomLayout.Walk`、店裡 `ShopRoom.WalkFloor()`），家具由房間直接
+  `Obstacles.AddPoly` 登記；店裡由 `ShopRoomView.Rebuild()` 每次重畫後 `ClearRegistered("shop_furniture")` 再整批登記，
+  佔地每邊內縮 `ShopRoom.FurnitureInset`（一格走道才走得過，離線驗證 `python tools/check_shop_walk.py`）。
+- 障礙是**掃場景裡的 SpriteRenderer**、用 sprite 名稱查 `Data.ArtFootprints`（`tools/gen_footprints.py` 量圖產生，
+  不要手改）。形狀座標**相對圖片中心**、乘 scale。新圖沒進表 ＝ 不擋。執行期才擺出來的東西擺完要叫
+  `Obstacles.MarkDirty()`（CandyTown 有）。
+- 調範圍：改產生器的 `CATS` → 重跑 → `python tools/check_walkable.py <資料夾>` 看預覽與「走不到的互動點」。
+  Python 檢查與 C# 讀的是同一份數值，不要在任一邊另寫常數。遊戲裡 `F3` 畫線框。
+- **新增互動點**（按 E 的東西、門）要確定走得到：編輯器 Console 的 `[Obstacles]` 摘要會列出走不到的。
+  門的觸發點被建築擋住時，`Obstacles` 會在那棟建築的範圍上挖一條 48px 的通道。建築的門最好放在範圍**底緣外面**
+  （`doorX/doorY` 相對**圖片中心**，城鎮物件的 position 就是圖片中心），那樣不用挖。
+- **防卡死**：在障礙裡時，往外走一律放行。改 `Resolve` 時不要拿掉這條。
+- 戶外的邊緣內縮（上 64／左右 22／下 6）在 `ArtFootprints.Edge*`；邊界換場景是「推到內縮後的邊」觸發。
+- 戶外的**排序看腳底 y**：女巫每幀設、物件在建障礙清單時改（城鎮建築例外，維持圖片中心；橋壓到 -8600）。
+
 ## 資源
 
 - 路徑一律**小寫** `ui/`、`items/`⋯ —— `AssetDatabase` 的路徑區分大小寫，
@@ -50,6 +69,11 @@
 - 新面板：Build 時 `Sfx.BindClicks(root)`（全部按鈕的 click 音），`Open()`/`Close()` 各一行
   `Sfx.Play("ui-open")` / `Sfx.Play("ui-close")`。
 - 新音效：在 `tools/gen_sfx.py` 的 `SOUNDS` 表加一支、重跑；或直接丟一個同名音檔進 `Resources/audio/`。
+- **背景音樂**是 `Bgm` 自己依場景＋日夜挑的，呼叫端什麼都不用做。選曲規則在 **`Bgm.Choose()`**；
+  新曲子：`tools/gen_bgm.py` 的 `SONGS` 表加一首重跑，或丟一個同名音檔進 `Resources/audio/bgm/`
+  （`Editor/BgmImporter` 會自動壓成 Vorbis），再到 `Choose()` 指派給場景。正式音樂要自己做好循環點。
+- 音量／靜音都在 `Sfx`（`Volume`＝音效、`MusicVolume`＝音樂、`Muted` 兩者一起），變了發 `Sfx.Changed`；
+  介面是 `UI/SettingsPanel`（O 鍵）。音量 setter 寫檔有防抖，**不要**在別處每幀 set。
 
 ## 場景
 

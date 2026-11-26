@@ -8,7 +8,8 @@
 `Assets/Resources/audio/` 裡的檔案**就好，程式一行都不用改（Sfx 是照檔名載入的）。
 
 用法（在專案根目錄）：
-    python tools/gen_sfx.py
+    python tools/gen_sfx.py                          （全部）
+    python tools/gen_sfx.py chime-open chime-close   （只產指定的名字，其他檔不碰）
 
 ⚠️ 會覆蓋 `Assets/Resources/audio/` 底下同名的 .wav —— 如果已經換成正式音檔，
    不要再跑這支（或先把那幾個名字從 SOUNDS 表裡拿掉）。
@@ -301,6 +302,15 @@ def make_ui_tab(rng):
     return lowpass(t, 3500), 0.30
 
 
+def make_page(rng):
+    """翻書頁（調配藥水的配方書）：短促的紙張「唰」—— 往下滑的濾過雜訊、快速衰減，
+    尾巴一下很輕的「啪」（紙落下）。比 ui-tab 安靜、沒有音高，連翻幾頁也不吵。"""
+    swish = tone(0.13, 5200, 2400, wave_='noise', a=0.012, d=0.07, s=0.25, r=0.05, rng=rng)
+    swish = lowpass(swish, 3200)
+    flap = lowpass(tone(0.03, 1800, wave_='noise', a=0.001, d=0.02, s=0.1, r=0.008, rng=rng), 1400)
+    return mix((0, swish), (0.11, flap)), 0.40
+
+
 def make_talk(rng):
     """對話 blip：像動森那種很短的「哺」。音高的變化交給 Sfx 的隨機 pitch。"""
     b = tone(0.045, 620, 560, wave_='square', duty=0.5, a=0.003, d=0.02, s=0.5, r=0.015)
@@ -370,6 +380,57 @@ def make_place(rng):
     return mix((0, tap), (0, knock)), 0.48
 
 
+# ──────────────── 風鈴（門口招牌開店／關店，ShopSign.SetOpen 播）────────────────
+# 風鈴＝幾根金屬管被風一碰、各自「叮」一聲然後慢慢消失。要的是**清亮、透明、尾巴長**，
+# 不是電子嗶聲 —— 所以完全不用方波：正弦為主＋高八度（2×）泛音＋一點點金屬感的不協和泛音（2.76×，
+# 管鐘／鐵琴第二泛音的比例），高的泛音消得比基音快（真的金屬就是這樣：一開始亮、尾巴變圓）。
+# ⚠️ tone() 的 ADSR 是線性衰減，敲擊類聽起來像「被剪掉」；這裡另外乘一條指數衰減（ring 的 decay），
+#    s 給 1、只靠指數收尾，r 只負責最後幾十毫秒歸零。
+
+def ring(dur, f, decay, vol=1.0, rng=None):
+    """
+    一根風鈴管被碰一下：正弦基音 ＋ 2× 泛音（高八度）＋ 2.76× 金屬泛音，各自指數衰減。
+    decay：基音音量掉到 1/e 的秒數；泛音依序 ×0.55、×0.3（高的先消）。
+    rng 有給的話每根管子音準偏個 ±6 cents（風鈴本來就不是調得很準的樂器，太準反而像電子琴）。
+    """
+    if rng is not None:
+        f *= 2.0 ** (rng.uniform(-6.0, 6.0) / 1200.0)
+    out = None
+    for ratio, amp, dk in ((1.0, 1.0, 1.0), (2.0, 0.42, 0.55), (2.76, 0.16, 0.30)):
+        t = tone(dur, f * ratio, wave_='sine', a=0.0015, d=0.0, s=1.0, r=0.03, vol=amp * vol)
+        tau = decay * dk
+        t = [v * math.exp(-(i / SR) / tau) for i, v in enumerate(t)]
+        out = t if out is None else [x + y for x, y in zip(out, t)]
+    # 敲擊瞬間那一下「叮」的金屬顆粒：很短、很輕的高頻雜訊
+    tick = lowpass(tone(0.012, 7000, wave_='noise', a=0.0005, d=0.008, s=0.1, r=0.003,
+                        rng=rng or random.Random(0)), 5200)
+    return mix((0, out), (0, [v * 0.10 * vol for v in tick]))
+
+
+def make_chime_open(rng):
+    """開店：四根管子由低往高被風一路碰過去（E6 G#6 B6 E7，亮的大三和弦），間隔與音量帶一點隨機錯位。"""
+    parts = []
+    t = 0.0
+    for i, nm in enumerate(['E6', 'G#6', 'B6', 'E7']):
+        vol = rng.uniform(0.75, 1.0) * (1.0 - 0.08 * i)       # 越高的越輕一點，不刺耳
+        parts.append((t, ring(1.25, note(nm), rng.uniform(0.32, 0.42), vol, rng)))
+        t += rng.uniform(0.065, 0.10)
+    # 最後再輕輕回碰一下中間那根（風鈴不會規規矩矩只響一輪）
+    parts.append((t + 0.05, ring(1.0, note('B6'), 0.30, 0.35, rng)))
+    return lowpass(mix(*parts), 6500), 0.55
+
+
+def make_chime_close(rng):
+    """關店：同一組管子由高往低（E7 B6 G#6 E6），間隔慢一點、音量收小、低通多削一點 —— 像風停了。"""
+    parts = []
+    t = 0.0
+    for i, nm in enumerate(['E7', 'B6', 'G#6', 'E6']):
+        vol = rng.uniform(0.7, 0.9) * (0.8 + 0.07 * i)        # 越往下越穩，最後一聲最飽滿
+        parts.append((t, ring(1.35, note(nm), rng.uniform(0.38, 0.48), vol, rng)))
+        t += rng.uniform(0.10, 0.14)
+    return lowpass(mix(*parts), 4200), 0.45
+
+
 SOUNDS = {
     'step-1': lambda r: make_step(r, 0),
     'step-2': lambda r: make_step(r, 1),
@@ -389,28 +450,49 @@ SOUNDS = {
     'ui-close': make_ui_close,
     'ui-click': make_ui_click,
     'ui-tab': make_ui_tab,
+    'page': make_page,
     'talk': make_talk,
     'door': make_door,
     'brew': make_brew,
     'quest-done': make_quest_done,
     'new-day': make_new_day,
     'place': make_place,
+    'chime-open': make_chime_open,
+    'chime-close': make_chime_close,
 }
 
 
 def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
+    """
+    python tools/gen_sfx.py                          # 全部重產（覆蓋同名檔）
+    python tools/gen_sfx.py chime-open chime-close   # 只產指定的名字（其他檔完全不碰）
+    python tools/gen_sfx.py --out DIR                # 輸出到別的資料夾（驗證「重跑 md5 不變」用）
+    """
+    import sys
+    args = sys.argv[1:]
+    out_dir = OUT_DIR
+    if '--out' in args:
+        i = args.index('--out')
+        out_dir = os.path.abspath(args[i + 1])
+        del args[i:i + 2]
+    unknown = [a for a in args if a not in SOUNDS]
+    if unknown:
+        raise SystemExit(f'沒有這些音效：{unknown}（可用：{", ".join(SOUNDS)}）')
+    names = args or list(SOUNDS)
+
+    os.makedirs(out_dir, exist_ok=True)
     total = 0
-    for name, fn in SOUNDS.items():
+    for name in names:
+        fn = SOUNDS[name]
         rng = random.Random('witch-sfx:' + name)     # 以名字當種子：單獨改一個音效不會牽動其他檔
         buf, gain = fn(rng)
         buf = finish(buf, gain)
-        path = os.path.join(OUT_DIR, name + '.wav')
+        path = os.path.join(out_dir, name + '.wav')
         write_wav(path, buf)
         size = os.path.getsize(path)
         total += size
         print(f'  {name:<11} {len(buf) / SR:5.2f}s  {size / 1024:6.1f} KB')
-    print(f'共 {len(SOUNDS)} 個，{total / 1024:.0f} KB → {os.path.relpath(OUT_DIR, ROOT)}')
+    print(f'共 {len(names)} 個，{total / 1024:.0f} KB → {out_dir}')
 
 
 if __name__ == '__main__':

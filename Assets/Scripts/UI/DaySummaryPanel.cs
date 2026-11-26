@@ -18,6 +18,12 @@ namespace WitchShop.UI
     ///
     /// ⚠️ 開場先擋 0.45 秒的按鍵 —— 「按 E 去睡」的那一下會穿透過來，
     ///    不擋的話帳單會在出現的同一瞬間被關掉。
+    ///
+    /// ── 像素外觀（<see cref="UiSkin.On"/>）──────────────────────────
+    /// 跟其他面板同一套木框＋羊皮紙＋紫布緞帶標題。數字改成「圖示＋數字＋兩個字的小標」的小卡，三欄排：
+    ///   營收[金幣] 賣出[籃子] 收購[麻袋] 支出[金幣，紅字] 採集[葉子] 煉製[藥瓶] 名聲[星星]（0 的那幾格不出）。
+    /// 賣出明細是一列列小卡 [道具圖][名稱][×n 徽章][金幣 金額]；淨收入是金框卡；底下 [Enter][Space] 繼續。
+    /// 外觀關著時照舊（HudExtraStyle 的 .day-*，一行一行的「項目 —— 數字」）。
     /// </summary>
     public class DaySummaryPanel : MonoBehaviour
     {
@@ -43,6 +49,10 @@ namespace WitchShop.UI
         float openedAt;
         bool ownedModal;
         bool built;
+        bool skin;        // 這次用的是不是像素外觀（Build 時決定）
+        /// <summary>像素外觀：淨收入的金幣＋數字那一格、持有金幣的數字（每次 Refresh 重填）。</summary>
+        VisualElement netMoneyBox;
+        Label walletLabel;
         UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
         void Awake()
@@ -104,6 +114,8 @@ namespace WitchShop.UI
             root = doc.rootVisualElement;
             if (root == null) { Debug.LogError("[DaySummaryPanel] 沒有 rootVisualElement"); return; }
             root.styleSheets.Add(Resources.Load<StyleSheet>("ui/HudExtraStyle"));
+            UiSkin.Apply(root);           // 8-bit 外觀（總開關 UiSkin.Enabled）
+            skin = UiSkin.On;
             CjkFont.Apply(root);
 
             var layer = new VisualElement();
@@ -114,6 +126,79 @@ namespace WitchShop.UI
             card.AddToClassList("day-card");
             layer.Add(card);
 
+            if (skin) BuildSkin();
+            else BuildPlain();
+
+            root.style.display = DisplayStyle.None;
+            anim = UIAnim.Pop(root, card);                    // 黑幕是 SleepOverlay 的，這裡只動帳單本身
+            built = true;
+        }
+
+        /// <summary>
+        /// 像素外觀：[緞帶「今日結算」] / 日期 / （昏倒的提醒）/ 數字小卡 / 分隔線 / 明細 / 淨收入金框卡 / 持有 / [Enter][Space] 繼續。
+        /// </summary>
+        void BuildSkin()
+        {
+            var header = new VisualElement();
+            header.AddToClassList("header");
+            card.Add(header);
+            titleLabel = new Label("今日結算");
+            titleLabel.AddToClassList("title");
+            header.Add(titleLabel);
+
+            dateLabel = new Label();
+            dateLabel.AddToClassList("day-date");
+            card.Add(dateLabel);
+
+            noteLabel = new Label();
+            noteLabel.AddToClassList("day-note");
+            card.Add(noteLabel);
+
+            statBox = new VisualElement();
+            statBox.AddToClassList("sk-day-stats");
+            card.Add(statBox);
+
+            var div = new VisualElement();
+            div.AddToClassList("sk-divider");
+            card.Add(div);
+
+            listScroll = new ScrollView(ScrollViewMode.Vertical);
+            listScroll.AddToClassList("day-list");
+            card.Add(listScroll);
+            listBox = listScroll.contentContainer;
+
+            // 淨收入：[淨收入] …… [金幣 +248]
+            var net = new VisualElement();
+            net.AddToClassList("sk-day-net");
+            card.Add(net);
+            netLabel = new Label("淨收入");
+            netLabel.AddToClassList("sk-day-net-label");
+            net.Add(netLabel);
+            netMoneyBox = new VisualElement();
+            netMoneyBox.AddToClassList("sk-money");
+            netMoneyBox.Add(UiSkin.Coin());
+            goldLabel = new Label();                          // 淨收入的數字（像素外觀時 goldLabel 拿來放它）
+            goldLabel.AddToClassList("sk-day-netnum");
+            netMoneyBox.Add(goldLabel);
+            net.Add(netMoneyBox);
+
+            // 持有：…… [持有][金幣 1280]
+            var wallet = new VisualElement();
+            wallet.AddToClassList("sk-day-wallet");
+            card.Add(wallet);
+            var wl = new Label("持有");
+            wl.AddToClassList("sk-day-wallet-label");
+            wallet.Add(wl);
+            var wm = UiSkin.Money(0, "sk-day-walletnum");
+            walletLabel = wm.Q<Label>();
+            wallet.Add(wm);
+
+            UiSkin.Footer(card, "繼續", "Enter", "Space");
+        }
+
+        /// <summary>舊外觀：一行一行的「項目 —— 數字」（HudExtraStyle 的 .day-*）。</summary>
+        void BuildPlain()
+        {
             titleLabel = new Label("今日結算");
             titleLabel.AddToClassList("day-title");
             card.Add(titleLabel);
@@ -155,10 +240,6 @@ namespace WitchShop.UI
             var foot = new Label("按 Enter／空白鍵繼續");
             foot.AddToClassList("day-foot");
             card.Add(foot);
-
-            root.style.display = DisplayStyle.None;
-            anim = UIAnim.Pop(root, card);                    // 黑幕是 SleepOverlay 的，這裡只動帳單本身
-            built = true;
         }
 
         static VisualElement Rule()
@@ -179,6 +260,8 @@ namespace WitchShop.UI
 
             noteLabel.text = d.collapsed ? "撐到 02:00 才倒下 —— 下次早點睡吧。" : "";
             noteLabel.style.display = d.collapsed ? DisplayStyle.Flex : DisplayStyle.None;
+
+            if (skin) { RefreshSkin(d); return; }
 
             statBox.Clear();
             statBox.Add(Row("店內營收", $"+{d.revenue} G", d.revenue > 0 ? "day-plus" : null));
@@ -208,6 +291,95 @@ namespace WitchShop.UI
             netLabel.EnableInClassList("day-minus", net < 0);
 
             goldLabel.text = $"目前金幣　{Wallet.Gold} G";
+        }
+
+        /// <summary>像素外觀的內容：數字小卡、明細小卡、淨收入、持有。</summary>
+        void RefreshSkin(DayRecord d)
+        {
+            statBox.Clear();
+            int n = 0;
+            void Tile(VisualElement icon, string num, string cap, string numClass)
+            {
+                var t = new VisualElement();
+                t.AddToClassList("sk-day-tile");
+                if (++n % 3 == 0) t.AddToClassList("sk-day-tile--end");   // 每列第 3 格不留右邊距（USS 沒有 :nth-child）
+                var ib = new VisualElement();
+                ib.AddToClassList("sk-day-ico");
+                ib.Add(icon);
+                t.Add(ib);
+                var tx = new VisualElement();
+                tx.AddToClassList("sk-day-tile-text");
+                var nl = new Label(num);
+                nl.AddToClassList("sk-day-num");
+                if (numClass != null) nl.AddToClassList(numClass);
+                tx.Add(nl);
+                var cl = new Label(cap);
+                cl.AddToClassList("sk-day-cap");
+                tx.Add(cl);
+                t.Add(tx);
+                statBox.Add(t);
+            }
+            Tile(UiSkin.Coin(), $"+{d.revenue}", "營收", d.revenue > 0 ? "day-plus" : null);
+            Tile(UiSkin.Ico("basket"), d.sales.ToString(), "賣出", null);
+            if (d.trade > 0)    Tile(UiSkin.Ico("sack"), $"+{d.trade}", "收購", "day-plus");
+            if (d.spent > 0)    Tile(UiSkin.Coin(), $"-{d.spent}", "支出", "day-minus");
+            if (d.gathered > 0) Tile(UiSkin.Ico("leaf"), d.gathered.ToString(), "採集", null);
+            if (d.brewed > 0)   Tile(UiSkin.Ico("flask"), d.brewed.ToString(), "煉製", null);
+            if (d.rep > 0)      Tile(UiSkin.Ico("star"), $"+{d.rep}", $"名聲 Lv.{Reputation.Level}", "day-plus");
+
+            listBox.Clear();
+            if (d.items == null || d.items.Count == 0)
+            {
+                var empty = new Label("今天沒有客人買走東西。");
+                empty.AddToClassList("day-empty");
+                listBox.Add(empty);
+            }
+            else
+            {
+                int i = 0;
+                foreach (var e in d.items)
+                {
+                    var row = SkinSaleRow(e);
+                    row.EnableInClassList("sk-alt", (i++ & 1) == 1);   // 交錯列
+                    listBox.Add(row);
+                }
+            }
+
+            int net = d.revenue + d.trade - d.spent;
+            goldLabel.text = $"{(net < 0 ? "-" : "+")}{Mathf.Abs(net)}";
+            goldLabel.EnableInClassList("day-plus", net > 0);
+            goldLabel.EnableInClassList("day-minus", net < 0);
+            walletLabel.text = UiSkin.MoneyText(Wallet.Gold);
+        }
+
+        /// <summary>像素外觀的明細一列：[道具圖][名稱][×n 徽章][金幣 金額]。</summary>
+        static VisualElement SkinSaleRow(SaleEntry e)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("day-item");
+
+            var icon = new VisualElement();
+            icon.AddToClassList("day-icon");
+            var sp = GameArt.Item(e.name);
+            if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
+            row.Add(icon);
+
+            var name = new Label(e.name);
+            name.AddToClassList("day-item-name");
+            name.style.flexGrow = 1;
+            row.Add(name);
+
+            var qty = new VisualElement();
+            qty.AddToClassList("sk-day-qty");
+            qty.Add(UiSkin.Badge("×" + e.q));
+            row.Add(qty);
+
+            var gold = new VisualElement();
+            gold.AddToClassList("sk-day-gold");
+            gold.Add(UiSkin.Money(e.g, "sk-day-goldnum"));
+            row.Add(gold);
+
+            return row;
         }
 
         /// <summary>一列「項目 —— 數字」。</summary>

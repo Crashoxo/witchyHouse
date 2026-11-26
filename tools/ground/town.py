@@ -100,12 +100,17 @@ def masks(h, w):
     return {c: up(c) for c in 'GCPDW'}
 
 
-def bake():
-    rng = np.random.default_rng(SEED)
-    Wd, Hd = layouts.SIZES['town']
-    w, h = Wd // ART_PX, Hd // ART_PX
-    m = masks(h, w)
+def shape_masks(rng, h, w):
+    """修圓後的路／河遮罩（美術解析度，row 0 ＝地圖最上緣）。
 
+    bake() 與 tools/gen_town_water.py（河的碰撞）共用 —— 碰撞跟畫出來的水是同一份遮罩。
+    ⚠️ 會從 rng 取亂數，而且**順序固定**：bake() 必須最先呼叫它、再做其他用到 rng 的事，
+       不然後面草地／材質的亂數全部錯位、烤圖就變了。gen_town_water.py 用同一個 SEED
+       新開 rng、只呼叫這一段，得到的遮罩跟 bake() 裡的逐像素相同。
+    ⚠️ 回傳的 stone 是 bake() 之後會就地 |= 噴泉鋪石的那個陣列；water 在那之前就算好了，不受影響。
+    回傳 dict：m（格子遮罩）、stone_raw、stone、dirt、water_r（橋下也算水）、water（最後畫成水的）。
+    """
+    m = masks(h, w)
     # ── 修圓 ──
     stone_raw = m['C'] | m['P']
     stone = round_mask(stone_raw, 6.0, rng, jitter=0.05, jitter_sigma=5)
@@ -113,6 +118,15 @@ def bake():
     water_r = round_mask(m['W'] | (stone_raw & dilate(m['W'], 16)), 13.0, rng, jitter=0.06, jitter_sigma=12)
     # ↑ 先把橋下也當水一起修圓（河才是連續的一條），再讓石頭蓋在上面
     water = water_r & ~stone & ~dirt
+    return dict(m=m, stone_raw=stone_raw, stone=stone, dirt=dirt, water_r=water_r, water=water)
+
+
+def bake():
+    rng = np.random.default_rng(SEED)
+    Wd, Hd = layouts.SIZES['town']
+    w, h = Wd // ART_PX, Hd // ART_PX
+    sm = shape_masks(rng, h, w)
+    m, stone, dirt, water = sm['m'], sm['stone'], sm['dirt'], sm['water']
     paver = stone & blur(m['P'].astype(float), 1.0).__gt__(0.5)
     # 噴泉（擺在草地上）腳下鋪一圈圓形鋪石，不然像是直接插在草裡
     for f in objects.feet('town'):

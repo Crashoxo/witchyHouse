@@ -14,6 +14,10 @@ namespace WitchShop.Core
     ///
     /// 移動會被夾在地圖範圍內（走不出邊界）。邊界預設自動從場景裡名叫 "Ground" 的物件
     /// 讀 SpriteRenderer 的尺寸算出來；找不到就用底下的 worldHalfWidth / worldHalfHeight。
+    /// 戶外地圖（森林／城鎮／糖果鎮）另外有碰撞（樹幹、房子、灌木……見 <see cref="Obstacles"/>）
+    /// 與邊緣內縮（女巫的圖不會畫到地面外）。
+    /// 藥水室（SVG 房間，<see cref="BrewRoom.UseSvgRoom"/>）與店裡（等距菱形地板）也有碰撞，
+    /// 但可走範圍是地板多邊形、沒有邊緣內縮 —— 兩個房間走同一條程式路徑，差別只在多邊形與家具是誰登記的。
     ///
     /// ── 移植註記 ────────────────────────────────────────────────
     /// 1. **輸入**：Cocos 版用 input.on(KEY_DOWN/KEY_UP) 自己維護一個 keys Set。
@@ -46,8 +50,8 @@ namespace WitchShop.Core
         public float worldHalfWidth = 1408f;
         [Tooltip("找不到 Ground 時用的地圖半高（像素）")]
         public float worldHalfHeight = 896f;
-        [Tooltip("離邊界再往內縮多少（像素），避免角色圖貼齊切邊")]
-        public float edgeMargin = 0f;
+        // 戶外地圖的邊緣內縮（上一個身高、左右半個身寬、下一點點）不再是節點上的欄位：
+        // 數值在 Data.ArtFootprints（tools/gen_footprints.py 產生），離線可達性檢查也讀同一份。
 
         [Header("換場")]
         [Tooltip("走到指定邊界要切換到的場景名稱（空字串＝先不切）。例：'town'")]
@@ -62,8 +66,23 @@ namespace WitchShop.Core
         float minX, maxX, minY, maxY;
         bool switching;               // 已在切換地圖，避免重複觸發
 
-        // 等距房間（店裡）：地板是菱形，不能用矩形夾邊，改用 ShopRoom 的格座標夾。
-        bool isoRoom;
+        // 三件事分開開關（藥水室、店裡要前兩件、不要第三件）：
+        //   ySort     女巫照腳底排序（戶外：腳底 y；藥水室：BrewRoom.PlayerOrder；店裡：ShopRoomView.PlayerOrder ——
+        //             兩個房間都是看跟她重疊的家具在她前面還是後面）
+        //   collide   套 Obstacles 碰撞（戶外：樹幹、房子…；藥水室／店裡：家具的落地範圍＋地板多邊形）
+        //   edgeInset 地圖邊緣內縮（只有戶外 —— 那是為了女巫的圖不畫到地面外；房間的地板多邊形自己已經縮好了）
+        // 後花園三件都不要，維持原本的夾邊方式。
+        bool outdoor, ySort, collide, edgeInset;
+        bool brewRoom;                // 藥水室的 SVG 房間（排序與出生點看 BrewRoom／BrewRoomLayout）
+        bool shopRoom;                // 店裡（等距房間；排序看 ShopRoomView、地板是 ShopRoom.WalkFloor 的菱形）
+        // 地板多邊形（藥水室、店裡）；null ＝ 用矩形。
+        // ⚠️ 等距房間不能用矩形夾邊：塞得進菱形的最大矩形只剩正中間一小塊。有它的場景一律交給 Obstacles.ClampWalk。
+        Vector2[] walkPoly;
+        SpriteRenderer sr;
+
+        // 點地自動走被擋住時不能原地一直推：連續 StallTime 秒幾乎沒有往目的地前進就放棄
+        const float StallTime = 0.35f;
+        float stallTimer;
 
         Transform ground;             // 點擊移動的接收面（也用來量邊界）
         Vector3? moveTarget;          // 點擊指定的目的地（null＝沒有）
@@ -78,7 +97,29 @@ namespace WitchShop.Core
         void Awake()
         {
             anim = GetComponent<CharacterAnimator>();
+            sr = GetComponent<SpriteRenderer>();
             cam = Camera.main;
+            string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            outdoor = scene == "main" || scene == "town" || scene == "candy";
+            brewRoom = scene == "brew" && BrewRoom.UseSvgRoom;
+            shopRoom = scene == "shop";
+            ySort = outdoor || brewRoom || shopRoom;
+            collide = outdoor || brewRoom || shopRoom;
+            edgeInset = outdoor;
+            if (brewRoom)
+            {
+                walkPoly = Data.BrewRoomLayout.Walk;
+                // 出生點跟著配置表（場景檔裡的 (0,-250) 是舊房間的；新房間的門在別處）。
+                // SceneDoor 的 armed 機制另外擋「一進來就被門彈回去」。
+                var sp = Data.BrewRoomLayout.Spawn;
+                transform.position = new Vector3(sp.x, sp.y, transform.position.z);
+            }
+            else if (shopRoom)
+            {
+                // 店裡：地板菱形內縮 FloorMargin（跟以前的 ShopRoom.ClampToFloor 同一塊範圍）。
+                // 出生點照場景檔（ShopSceneBuilder 用 ShopRoom.PlayerSpawn 換算的），不用另外搬。
+                walkPoly = Data.ShopRoom.WalkFloor();
+            }
             ComputeBounds();
             GameArt.Preload();
             // 每個場景都有 Player → 在這裡叫出下排背包 HUD，讓它永遠顯示
@@ -93,8 +134,6 @@ namespace WitchShop.Core
             AwayShop.Ensure();          // 你不在店裡時，店還是照常做生意
 
             // 各場景專屬的東西，同樣在這裡喚起 —— 不用改場景檔（對應原版的做法）
-            string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            isoRoom = scene == "shop";
             if (scene == "shop")
             {
                 ShopRoomView.Ensure();       // 地板底圖 + 擺出來的家具與裝飾
@@ -123,6 +162,15 @@ namespace WitchShop.Core
             Doorways.Install(scene);
             PortalGlow.Ensure();       // 門與邊界傳送點的地上光圈
 
+            // 碰撞：戶外地圖、藥水室、店裡才擋。這裡只記下場景與可走範圍，障礙清單在第一次移動時才建 ——
+            // 糖果鎮的建築是 CandyTown 在 Start 裡才擺出來的（擺完會再叫 Obstacles.MarkDirty）；
+            // 藥水室的家具由 BrewRoom 在 Start 裡登記（Obstacles.AddPoly／AddEllipse）；
+            // 店裡的家具由 ShopRoomView.Rebuild() 登記（第一次在它的 Start，之後每次佈置完重登記）。
+            // ⚠️ Begin 會清空所有登記，所以上面那些「在 Start 裡登記」不能提早到 Awake。
+            Obstacles.Begin(scene, new Rect(minX, minY, maxX - minX, maxY - minY), transform.position, collide, walkPoly);
+            if (scene == "town") TownWater.Register();   // 河不能直接走過去、要走橋（一定要在 Begin 之後：Begin 會清空登記）
+            if (collide) ObstacleDebugView.Ensure();   // F3 顯示落地範圍
+
             lastPos = transform.position;
         }
 
@@ -134,6 +182,23 @@ namespace WitchShop.Core
         void LateUpdate()
         {
             var p = transform.position;
+
+            // 戶外：女巫照腳底 y 排序（YSort），才會走到樹冠／屋頂後面被遮住、走到前面蓋住它們。
+            // 物件那邊由 Obstacles 建清單時一併改成看腳底（原本是圖片中心）。
+            // 藥水室：等距的長家具用單一 y 排不對，改問 BrewRoom.PlayerOrder（看跟她重疊的家具在她前面還是後面）。
+            // 店裡：同一個想法，改問 ShopRoomView.PlayerOrder（用格座標判斷前後）。
+            // ⚠️ 原本女巫的 sortingOrder 一直是場景產生器給的 0，跟所有物件的前後關係是固定的。
+            if (ySort && sr != null)
+            {
+                if (brewRoom || shopRoom)
+                {
+                    var b = sr.bounds.size;
+                    sr.sortingOrder = brewRoom ? BrewRoom.PlayerOrder(p, b.x, b.y)
+                                               : ShopRoomView.PlayerOrder(p, b.x, b.y);
+                }
+                else sr.sortingOrder = Mathf.RoundToInt(-p.y);
+            }
+
             float d = Vector2.Distance(p, lastPos);
             lastPos = p;
 
@@ -167,10 +232,13 @@ namespace WitchShop.Core
                 (Key(KeyCode.LeftShift) || Key(KeyCode.RightShift) ? runMultiplier : 1f);
 
             float dt = Time.deltaTime;
+            bool auto = false;                  // 這一幀是不是點地自動走
+            float distBefore = 0f;
 
             if (x != 0f || y != 0f)
             {
                 moveTarget = null;              // 鍵盤一動就接手，取消點擊移動
+                stallTimer = 0f;
             }
             else if (moveTarget.HasValue)
             {
@@ -179,11 +247,16 @@ namespace WitchShop.Core
                 float dist = Mathf.Sqrt(tx * tx + ty * ty);
                 if (dist <= Mathf.Max(speed * dt, 2f))   // 到了：貼齊目的地就收工
                 {
-                    transform.position = new Vector3(moveTarget.Value.x, moveTarget.Value.y, p0.z);
+                    // 貼齊也要過碰撞（目的地點在樹幹上時不能一步跳進去）
+                    var snap = Obstacles.Resolve(p0, moveTarget.Value);
+                    transform.position = new Vector3(snap.x, snap.y, p0.z);
                     moveTarget = null;
+                    stallTimer = 0f;
                     return;
                 }
                 x = tx / dist; y = ty / dist;
+                auto = true;
+                distBefore = dist;
             }
 
             dir = new Vector2(x, y);
@@ -195,19 +268,43 @@ namespace WitchShop.Core
                 float nx = p.x + dir.x * speed * dt;
                 float ny = p.y + dir.y * speed * dt;
 
-                if (isoRoom)
+                // 想走出哪一側（夾邊之前記下來，換場景要用）
+                bool outL = nx < minX, outR = nx > maxX, outB = ny < minY, outT = ny > maxY;
+                if (clampToBounds)
                 {
-                    // 等距房間：夾在菱形地板內。出口不是邊界而是地板上的門（見 ShopRoom.Door*）。
-                    var c = Data.ShopRoom.ClampToFloor(nx, ny);
-                    nx = c.x; ny = c.y;
+                    nx = Mathf.Clamp(nx, minX, maxX);
+                    ny = Mathf.Clamp(ny, minY, maxY);
                 }
-                else if (clampToBounds)
+
+                // 碰撞：樹幹、房子、房間的家具…（戶外、藥水室、店裡；後花園 Resolve 直接回傳原值）。
+                // 有地板多邊形的房間（藥水室、店裡的菱形）另外在這裡被夾進多邊形（Obstacles.ClampWalk）。
+                // 店裡以前是另一條路（只有 ShopRoom.ClampToFloor、沒有碰撞），現在跟藥水室走同一條。
+                var r = Obstacles.Resolve(p, new Vector2(nx, ny));
+                nx = r.x; ny = r.y;
+
+                // 撞邊換場景：照舊是「推到邊界」觸發，只是邊界換成內縮後的那條。
+                // 要真的站在邊上（沒被障礙擋在半路）才算。
+                // ⚠️ 有地板多邊形的房間不觸發：那個矩形只是多邊形的外接框、不是牆，
+                //    房間的出口一律是地板上的門（SceneDoor；店裡見 ShopRoom.Door*）。
+                if (clampToBounds && walkPoly == null)
                 {
-                    if (nx < minX) { nx = minX; OnReachEdge(EdgeSide.Left, ny); }
-                    else if (nx > maxX) { nx = maxX; OnReachEdge(EdgeSide.Right, ny); }
-                    if (ny < minY) { ny = minY; OnReachEdge(EdgeSide.Bottom, nx); }
-                    else if (ny > maxY) { ny = maxY; OnReachEdge(EdgeSide.Top, nx); }
+                    const float on = 0.5f;
+                    if (outL && nx <= minX + on) OnReachEdge(EdgeSide.Left, ny);
+                    else if (outR && nx >= maxX - on) OnReachEdge(EdgeSide.Right, ny);
+                    if (outB && ny <= minY + on) OnReachEdge(EdgeSide.Bottom, nx);
+                    else if (outT && ny >= maxY - on) OnReachEdge(EdgeSide.Top, nx);
                 }
+
+                // 點地自動走被擋住：連續一小段時間幾乎沒有更接近目的地，就放棄（不做尋路）。
+                // 鍵盤移動不受影響 —— 推著牆走不動是玩家自己的選擇。
+                if (auto && moveTarget.HasValue)
+                {
+                    float distAfter = Vector2.Distance(new Vector2(nx, ny), moveTarget.Value);
+                    if (distBefore - distAfter < speed * dt * 0.15f) stallTimer += dt;
+                    else stallTimer = 0f;
+                    if (stallTimer >= StallTime) { moveTarget = null; stallTimer = 0f; }
+                }
+
                 transform.position = new Vector3(nx, ny, p.z);
             }
         }
@@ -217,12 +314,17 @@ namespace WitchShop.Core
         void HandleHotkeys()
         {
             // 點地面 → 記下目的地，Update 每幀走過去。
-            if (Input.GetMouseButtonDown(0) && cam != null)
+            // ⚠️ 這裡不看 UI：HUD 幾乎全是 PickingMode.Ignore，上方工具列（開關店鈕、設定鈕）要自己排除，
+            //    不然按下去那一下人就往左上角走了（見 CornerHud.BlocksWorldClick）。
+            if (Input.GetMouseButtonDown(0) && cam != null && !UI.CornerHud.BlocksWorldClick(Input.mousePosition))
             {
                 var w = cam.ScreenToWorldPoint(Input.mousePosition);
-                if (isoRoom)
+                stallTimer = 0f;
+                if (walkPoly != null)
                 {
-                    var c = Data.ShopRoom.ClampToFloor(w.x, w.y);
+                    // 藥水室、店裡：目的地夾進地板多邊形（點到牆上就走到牆腳）。
+                    // 點在家具上不另外處理：走到撞住就沿邊滑，滑不動 StallTime 秒後自己放棄（不做尋路）。
+                    var c = Obstacles.ClampWalk(new Vector2(w.x, w.y));
                     moveTarget = new Vector3(c.x, c.y, 0f);
                 }
                 else
@@ -249,15 +351,32 @@ namespace WitchShop.Core
             // 所以 I 也能開 —— 兩顆鍵等價（原專案就是為了這個留兩顆的）。
             if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.I))
                 UI.PlayerInfoPanel.Ensure().Open();
+
+            // O 開設定（音樂／音效音量、靜音）。關在 SettingsPanel 自己的 Update（同一顆鍵，見 QuestPanel）
+            if (Input.GetKeyDown(KeyCode.O)) UI.SettingsPanel.Ensure().Open();
         }
 
         /// <summary>
         /// 從場景裡的 "Ground" 物件算出可走範圍；沒有就用 worldHalfWidth/Height。
         /// 有 "WalkArea" 就以它為準：後花園的草地是個菱形，可以走的範圍比整張背景小很多，
         /// 不然人會走到柵欄外的石板路和房子上面去。
+        /// 有地板多邊形（藥水室、店裡）時，矩形改成多邊形的外接矩形（真正的夾邊由 Obstacles.ClampWalk 做）。
         /// </summary>
         void ComputeBounds()
         {
+            ground = FindUpwards("Ground");     // 點擊移動的接收面（多邊形那條路也要有）
+            if (walkPoly != null && walkPoly.Length > 0)
+            {
+                minX = maxX = walkPoly[0].x;
+                minY = maxY = walkPoly[0].y;
+                foreach (var q in walkPoly)
+                {
+                    minX = Mathf.Min(minX, q.x); maxX = Mathf.Max(maxX, q.x);
+                    minY = Mathf.Min(minY, q.y); maxY = Mathf.Max(maxY, q.y);
+                }
+                return;
+            }
+
             float halfW = worldHalfWidth, halfH = worldHalfHeight, cx = 0f, cy = 0f;
 
             // Ground 不一定是玩家的兄弟（原專案 Player 在 Props 下、Ground 在 World 下），
@@ -275,10 +394,22 @@ namespace WitchShop.Core
                 cy = bounds.position.y;
             }
 
-            minX = cx - halfW + edgeMargin;
-            maxX = cx + halfW - edgeMargin;
-            minY = cy - halfH + edgeMargin;
-            maxY = cy + halfH - edgeMargin;
+            minX = cx - halfW;
+            maxX = cx + halfW;
+            minY = cy - halfH;
+            maxY = cy + halfH;
+
+            // 戶外地圖：往內縮，女巫的圖才不會畫到地面外（「穿邊邊」）。她的樞紐在腳底、圖高約 66、
+            // 寬約 49 → 上緣縮一個身高、左右各縮半個身寬、下緣只縮一點點。
+            // ⚠️ 邊界換場景（OnReachEdge）是在「推到這條新邊界」時觸發的；PortalGlow 的上緣光圈
+            //    也跟著往下移到腳走得到的地方（見 PortalGlow.BuildEdgeGlows）。
+            if (edgeInset)
+            {
+                minX += Data.ArtFootprints.EdgeSide;
+                maxX -= Data.ArtFootprints.EdgeSide;
+                minY += Data.ArtFootprints.EdgeBottom;
+                maxY -= Data.ArtFootprints.EdgeTop;
+            }
         }
 
         /// <summary>從自己的父層一路往上找同名的子物件；找不到再退回全場景找。</summary>
