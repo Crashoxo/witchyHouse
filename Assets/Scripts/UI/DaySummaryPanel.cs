@@ -42,10 +42,20 @@ namespace WitchShop.UI
 
         const float InputGuard = 0.45f;
 
+        /// <summary>
+        /// 賣出明細一頁幾列（2026-11-27 改成固定高度＋翻頁，見 <see cref="Pager"/>；以前是 max-height 168 的捲動區）。
+        /// 列距：`.sk .day-item` 高 39 ＋ margin-bottom 3 ＝ 42 → 清單區固定 3 × 42 ＝ 126，不管今天賣了幾樣都一樣高。
+        /// 為什麼是 3 不是 4：數字小卡最多 7 格（3 排 × 63 ＝ 189），帳單高（像素外觀）＝ padding 30 ＋ 標題列 5 ＋ 日期 30
+        ///   ＋ 小卡 189 ＋ 分隔線 18 ＋ 明細 126 ＋ 淨收入 54 ＋ 持有 27 ＋ 分隔線＋底列 48 ＋ padding 24 ＝ 551，
+        ///   要壓在 .day-card 的 max-height 88%（563）以內；4 列就是 593。
+        /// </summary>
+        const int ItemsPerPage = 3;
+        const int ItemPitch = 42;
+
         UIDocument doc;
         VisualElement root, card, statBox, listBox;
         Label titleLabel, dateLabel, noteLabel, netLabel, goldLabel;
-        ScrollView listScroll;
+        Pager pager;
         float openedAt;
         bool ownedModal;
         bool built;
@@ -77,10 +87,13 @@ namespace WitchShop.UI
         {
             if (!IsOpen) return;
             if (Time.unscaledTime - openedAt < InputGuard) return;
+            // ⚠️ 點翻頁鈕不算「點一下關閉」（pager.PointerOverBar）
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)
                 || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.E)
-                || Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(0))
+                || Input.GetKeyDown(KeyCode.Escape)
+                || (Input.GetMouseButtonDown(0) && !pager.PointerOverBar))
                 Close();
+            else pager.HandleKeys();     // ←／→、A／D 翻明細
         }
 
         public void Open()
@@ -94,6 +107,7 @@ namespace WitchShop.UI
             if (ownedModal) UIState.ModalOpen = true;
 
             openedAt = Time.unscaledTime;
+            pager.Reset();               // 明細從第 1 頁看
             anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             Sfx.Play("ui-open");                                    // 音效：面板打開
             GameArt.OnReady(Refresh);      // 同步載入，OnReady 只是保證圖示已經在了
@@ -162,10 +176,10 @@ namespace WitchShop.UI
             div.AddToClassList("sk-divider");
             card.Add(div);
 
-            listScroll = new ScrollView(ScrollViewMode.Vertical);
-            listScroll.AddToClassList("day-list");
-            card.Add(listScroll);
-            listBox = listScroll.contentContainer;
+            pager = new Pager(ItemsPerPage, ItemsPerPage * ItemPitch, Refresh);
+            listBox = pager.Body;
+            listBox.AddToClassList("day-list");
+            card.Add(listBox);
 
             // 淨收入：[淨收入] …… [金幣 +248]
             var net = new VisualElement();
@@ -193,7 +207,8 @@ namespace WitchShop.UI
             walletLabel = wm.Q<Label>();
             wallet.Add(wm);
 
-            UiSkin.Footer(card, "繼續", "Enter", "Space");
+            var info = UiSkin.Footer(card, "繼續", "Enter", "Space");
+            info.parent.Add(pager.Bar);                       // 明細的翻頁鈕擺在底列最右邊
         }
 
         /// <summary>舊外觀：一行一行的「項目 —— 數字」（HudExtraStyle 的 .day-*）。</summary>
@@ -222,10 +237,12 @@ namespace WitchShop.UI
             sub.AddToClassList("day-sub");
             card.Add(sub);
 
-            listScroll = new ScrollView(ScrollViewMode.Vertical);
-            listScroll.AddToClassList("day-list");
-            card.Add(listScroll);
-            listBox = listScroll.contentContainer;
+            pager = new Pager(ItemsPerPage, ItemsPerPage * ItemPitch, Refresh);
+            listBox = pager.Body;
+            listBox.AddToClassList("day-list");
+            card.Add(listBox);
+            pager.Bar.style.alignSelf = Align.FlexEnd;
+            card.Add(pager.Bar);
 
             card.Add(Rule());
 
@@ -273,17 +290,8 @@ namespace WitchShop.UI
             if (d.rep > 0)
                 statBox.Add(Row("名聲", $"+{d.rep}　Lv.{Reputation.Level} {Reputation.Title}", "day-plus"));
 
-            listBox.Clear();
-            if (d.items == null || d.items.Count == 0)
-            {
-                var empty = new Label("今天沒有客人買走東西。");
-                empty.AddToClassList("day-empty");
-                listBox.Add(empty);
-            }
-            else
-            {
-                foreach (var e in d.items) listBox.Add(SaleRow(e));
-            }
+            var items = d.items;
+            pager.Render(items?.Count ?? 0, i => SaleRow(items[i]), "今天沒有客人買走東西。", "day-empty");
 
             int net = d.revenue + d.trade - d.spent;
             netLabel.text = $"淨收入　{(net < 0 ? "-" : "+")}{Mathf.Abs(net)} G";
@@ -327,23 +335,13 @@ namespace WitchShop.UI
             if (d.brewed > 0)   Tile(UiSkin.Ico("flask"), d.brewed.ToString(), "煉製", null);
             if (d.rep > 0)      Tile(UiSkin.Ico("star"), $"+{d.rep}", $"名聲 Lv.{Reputation.Level}", "day-plus");
 
-            listBox.Clear();
-            if (d.items == null || d.items.Count == 0)
+            var items = d.items;
+            pager.Render(items?.Count ?? 0, i =>
             {
-                var empty = new Label("今天沒有客人買走東西。");
-                empty.AddToClassList("day-empty");
-                listBox.Add(empty);
-            }
-            else
-            {
-                int i = 0;
-                foreach (var e in d.items)
-                {
-                    var row = SkinSaleRow(e);
-                    row.EnableInClassList("sk-alt", (i++ & 1) == 1);   // 交錯列
-                    listBox.Add(row);
-                }
-            }
+                var row = SkinSaleRow(items[i]);
+                row.EnableInClassList("sk-alt", (i & 1) == 1);   // 交錯列（照整張清單的序號，翻頁也不會亂跳）
+                return row;
+            }, "今天沒有客人買走東西。", "day-empty");
 
             int net = d.revenue + d.trade - d.spent;
             goldLabel.text = $"{(net < 0 ? "-" : "+")}{Mathf.Abs(net)}";

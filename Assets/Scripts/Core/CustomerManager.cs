@@ -64,7 +64,17 @@ namespace WitchShop.Core
             return new GameObject("CustomerManager").AddComponent<CustomerManager>();
         }
 
-        [Tooltip("顧客走路速度（像素/秒）")] public float walkSpeed = 120f;
+        // ──────────── 走路速度（px/秒）────────────
+        // 2026-11-28 使用者：「客人進來買東西走慢一點」—— 舊版一律 120，改成悠閒逛街的步調（×0.7），
+        // 要走的時候腳步稍微快一點（×0.8）。走路動畫的播放速度跟著同比例放慢（VillagerAnim.FpsScale），腳不會滑。
+        // ⚠️ 改了要一起改 tools/sim_customers.py 的 WALK_IN／WALK_OUT 再跑一次（停留變長 → 滿座變多 → 成交率會掉）。
+        // ⚠️ 城鎮／花園／糖果鎮的村民不走這裡，速度不受影響；AwayShop 不模擬走路，也不受影響。
+        /// <summary>進門、在商品之間走的速度。</summary>
+        const float WalkSpeed = 84f;
+        /// <summary>走出去的速度。</summary>
+        const float LeaveSpeed = 96f;
+        /// <summary>走路圖 8fps 是配 120px/s 畫的（舊速度）—— 動畫快慢 ＝ 速度 ÷ 這個。</summary>
+        const float AnimRefSpeed = 120f;
         [Tooltip("顧客立繪縮放")] public float displayScale = VillagerAnim.Scale;
 
         // ──────────── 來客節奏參數（見檔頭的經濟說明）────────────
@@ -87,7 +97,7 @@ namespace WitchShop.Core
         const float PaidTime = 1.4f;      // +金額泡泡（表情動畫同時播）到說謝謝
         const float ThankWalk = 0.6f;     // 說謝謝後多久轉身走（邊走邊講完）
         const float SoldOutWait = 1.3f;   // 沒貨抱怨後多久走
-        const float LookMin = 2.4f, LookMax = 3.2f;   // 只逛不買的人在每樣商品前站多久
+        const float LookMin = 2.0f, LookMax = 2.8f;   // 只逛不買的人在每樣商品前站多久（11/28 走慢之後 2.4～3.2 → 2.0～2.8，補回一點滿座）
 
         /// <summary>兩位顧客的站位至少隔多遠（px）。</summary>
         const float SpotGap = 26f;
@@ -312,6 +322,7 @@ namespace WitchShop.Core
             go.transform.position = new Vector3(e.x, e.y, 0f);
             var anim = go.AddComponent<VillagerAnim>();
             anim.Init(who, displayScale);
+            anim.FpsScale = WalkSpeed / AnimRefSpeed;
             // 店裡的排序跟女巫同一套（長貨架用 -y 排會錯）；城鎮的村民不設，行為不變
             var tr = go.transform;
             anim.orderOverride = () => ShopRoomView.PlayerOrder(tr.position, anim.DisplayWidth, anim.DisplayHeight);
@@ -324,7 +335,7 @@ namespace WitchShop.Core
             else if (size >= 2 && index == 1) greet = PickFrom(c, new[] { CustomerLines.Duo[duo][1] });
             else if (size >= 3 && index >= 2) greet = PickFrom(c, CustomerLines.GroupTail);
             else greet = PickFrom(c, GreetPool(c));
-            Say(c, null, Fill(greet), BgTalk, 2.2f);
+            Say(c, null, Fill(greet), BgTalk, 2.2f, BubbleKind.Normal);
 
             GoToVisit(c);
         }
@@ -439,14 +450,14 @@ namespace WitchShop.Core
             string item = c.Visits[c.VisitIdx];
             if (c.Buyer)
             {
-                Say(c, GameArt.Item(item), Fill(PickFrom(c, CustomerLines.Want), item), BgWant, WantTime + 0.6f);
+                Say(c, GameArt.Item(item), Fill(PickFrom(c, CustomerLines.Want), item), BgWant, WantTime + 0.6f, BubbleKind.Happy);
                 Stand(c, WantTime, Act.Buy);
             }
             else
             {
                 string[] pool = CustomerLines.Browse;
                 float look = Random.Range(LookMin, LookMax);
-                Say(c, GameArt.Item(item), Fill(PickFrom(c, pool), item), BgBrowse, look);
+                Say(c, GameArt.Item(item), Fill(PickFrom(c, pool), item), BgBrowse, look, BubbleKind.Think);
                 Stand(c, look, Act.NextVisit);
             }
         }
@@ -497,13 +508,13 @@ namespace WitchShop.Core
                     }
                     else
                     {
-                        Say(c, null, Fill(PickFrom(c, CustomerLines.SoldOut), c.Want), BgSad, 2.6f);
+                        Say(c, null, Fill(PickFrom(c, CustomerLines.SoldOut), c.Want), BgSad, 2.6f, BubbleKind.Sad);
                         Stand(c, SoldOutWait, Act.Leave);
                     }
                     break;
                 }
                 case Act.Thank:
-                    Say(c, null, Fill(PickFrom(c, CustomerLines.Thanks)), BgHappy, 2.4f);
+                    Say(c, null, Fill(PickFrom(c, CustomerLines.Thanks)), BgHappy, 2.4f, BubbleKind.Happy);
                     Stand(c, ThankWalk, Act.Leave);              // 邊走邊把話講完
                     break;
 
@@ -513,10 +524,15 @@ namespace WitchShop.Core
                     // 逛完了：一半的人留句話再走
                     if (Random.value < 0.55f)
                     {
-                        Say(c, null, Fill(PickFrom(c, CustomerLines.BrowseLeave)), BgTalk, 2.4f);
+                        Say(c, null, Fill(PickFrom(c, CustomerLines.BrowseLeave)), BgTalk, 2.4f, BubbleKind.Normal);
                         Stand(c, 0.8f, Act.Leave);
                     }
-                    else Leave(c);
+                    else
+                    {
+                        // 不說話就走的人：偶爾頭上冒一顆純圖示小泡泡（純裝飾，不影響任何行為）
+                        if (Random.value < SilentIconChance) SilentIcon(c);
+                        Leave(c);
+                    }
                     break;
 
                 case Act.Leave:
@@ -530,6 +546,7 @@ namespace WitchShop.Core
             c.HasSpot = false;                 // 讓出站位
             SetPath(c, EntrancePos());
             c.State = St.Leave;
+            if (c.Anim != null) c.Anim.FpsScale = LeaveSpeed / AnimRefSpeed;
         }
 
         // ──────────── 走路 ────────────
@@ -560,7 +577,7 @@ namespace WitchShop.Core
         bool FollowPath(Customer c, float dt)
         {
             if (c.Path == null || c.PathIdx >= c.Path.Count) { c.Anim.SetMove(0f, 0f); return true; }
-            float budget = walkSpeed * dt;
+            float budget = (c.State == St.Leave ? LeaveSpeed : WalkSpeed) * dt;
             while (c.PathIdx < c.Path.Count)
             {
                 var target = c.Path[c.PathIdx];
@@ -631,11 +648,38 @@ namespace WitchShop.Core
         static readonly Color32 BgHappy = new(60, 90, 60, 235);    // 道謝：跟 +金額同色系
         static readonly Color32 BgSad = new(150, 120, 120, 235);   // 沒貨：沿用舊版
 
-        void Say(Customer c, Sprite icon, string text, Color32 bg, float life)
+        // 泡泡樣式（細畫版；SpeechBubble.UsePixelBubbles 關掉時用上面的 Bg 底色、舊外觀）：
+        //   一般 Normal ＝ 招呼（含時段／季節／節日／專屬）、結伴對話、逛完要走的話
+        //   開心 Happy  ＝ 想要 X（配商品圖示）、道謝
+        //   想事 Think  ＝ 只逛不買的人在商品前的評論（配商品圖示）
+        //   失望 Sad    ＝ 想要的賣完了
+        //   喊   Shout  ＝ 成交的 +金額（配金幣符號）
+        //   純圖示     ＝ 只逛不買、不說話就走的人偶爾冒一顆（SilentIcon）
+
+        /// <summary>只逛不買、不說話就走的人，冒一顆純圖示小泡泡的機率（純裝飾）。</summary>
+        const float SilentIconChance = 0.4f;
+
+        void Say(Customer c, Sprite icon, string text, Color32 bg, float life, BubbleKind kind = BubbleKind.Normal)
         {
             if (c.Node == null) return;
-            SpeechBubble.Show(c.Node.transform, c.Anim.DisplayHeight, icon, text, bg, life);
+            SpeechBubble.Show(c.Node.transform, c.Anim.DisplayHeight, icon, text, bg, life, kind);
             c.CurUntil = Time.time + life;
+        }
+
+        /// <summary>
+        /// 純圖示小泡泡：一半想著剛看過的那樣商品（雲朵）、一半哼個小調（音符）。
+        /// 不是台詞 —— 不記 CurLine、不算進「別重複」的判斷；舊版泡泡時什麼都不顯示。
+        /// </summary>
+        void SilentIcon(Customer c)
+        {
+            if (c.Node == null) return;
+            string last = c.Visits.Count > 0 ? c.Visits[Mathf.Clamp(c.VisitIdx - 1, 0, c.Visits.Count - 1)] : null;
+            var item = last != null ? GameArt.Item(last) : null;
+            if (item != null && Random.value < 0.5f)
+                SpeechBubble.ShowIcon(c.Node.transform, c.Anim.DisplayHeight, item, BubbleKind.Think, 1.8f);
+            else
+                SpeechBubble.ShowIcon(c.Node.transform, c.Anim.DisplayHeight,
+                                      SpeechBubble.Glyph(BubbleGlyph.Note), BubbleKind.Normal, 1.6f);
         }
 
         /// <summary>招呼的候選：通用 ＋ 時段 ＋ 季節 ＋ 節日（有的話），再有機率換成專屬台詞。</summary>
@@ -701,7 +745,7 @@ namespace WitchShop.Core
         {
             // +金額只掛 PaidTime 秒：時間一到就換成道謝（Act.Thank），兩顆不會同時在頭上互蓋
             SpeechBubble.Show(c.Node.transform, c.Anim.DisplayHeight,
-                              null, $"+{price}", BgHappy, PaidTime);
+                              SpeechBubble.Glyph(BubbleGlyph.Coin), $"+{price}", BgHappy, PaidTime, BubbleKind.Shout);
             c.CurLine = null;
 
             // 先清掉上一個還沒播完的表情（理論上一位顧客只買一次，保險起見）

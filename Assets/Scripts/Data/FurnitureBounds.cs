@@ -45,5 +45,14 @@ namespace WitchShop.Data
 
         /// <summary>查不到就回 false（呼叫端退回用整張圖的矩形）。</summary>
         public static bool TryGet(string id, out ArtBox box) => Table.TryGetValue(id, out box);
+
+        /// <summary>
+        /// 依「實際載到的圖尺寸」查：細畫版（FurnitureArt8，尺寸對得上）優先，再查舊圖這張表（也要尺寸對得上）。
+        /// </summary>
+        public static bool TryGet(string id, float imgW, float imgH, out ArtBox box)
+        {
+            if (FurnitureArt8.TryGetBounds(id, imgW, imgH, out box)) return true;
+            return Table.TryGetValue(id, out box) && (int)box.ImgW == (int)imgW && (int)box.ImgH == (int)imgH;
+        }
     }
 }

@@ -54,12 +54,15 @@ namespace WitchShop.Core
             "witch.reputation",      // Reputation：名聲點數
             "witch.friendship",      // Friendship：村民友誼度
             "witch.garden",          // Garden：後花園每一格種了什麼、澆水時間
+            "witch.garden.layout",   // GardenLayout：8-bit 後花園每塊花圃擺在哪一格
             "witch.storage",         // Storage：房間倉庫的存貨
             "witch.outfit",          // Outfits：現在穿哪一套造型
             "witch.room",            // RoomLayout：店裡的家具擺在哪幾格
             "witch.shop.display",    // ShopDisplay：上架商品玩家指定的陳列位置（家具 uid＋位子）
             "witch.tips.shopedit",   // ShopRoomEditor：第一次進店的「按 R 佈置」提示跳過了沒
             "witch.shop.sign",       // ShopSign：門口招牌開店／關店（"1"/"0"；沒有＝開店）
+            "witch.cat",             // RoomCat：藥水室那隻貓的好感（{"a":好感,"d":最後摸的那天,"n":那天摸了幾次}）
+            "witch.home.layout",     // HomeLayout：家裡（藥水室）自己擺的家具／燈／裝飾／地毯（{"items":[{id,x,y,flip}]}）
         };
         // ⚠️ "witch.audio"（Sfx：音效音量／音樂音量／靜音）**刻意不列在這裡**：那是玩家的偏好、不是遊戲進度，
         //    開新遊戲（Wipe）不該把音量重設；它也不該被當成「這是舊存檔」的判斷依據。

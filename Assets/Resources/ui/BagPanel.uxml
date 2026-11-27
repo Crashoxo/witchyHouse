@@ -21,13 +21,11 @@
             <ui:VisualElement name="tabs" class="tabs" />
 
             <!--
-                ⚠️ 這裡用 ScrollView，把 Cocos 版的「一頁 7 列 + 翻頁鈕」拿掉了。
-                原本會分頁是因為 Cocos 沒有現成的捲動容器，要自己算 perPage／page。
-                UI Toolkit 的 ScrollView 是內建的，捲動比翻頁好用，所以 buildPager()
-                那 25 行連同 page 狀態一起消失。
-                想要翻頁的話講一聲，加回來不難。
+                清單區：固定高度、一頁 6 列、超過就翻頁（2026-11-27 使用者：「清單類的面板都要固定高度，
+                東西太多就翻頁，不要捲軸」）。高度與翻頁鈕由 UI/Pager.cs 管（BagPanel.Build 時接上），
+                翻頁鈕 [◀ 1/3 ▶] 擺在底列正中間。以前這裡是 ScrollView。
             -->
-            <ui:ScrollView name="rows" class="rows" />
+            <ui:VisualElement name="rows" class="rows" />
 
             <ui:VisualElement name="footer" class="footer">
                 <ui:Button name="stashAll" class="btn btn-keep" text="全部存入" />

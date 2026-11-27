@@ -34,7 +34,6 @@ namespace WitchShop.Core
         public float doorY = 0f;
 
         Transform player;
-        GameObject hint;
         bool inRange;
         bool switching;
 
@@ -57,7 +56,19 @@ namespace WitchShop.Core
             var p = GameObject.Find("Player");
             player = p != null ? p.transform : null;
             armed = DistToPlayer() > ArmThreshold;
-            BuildHint();
+
+            // 提示與按 E 交給共用的互動系統：門的提示是 [門][目的地]、**沒有鍵帽**（走上去就會進去）；
+            // 範圍裡有別的「按 E」的東西時門讓開（不冒提示、E 也不會進門），見 Interact 的規則 ③。
+            // 提示在比按 E 範圍大一點的地方就看得到（店裡、後花園的門按 E 範圍跟自動進門一樣小，不放大就永遠看不到）。
+            var it = gameObject.AddComponent<Interactable>();
+            it.keyed = false;
+            it.range = interactRange;
+            it.showRange = Mathf.Max(interactRange, autoRange + 80f);
+            it.point = () => DoorPos;
+            it.available = () => armed && !switching;
+            it.use = Enter;
+            it.anchor = () => new Vector3(DoorPos.x, DoorPos.y + 56f, 0f);
+            it.look = () => HintLook.Plain(HintIcons.Ui("act_door"), HintIcons.Destination(targetScene), hintText);
         }
 
         float DistToPlayer() =>
@@ -74,11 +85,9 @@ namespace WitchShop.Core
             // 否則它會永遠停在上鎖狀態，連按 E 都進不去。
             if (!armed && dist > ArmThreshold) armed = true;
 
-            if (hint != null) hint.SetActive(inRange && armed && !UIState.ModalOpen);
-
             if (UIState.ModalOpen) return;
 
-            if (Input.GetKeyDown(KeyCode.E) && inRange && armed) { Enter(); return; }
+            // 按 E 進門改由 Interact 處理（它是這一幀 E 的目標時才會進），這裡只管走上去自動進門
             if (autoEnter && armed && dist <= autoRange) Enter();
         }
 
@@ -96,31 +105,6 @@ namespace WitchShop.Core
 
             switching = true;
             UI.SceneFade.Go(targetScene);       // 淡出 → 切場景 → 淡入
-        }
-
-        /// <summary>門口上方的浮動提示。</summary>
-        void BuildHint()
-        {
-            hint = new GameObject("hint");
-            hint.transform.SetParent(transform, false);
-            hint.transform.localPosition = new Vector3(doorX, doorY + 70f, 0f);
-
-            var tm = hint.AddComponent<TextMesh>();
-            tm.text = hintText;
-            tm.fontSize = 36;
-            tm.characterSize = 4.5f;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.alignment = TextAlignment.Center;
-            tm.color = new Color32(255, 244, 214, 255);
-
-            var font = UI.CjkFont.Get();
-            if (font != null)
-            {
-                tm.font = font;
-                hint.GetComponent<MeshRenderer>().material = font.material;
-            }
-            hint.GetComponent<MeshRenderer>().sortingOrder = 9400;
-            hint.SetActive(false);
         }
     }
 }

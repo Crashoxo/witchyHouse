@@ -93,8 +93,12 @@ namespace WitchShop.Core
             return n;
         }
 
-        /// <summary>托盤裡（買了但還沒擺出去）可用的數量。</summary>
-        public static int UnplacedCount(string id) => Mathf.Max(0, OwnedCount(id) - PlacedCountOf(id));
+        /// <summary>擺在家裡的數量（給之後「家裡也能擺」用的掛鉤；null＝只有店裡），同 RoomLayout.PlacedElsewhere。</summary>
+        public static Func<string, int> PlacedElsewhere;
+
+        /// <summary>托盤裡（買了但還沒擺出去）可用的數量＝擁有 − 店裡擺出的 − 家裡擺出的。</summary>
+        public static int UnplacedCount(string id) =>
+            Mathf.Max(0, OwnedCount(id) - PlacedCountOf(id) - (PlacedElsewhere?.Invoke(id) ?? 0));
 
         /// <summary>從花店買一個：金幣夠才成交。</summary>
         public static bool Buy(string id)

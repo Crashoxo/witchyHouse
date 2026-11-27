@@ -24,7 +24,8 @@
 ## 碰撞
 
 - **戶外地圖（main/town/candy）、藥水室（brew）、店裡（shop）有、只擋玩家**：`Obstacles.Resolve(from, to)`，
-  `PlayerController` 鍵盤與點地走路都過它。村民／顧客／小動物不套。後花園只夾矩形。
+  `PlayerController` 鍵盤與點地走路都過它。村民／顧客／小動物不套。8-bit 後花園（`GardenRoom.UsePixelGarden`）也是房間：
+  可走範圍 `GardenRoomData.Walk`、樹與雨水桶由 `GardenRoom` 登記（`python tools/check_garden_walk.py`）；舊後花園只夾矩形。
   兩個房間的可走範圍是地板多邊形（藥水室 `BrewRoomLayout.Walk`、店裡 `ShopRoom.WalkFloor()`），家具由房間直接
   `Obstacles.AddPoly` 登記；店裡由 `ShopRoomView.Rebuild()` 每次重畫後 `ClearRegistered("shop_furniture")` 再整批登記，
   佔地每邊內縮 `ShopRoom.FurnitureInset`（一格走道才走得過，離線驗證 `python tools/check_shop_walk.py`）。
@@ -37,6 +38,9 @@
   門的觸發點被建築擋住時，`Obstacles` 會在那棟建築的範圍上挖一條 48px 的通道。建築的門最好放在範圍**底緣外面**
   （`doorX/doorY` 相對**圖片中心**，城鎮物件的 position 就是圖片中心），那樣不用挖。
 - **防卡死**：在障礙裡時，往外走一律放行。改 `Resolve` 時不要拿掉這條。
+- **藥水室自己擺的家具**（R 佈置，`HomeArrange`／`HomeFurnishings`／`HomePlacement`）登記成 `home_furnishing` 類別；
+  規則與排序都在 `HomePlacement`（離線 `python tools/check_home_place.py`）。藥水室加新的互動點時，記得把它前面的站位加進 `HomePlacement.UseSpots`、
+  可達性也要在 `HomePlacement.ReachOk` 補一行，不然擺家具可能把它圍起來。
 - 戶外的邊緣內縮（上 64／左右 22／下 6）在 `ArtFootprints.Edge*`；邊界換場景是「推到內縮後的邊」觸發。
 - 戶外的**排序看腳底 y**：女巫每幀設、物件在建障礙清單時改（城鎮建築例外，維持圖片中心；橋壓到 -8600）。
 

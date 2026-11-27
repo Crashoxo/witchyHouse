@@ -431,6 +431,70 @@ def make_chime_close(rng):
     return lowpass(mix(*parts), 4200), 0.45
 
 
+# ──────────────── 藥水室的貓（RoomCat 播）────────────────
+# 要軟、要可愛、不刺耳：全部是正弦／三角波（不用方波），低通削得比較多，音量也比一般動作小。
+
+def mew_voice(dur, contour, vib=0.0, rng=None):
+    """一聲貓叫的聲帶：音高照 contour（[(相對時間 0..1, Hz)…] 線性內插），基音正弦＋2×、3× 泛音（越高越小聲），
+    再用一條「張嘴」的包絡讓聲音從悶（m）開到亮（ia）再收（u）—— 用低通截止頻率跟著包絡走做出 m-ia-u 的感覺。"""
+    n = int(dur * SR)
+    out = []
+    phase = 0.0
+    for i in range(n):
+        t = i / n
+        for k in range(len(contour) - 1):
+            if contour[k][0] <= t <= contour[k + 1][0]:
+                a, b = contour[k], contour[k + 1]
+                u = (t - a[0]) / max(1e-6, b[0] - a[0])
+                f = a[1] + (b[1] - a[1]) * u
+                break
+        else:
+            f = contour[-1][1]
+        if vib:
+            f *= 2.0 ** (vib * math.sin(TAU * 6.0 * i / SR) / 12.0)
+        phase = (phase + f / SR) % 1.0
+        v = math.sin(TAU * phase) + 0.38 * math.sin(TAU * 2 * phase) + 0.14 * math.sin(TAU * 3 * phase)
+        out.append(v)
+    env = envelope(n, 0.035, dur * 0.3, 0.75, dur * 0.35)
+    out = [v * e for v, e in zip(out, env)]
+    # 嘴巴：前段悶、中段亮、尾巴又悶（分三段低通再交叉混）
+    dull = lowpass(out, 700)
+    bright = lowpass(out, 2600)
+    res = []
+    for i in range(n):
+        t = i / n
+        open_ = math.sin(math.pi * min(1.0, max(0.0, (t - 0.05) / 0.8))) ** 0.8
+        res.append(dull[i] * (1 - open_) + bright[i] * open_)
+    return res
+
+
+def make_meow(rng):
+    """喵～：短短一聲往上再往下的小貓叫（m-ia-u），帶一點點顫音。"""
+    v = mew_voice(0.42, [(0.0, 560), (0.25, 860), (0.55, 820), (1.0, 520)], vib=0.25, rng=rng)
+    breath = lowpass(tone(0.42, 3000, wave_='noise', a=0.03, d=0.15, s=0.2, r=0.15, rng=rng), 1800)
+    return lowpass(mix((0, v), (0, [b * 0.05 for b in breath])), 3200), 0.42
+
+
+def make_purr(rng):
+    """呼嚕：很低的「咕嚕咕嚕」—— 低通雜訊＋40Hz 的悶響，每秒約 26 下的起伏，吸一口氣、吐一口氣兩段。"""
+    parts = []
+    t = 0.0
+    for seg, (dur, vol) in enumerate([(0.62, 0.8), (0.72, 1.0)]):
+        rum = lowpass(tone(dur, 900, wave_='noise', a=0.08, d=0.2, s=0.8, r=0.2, rng=rng), 260)
+        body = tone(dur, 44 if seg else 40, wave_='sine', a=0.08, d=0.2, s=0.8, r=0.2, vol=0.6)
+        seg_buf = tremolo(mix((0, rum), (0, body)), 26 if seg else 23, 0.85)
+        parts.append((t, [v * vol for v in seg_buf]))
+        t += dur + 0.05
+    return lowpass(mix(*parts), 600), 0.40
+
+
+def make_cat_chirp(rng):
+    """咪噗（mrrp）：短短的捲舌小叫聲，往上翹 —— 打招呼、被嚇到、被摸醒都用它。"""
+    v = mew_voice(0.18, [(0.0, 620), (0.5, 760), (1.0, 980)], rng=rng)
+    v = tremolo(v, 34, 0.55)          # 捲舌的「rr」
+    return lowpass(v, 3000), 0.36
+
+
 SOUNDS = {
     'step-1': lambda r: make_step(r, 0),
     'step-2': lambda r: make_step(r, 1),
@@ -459,6 +523,9 @@ SOUNDS = {
     'place': make_place,
     'chime-open': make_chime_open,
     'chime-close': make_chime_close,
+    'meow': make_meow,
+    'purr': make_purr,
+    'cat-chirp': make_cat_chirp,
 }
 
 

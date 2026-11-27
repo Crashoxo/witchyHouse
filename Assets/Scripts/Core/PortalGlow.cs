@@ -40,6 +40,9 @@ namespace WitchShop.Core
 
         static readonly Color32 Glow = new(150, 220, 255, 255);
 
+        /// <summary>邊界出口的「往哪裡去」提示在多近才出現（像素）。</summary>
+        const float LabelRange = 220f;
+
         class Portal
         {
             public SpriteRenderer Sr;
@@ -96,7 +99,20 @@ namespace WitchShop.Core
                     "top"   => new Vector2(g.At, b.max.y - topInset),
                     _       => new Vector2(g.At, b.min.y + DefaultInset),
                 };
-                portals.Add(MakeGlow(pos, EdgeRx, EdgeRy, null, $"前往 {SceneLabel(g.To)}"));
+                var portal = MakeGlow(pos, EdgeRx, EdgeRy, null, InteractHint.Enabled ? null : $"前往 {SceneLabel(g.To)}");
+                portals.Add(portal);
+                if (InteractHint.Enabled)
+                {
+                    // 「前往 ○○」改成圖：[箭頭][目的地]，沒有鍵帽（走過去就換地圖，不吃 E）。
+                    // 交給共用的互動系統顯示 —— 附近有「按 E」的東西時讓它優先（畫面上永遠只有一個提示）。
+                    var it = portal.Sr.gameObject.AddComponent<Interactable>();
+                    it.keyed = false;
+                    it.range = 0f;
+                    it.showRange = LabelRange;
+                    string to = g.To;
+                    it.anchor = () => portal.Sr.transform.position + new Vector3(0f, 34f, 0f);
+                    it.look = () => HintLook.Plain(HintIcons.Ui("arrow"), HintIcons.Destination(to), $"前往 {SceneLabel(to)}");
+                }
             }
         }
 
@@ -189,7 +205,7 @@ namespace WitchShop.Core
                 if (p.Label != null && player != null)
                 {
                     float d = Vector2.Distance(player.position, p.Sr.transform.position);
-                    p.Label.SetActive(d < 220f && !UIState.ModalOpen);
+                    p.Label.SetActive(d < LabelRange && !UIState.ModalOpen);
                 }
             }
         }

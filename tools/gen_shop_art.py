@@ -770,6 +770,8 @@ namespace WitchShop.Data
         /// <summary>這款家具的陳列位；查不到、或圖的尺寸跟產生時不一樣（圖被換過）就回空陣列。</summary>
         public static DisplaySlot[] Get(string id, float artW, float artH)
         {
+            // 細畫版（tools/gen_furniture8.py，Resources/furniture8/）先查：尺寸對得上就用它的表
+            if (FurnitureArt8.TryGetSlots(id, artW, artH, out var s8)) return s8;
             if (!Table.TryGetValue(id, out var t)) return None;
             if (t.ArtW != (int)artW || t.ArtH != (int)artH) return None;
             return t.Slots;

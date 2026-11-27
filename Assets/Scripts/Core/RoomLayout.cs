@@ -276,8 +276,16 @@ namespace WitchShop.Core
             return n;
         }
 
-        /// <summary>買了但還沒擺出來的數量（＝托盤裡可以拿出來擺的）。</summary>
-        public static int Unplaced(string id) => Mathf.Max(0, OwnedCount(id) - PlacedCountOf(id));
+        /// <summary>
+        /// 擺在店以外的地方（家裡）的數量 —— 給之後「家裡也能擺家具」用的掛鉤：那邊設好這個函式，
+        /// 店裡的托盤／花店「未擺」就會一起扣掉。null＝只有店裡（目前）。
+        /// 擁有數只有一份（witch.room 的 ownedKeys／ownedCounts），店裡擺出的在 placed，家裡擺出的由那邊自己存。
+        /// </summary>
+        public static Func<string, int> PlacedElsewhere;
+
+        /// <summary>買了但還沒擺出來的數量（＝托盤裡可以拿出來擺的）＝擁有 − 店裡擺出的 − 家裡擺出的。</summary>
+        public static int Unplaced(string id) =>
+            Mathf.Max(0, OwnedCount(id) - PlacedCountOf(id) - (PlacedElsewhere?.Invoke(id) ?? 0));
 
         /// <summary>花金幣買一件（錢不夠回 false）。</summary>
         public static bool Buy(string id)
@@ -481,7 +489,8 @@ namespace WitchShop.Core
 
             float w = sp.rect.width, h = sp.rect.height;
             float x0 = 0f, y0 = 0f, x1 = w, y1 = h;
-            if (FurnitureBounds.TryGet(id, out var box) && Mathf.Approximately(box.ImgW, w))
+            // 細畫版（FurnitureArt8）或舊圖（FurnitureBounds），都要尺寸對得上載到的那張圖
+            if (FurnitureBounds.TryGet(id, w, h, out var box))
             { x0 = box.X0; y0 = box.Y0; x1 = box.X1; y1 = box.Y1; }
 
             if (flipped) { float l = w - x1, r = w - x0; x0 = l; x1 = r; }   // 翻面＝左右鏡像

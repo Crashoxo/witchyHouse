@@ -26,6 +26,13 @@ namespace WitchShop.Core
         /// </summary>
         public static readonly bool UseSvgRoom = true;
 
+        /// <summary>
+        /// 開關（UseSvgRoom 開著才有用）：true ＝ 細畫像素版（Resources/rooms/brew8/，tools/gen_brew_room8.py）；
+        /// false ＝ SVG 版（rooms/brew/）。兩組圖同檔名、同尺寸、同樞紐，配置表／碰撞／互動點完全共用；
+        /// 細畫版缺哪張就逐張退回 rooms/brew/（例如貓 cat-0..2 沒有重畫）。GameArt.BrewTex 看它。
+        /// </summary>
+        public static readonly bool UsePixelRoom = true;
+
         public static BrewRoom Instance { get; private set; }
 
         public static BrewRoom Ensure()
@@ -114,6 +121,8 @@ namespace WitchShop.Core
 
             foreach (var p in BrewRoomLayout.Pieces)
             {
+                // 原本只會眨眼的裝飾貓：活貓（RoomCat）開著、而且載得到貓的圖時不擺，改由 RoomCat 自己走來走去
+                if (p.Name == "cat" && RoomCat.Enabled && RoomCat.ArtReady) continue;
                 var frames = GameArt.BrewFrames(p);
                 if (p.Name == "cauldron")
                 {
@@ -175,6 +184,16 @@ namespace WitchShop.Core
             AddWardrobe(BrewRoomLayout.WardrobeAt, BrewRoomLayout.WardrobeRange);
             AddChest(BrewRoomLayout.ChestAt, BrewRoomLayout.ChestRange);
             AddExit(BrewRoomLayout.ExitAt, BrewRoomLayout.ExitRange, BrewRoomLayout.ExitAuto);
+
+            // 自己擺的家具／燈／裝飾（HomeLayout）＋R 佈置：要排在房間家具登記之後（驗存檔要量碰撞）、貓之前（貓一出生就繞著它們走）
+            if (HomeArrange.Enabled)
+            {
+                HomeFurnishings.Build(transform);
+                HomeArrange.Ensure(transform);
+            }
+
+            // 活貓：要排在家具登記（RegisterShape）與互動點之後 —— 牠找路看 Obstacles，摸牠的優先順序看那些互動點
+            if (RoomCat.Enabled) RoomCat.Spawn(transform);
         }
 
         /// <summary>家具的落地範圍交給 Obstacles（凸多邊形或等距圓＝橢圓）。</summary>
@@ -214,6 +233,17 @@ namespace WitchShop.Core
                 if (front) lo = Mathf.Max(lo, p.Order);
                 else hi = Mathf.Min(hi, p.Order);
             }
+            // 家裡自己擺的東西（HomeFurnishings；order 都是 4 的倍數，女巫拿 lo+1／hi−1 不會跟它們同號）
+            foreach (var q in HomeFurnishings.SortBoxes)
+            {
+                if (x1 <= q.Rect.xMin || q.Rect.xMax <= x0 || y1 <= q.Rect.yMin || q.Rect.yMax <= y0) continue;
+                bool front;
+                if (uv.x >= q.U1 || uv.y >= q.V1) front = true;
+                else if (uv.x <= q.U0 || uv.y <= q.V0) front = false;
+                else front = uv.x + uv.y > (q.U0 + q.U1 + q.V0 + q.V1) * 0.5f;   // 裝飾不擋路，可能站在它的範圍裡
+                if (front) lo = Mathf.Max(lo, q.Order);
+                else hi = Mathf.Min(hi, q.Order);
+            }
             if (lo == int.MinValue && hi == int.MaxValue) return Mathf.RoundToInt(-foot.y);
             if (lo == int.MinValue) return hi - 1;
             return lo + 1;
@@ -227,6 +257,7 @@ namespace WitchShop.Core
             bed.transform.SetParent(transform);
             bed.transform.position = new Vector3(at.x, at.y, 0f);
             var b = bed.AddComponent<Bed>();
+            b.hintAnchor = PieceHintAnchor("bed", 100f);   // 四柱床的頂篷很高：提示放在枕頭上方，不要飄到頂篷上去
             b.hintText = "按 E 睡覺";
             b.interactRange = range;
         }
@@ -237,6 +268,7 @@ namespace WitchShop.Core
             wardrobe.transform.SetParent(transform);
             wardrobe.transform.position = new Vector3(at.x, at.y, 0f);
             var w = wardrobe.AddComponent<Wardrobe>();
+            w.hintAnchor = PieceHintAnchor("wardrobe");
             w.hintText = "按 E 換衣服";
             w.interactRange = range;
         }
@@ -247,8 +279,25 @@ namespace WitchShop.Core
             chest.transform.SetParent(transform);
             chest.transform.position = new Vector3(at.x, at.y, 0f);
             var c = chest.AddComponent<StorageCabinet>();
+            c.hintAnchor = PieceHintAnchor("chest");
             c.hintText = "按 E 開倉庫";
             c.interactRange = range;
+        }
+
+        /// <summary>
+        /// 互動提示放在那件家具的圖的上緣（床、衣櫃、木箱的互動點本身是隱形的，不給的話提示固定在互動點往上 70）。
+        /// maxRise：最多比落腳點高多少（四柱床的圖頂是頂篷，太高）。舊房間（UseSvgRoom＝false）沒有配置表 → null（退回 +70）。
+        /// </summary>
+        static System.Func<Vector3> PieceHintAnchor(string piece, float maxRise = float.MaxValue)
+        {
+            if (!UseSvgRoom) return null;
+            foreach (var p in BrewRoomLayout.Pieces)
+                if (p.Name == piece)
+                {
+                    var at = new Vector3(p.X, Mathf.Min(p.RectYMax, p.Y + maxRise) + 4f, 0f);
+                    return () => at;
+                }
+            return null;
         }
 
         void AddExit(Vector2 at, float range, float auto)

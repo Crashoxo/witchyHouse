@@ -16,8 +16,9 @@ namespace WitchShop.Core
     /// 讀 SpriteRenderer 的尺寸算出來；找不到就用底下的 worldHalfWidth / worldHalfHeight。
     /// 戶外地圖（森林／城鎮／糖果鎮）另外有碰撞（樹幹、房子、灌木……見 <see cref="Obstacles"/>）
     /// 與邊緣內縮（女巫的圖不會畫到地面外）。
-    /// 藥水室（SVG 房間，<see cref="BrewRoom.UseSvgRoom"/>）與店裡（等距菱形地板）也有碰撞，
-    /// 但可走範圍是地板多邊形、沒有邊緣內縮 —— 兩個房間走同一條程式路徑，差別只在多邊形與家具是誰登記的。
+    /// 藥水室（SVG 房間，<see cref="BrewRoom.UseSvgRoom"/>）、店裡（等距菱形地板）與 8-bit 後花園
+    /// （圍牆花園，<see cref="GardenRoom.UsePixelGarden"/>）也有碰撞，
+    /// 但可走範圍是地板多邊形、沒有邊緣內縮 —— 三個房間走同一條程式路徑，差別只在多邊形與障礙是誰登記的。
     ///
     /// ── 移植註記 ────────────────────────────────────────────────
     /// 1. **輸入**：Cocos 版用 input.on(KEY_DOWN/KEY_UP) 自己維護一個 keys Set。
@@ -71,10 +72,11 @@ namespace WitchShop.Core
         //             兩個房間都是看跟她重疊的家具在她前面還是後面）
         //   collide   套 Obstacles 碰撞（戶外：樹幹、房子…；藥水室／店裡：家具的落地範圍＋地板多邊形）
         //   edgeInset 地圖邊緣內縮（只有戶外 —— 那是為了女巫的圖不畫到地面外；房間的地板多邊形自己已經縮好了）
-        // 後花園三件都不要，維持原本的夾邊方式。
+        // 8-bit 後花園（GardenRoom.UsePixelGarden）要前兩件（排序照腳底 y）；舊後花園三件都不要，維持原本的夾邊方式。
         bool outdoor, ySort, collide, edgeInset;
         bool brewRoom;                // 藥水室的 SVG 房間（排序與出生點看 BrewRoom／BrewRoomLayout）
         bool shopRoom;                // 店裡（等距房間；排序看 ShopRoomView、地板是 ShopRoom.WalkFloor 的菱形）
+        bool gardenRoom;              // 8-bit 後花園（四面圍牆；地板是 GardenRoomData.Walk 的菱形，障礙是樹與雨水桶）
         // 地板多邊形（藥水室、店裡）；null ＝ 用矩形。
         // ⚠️ 等距房間不能用矩形夾邊：塞得進菱形的最大矩形只剩正中間一小塊。有它的場景一律交給 Obstacles.ClampWalk。
         Vector2[] walkPoly;
@@ -103,8 +105,9 @@ namespace WitchShop.Core
             outdoor = scene == "main" || scene == "town" || scene == "candy";
             brewRoom = scene == "brew" && BrewRoom.UseSvgRoom;
             shopRoom = scene == "shop";
-            ySort = outdoor || brewRoom || shopRoom;
-            collide = outdoor || brewRoom || shopRoom;
+            gardenRoom = scene == "garden" && GardenRoom.UsePixelGarden;
+            ySort = outdoor || brewRoom || shopRoom || gardenRoom;
+            collide = outdoor || brewRoom || shopRoom || gardenRoom;
             edgeInset = outdoor;
             if (brewRoom)
             {
@@ -119,6 +122,14 @@ namespace WitchShop.Core
                 // 店裡：地板菱形內縮 FloorMargin（跟以前的 ShopRoom.ClampToFloor 同一塊範圍）。
                 // 出生點照場景檔（ShopSceneBuilder 用 ShopRoom.PlayerSpawn 換算的），不用另外搬。
                 walkPoly = Data.ShopRoom.WalkFloor();
+            }
+            else if (gardenRoom)
+            {
+                // 8-bit 後花園：草地菱形內縮（腳底圓不壓到圍牆），走不出去。
+                // 出生點跟著配置表（門前的踏腳石上）—— 場景檔裡的 (250,55) 是舊花園的門口，新花園那裡是小屋的牆。
+                walkPoly = Data.GardenRoomData.Walk;
+                var sp = Data.GardenRoomData.Spawn;
+                transform.position = new Vector3(sp.x, sp.y, transform.position.z);
             }
             ComputeBounds();
             GameArt.Preload();
@@ -142,7 +153,7 @@ namespace WitchShop.Core
                 SaleCounter.Ensure();        // 販售桌前按 E 開上架面板
                 AwayShop.ReportOnReturn();   // 回店：報告剛剛不在時賣掉了什麼
             }
-            if (scene == "garden") GardenRoom.Ensure();      // 背景、花圃、回店的門、柵欄外的村民
+            if (scene == "garden") GardenRoom.Ensure();      // 背景、花圃、回店的門（舊花園另有柵欄外的村民；新花園另有 R 搬花圃）
             if (scene == "candy") CandyTown.Ensure();        // 建築、裝飾、NPC、街上的小動物
             if (scene == "brew") BrewRoom.Ensure();          // 日夜背景、鍋爐、床、倉庫、回店的門
             if (scene == "town")
@@ -164,7 +175,7 @@ namespace WitchShop.Core
 
             // 碰撞：戶外地圖、藥水室、店裡才擋。這裡只記下場景與可走範圍，障礙清單在第一次移動時才建 ——
             // 糖果鎮的建築是 CandyTown 在 Start 裡才擺出來的（擺完會再叫 Obstacles.MarkDirty）；
-            // 藥水室的家具由 BrewRoom 在 Start 裡登記（Obstacles.AddPoly／AddEllipse）；
+            // 藥水室的家具由 BrewRoom 在 Start 裡登記（Obstacles.AddPoly／AddEllipse）；8-bit 後花園的樹與雨水桶由 GardenRoom 在 Start 裡登記；
             // 店裡的家具由 ShopRoomView.Rebuild() 登記（第一次在它的 Start，之後每次佈置完重登記）。
             // ⚠️ Begin 會清空所有登記，所以上面那些「在 Start 裡登記」不能提早到 Awake。
             Obstacles.Begin(scene, new Rect(minX, minY, maxX - minX, maxY - minY), transform.position, collide, walkPoly);
@@ -218,6 +229,11 @@ namespace WitchShop.Core
             // 佈置模式中滑鼠是用來拖家具的，不能同時當「點地面走過去」
             if (ShopRoomEditor.Instance != null && ShopRoomEditor.Instance.Editing)
             { moveTarget = null; return; }
+            // 後花園搬花圃中也一樣（滑鼠在拖花圃）
+            if (GardenArrange.Instance != null && GardenArrange.Instance.Editing)
+            { moveTarget = null; return; }
+            // 家裡（藥水室）擺家具中也一樣
+            if (HomeArrange.Busy) { moveTarget = null; return; }
 
             HandleHotkeys();
 
@@ -322,7 +338,7 @@ namespace WitchShop.Core
                 stallTimer = 0f;
                 if (walkPoly != null)
                 {
-                    // 藥水室、店裡：目的地夾進地板多邊形（點到牆上就走到牆腳）。
+                    // 藥水室、店裡、8-bit 後花園：目的地夾進地板多邊形（點到牆上就走到牆腳）。
                     // 點在家具上不另外處理：走到撞住就沿邊滑，滑不動 StallTime 秒後自己放棄（不做尋路）。
                     var c = Obstacles.ClampWalk(new Vector2(w.x, w.y));
                     moveTarget = new Vector3(c.x, c.y, 0f);

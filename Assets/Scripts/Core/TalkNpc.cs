@@ -94,32 +94,32 @@ namespace WitchShop.Core
         public string shopTitle = "";
 
         Transform player;
-        GameObject hint;
-        bool inRange;
 
         void Start()
         {
             var p = GameObject.Find("Player");
             player = p != null ? p.transform : null;
-            BuildHint();
+
+            // 提示與按 E 交給共用的互動系統（2026-11-28）：頭上 [E][對話泡泡]，
+            // 有任務可接 → 泡泡裡「！」、可以回報 → 泡泡裡金星（以前是一行「！按 E 回報　名字」）。
+            // 對話框也是按 E 關的：關掉的那一兩幀 Interact 不吃 E（取代以前的 justClosed）。
+            var it = Interactable.Attach(gameObject, interactRange, Talk, Look);
+            it.fallbackRise = 96f;
+            it.maxRise = 120f;
         }
 
-        void Update()
+        HintLook Look()
         {
-            if (player == null) return;
-            inRange = Vector2.Distance(player.position, transform.position) <= interactRange;
-
-            if (hint != null)
-            {
-                bool show = inRange && !UIState.ModalOpen;
-                hint.SetActive(show);
-                if (show) UpdateHintText();
-            }
-
-            // ⚠️ 對話框也是按 E 關掉的：它若先跑、同一幀解除了 ModalOpen，這裡會讀到同一下 E 又開一次
-            var dlg = UI.Dialogue.Instance;
-            bool justClosed = dlg != null && dlg.ClosedThisFrame;
-            if (inRange && !UIState.ModalOpen && !justClosed && Input.GetKeyDown(KeyCode.E)) Talk();
+            string qid = QuestLog.CurrentFor(npcName);
+            bool ready = qid != null && QuestLog.StatusOf(qid) == QuestStatus.Ready;
+            bool offer = qid != null && QuestLog.StatusOf(qid) == QuestStatus.Available;
+            string legacy = ready ? $"！按 E 回報　{npcName}"
+                          : offer ? $"？按 E 交談　{npcName}"
+                          : $"按 E 交談　{npcName}";
+            var col = ready ? new Color32(255, 226, 120, 255)
+                    : offer ? new Color32(190, 240, 190, 255)
+                    : HintLook.DefaultLegacyColor;
+            return HintLook.E(HintIcons.Ui(ready ? "act_quest_done" : offer ? "act_quest" : "act_talk"), legacy).WithLegacyColor(col);
         }
 
         void Talk()
@@ -202,45 +202,6 @@ namespace WitchShop.Core
                     break;
                 }
             }
-        }
-
-        // ──────────── 頭上的提示 ────────────
-
-        void BuildHint()
-        {
-            hint = new GameObject("hint");
-            hint.transform.SetParent(transform, false);
-            hint.transform.localPosition = new Vector3(0f, 96f, 0f);
-
-            var tm = hint.AddComponent<TextMesh>();
-            tm.fontSize = 36;
-            tm.characterSize = 4.5f;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.color = new Color32(255, 244, 214, 255);
-
-            var font = UI.CjkFont.Get();
-            if (font != null)
-            {
-                tm.font = font;
-                hint.GetComponent<MeshRenderer>().material = font.material;
-            }
-            hint.GetComponent<MeshRenderer>().sortingOrder = 9400;
-            hint.SetActive(false);
-        }
-
-        /// <summary>可回報的任務要標出來，玩家才知道該回去找誰。</summary>
-        void UpdateHintText()
-        {
-            string qid = QuestLog.CurrentFor(npcName);
-            bool ready = qid != null && QuestLog.StatusOf(qid) == QuestStatus.Ready;
-            bool offer = qid != null && QuestLog.StatusOf(qid) == QuestStatus.Available;
-            var tm = hint.GetComponent<TextMesh>();
-            tm.text = ready ? $"！按 E 回報　{npcName}"
-                    : offer ? $"？按 E 交談　{npcName}"
-                    : $"按 E 交談　{npcName}";
-            tm.color = ready ? new Color32(255, 226, 120, 255)
-                     : offer ? new Color32(190, 240, 190, 255)
-                     : new Color32(255, 244, 214, 255);
         }
     }
 }

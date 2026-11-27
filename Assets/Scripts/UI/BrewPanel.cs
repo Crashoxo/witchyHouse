@@ -16,8 +16,16 @@ namespace WitchShop.UI
     ///   左頁：魔法陣＋成品大圖 144、名稱、一句說明（Items.DescOf）、金幣售價、頁碼「3 / 13」
     ///   右頁：「材料」小標、材料卡（材料圖 48＋持有/需要，夠＝綠、不夠＝紅；滑鼠移上去浮出名稱）、
     ///         可做幾份（成品小圖＋×N）、熬 1（綠）／熬 N（金）
-    ///   書兩側：翻頁箭頭；書下：目錄格（目前這頁＝亮金框往上抬、做得出來＝右上小綠寶石、做不出來＝暗格淡圖但仍可點）
+    ///   書兩側：翻頁箭頭；書下：目錄條（目前這頁＝亮金框往上抬、做得出來＝右上小綠寶石、做不出來＝暗格淡圖但仍可點）
     ///   以前是一張 13 列的清單（每列 [成品][名稱][材料小卡…][售價][熬 1][熬 N]），使用者要的是「翻書」。
+    ///
+    /// ── 目錄條分頁（2026-11-28，使用者：「下面的道具要有下一頁，怕會無限延伸變很長」）──────
+    ///   固定寬度、一頁 <see cref="StripPer"/> 格，兩端各一顆小翻頁鈕 [◀][格×10][▶]；最後一頁不滿就補空位，寬度永遠不變。
+    ///   只有一頁時兩顆鈕藏起來但位置照留；到頭的那顆變暗停用（同 Pager 的慣例，翻頁響 `page`）。
+    ///   目錄條跟著書走：書翻到別一頁目錄上的配方（箭頭、←／→、A／D、滾輪），目錄條也翻過去；
+    ///   點目錄條的鈕只換目錄條的頁、不換攤開的配方；點格子照舊翻到那個配方。
+    ///   滾輪：在目錄條上＝翻目錄條（StopPropagation，書不會跟著翻）；在書上＝翻配方。
+    ///   格子每次換頁重建（跟 Pager 一樣），浮動說明跟著新格子註冊。
     ///
     /// ── 翻頁 ─────────────────────────────────────────────────
     ///   ←／→、A／D、滑鼠滾輪、兩側箭頭、點目錄格。首尾相接循環。
@@ -52,6 +60,10 @@ namespace WitchShop.UI
         const long OpenMs = 110;
         /// <summary>滾輪翻頁的最短間隔（秒，真實時間）。</summary>
         const float WheelGap = 0.25f;
+        /// <summary>目錄條一頁幾格。⚠️ 跟 Skin8Book.uss 的 .bk-strip-row 寬（60×10＋6×9＝654）與 book-shelf 圖寬同步。</summary>
+        const int StripPer = 10;
+        /// <summary>目錄條滾輪翻頁的最短間隔（秒，真實時間；同 Pager）。</summary>
+        const float StripWheelGap = 0.2f;
 
         const string FoldClass = "bk-leaf--fold";
         const string FlatClass = "bk-leaf--flat";
@@ -71,8 +83,15 @@ namespace WitchShop.UI
         VisualElement heroIcon, priceBox, matsRow, canIcon;
         Label nameLabel, descLabel, pageLabel, canNum;
         Button brewOne, brewMax;
-        VisualElement[] slots;
-        VisualElement[] slotIcons;
+
+        // ── 目錄條（分頁）──
+        VisualElement stripRow;
+        Button stripPrev, stripNext;
+        /// <summary>目錄條目前第幾頁（0 起算）。</summary>
+        int stripPage;
+        /// <summary>目錄條上次「跟著書走」時對的是哪個配方；書翻到別的配方才重新對齊（-1＝開面板時強制對齊）。</summary>
+        int stripFor = -1;
+        float stripWheelReadyAt;
 
         /// <summary>目前攤開的配方（Recipes.All 的索引）。關掉再開回到這頁。</summary>
         int page;
@@ -120,6 +139,7 @@ namespace WitchShop.UI
             if (!built) Build();
             if (!built) return;
             ResetFlip();                 // 上次關掉時若還在翻頁，先把半張葉子收好
+            stripFor = -1;               // 目錄條回到攤開的那個配方所在的頁
             anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
             Sfx.Play("ui-open");                                    // 音效：面板打開
@@ -288,29 +308,30 @@ namespace WitchShop.UI
             btns.Add(brewMax);
         }
 
-        /// <summary>書下面的目錄格：每個配方一格，點了直接翻到那一頁。</summary>
+        /// <summary>
+        /// 書下面的目錄條：[◀][一頁 StripPer 格][▶]，固定寬度（格子內容由 <see cref="RenderStrip"/> 每次換頁重建）。
+        /// 點格子直接翻到那個配方；點兩端的鈕只換目錄條的頁。
+        /// </summary>
         void BuildShelf(VisualElement parent)
         {
             var shelf = new VisualElement();
             shelf.AddToClassList("bk-shelf");
+            shelf.RegisterCallback<WheelEvent>(OnStripWheel);    // 目錄條上的滾輪只翻目錄條（不往上傳給書）
             parent.Add(shelf);
 
-            var all = Recipes.All;
-            slots = new VisualElement[all.Length];
-            slotIcons = new VisualElement[all.Length];
-            for (int i = 0; i < all.Length; i++)
-            {
-                int idx = i;
-                var slot = new VisualElement();
-                slot.AddToClassList("bk-slot");
-                slot.RegisterCallback<ClickEvent>(_ => GoTo(idx));
-                var ic = Pic("bk-slot-icon");
-                slot.Add(ic);
-                slot.Add(Pic("bk-slot-dot"));
-                shelf.Add(slot);
-                slots[i] = slot;
-                slotIcons[i] = ic;
-            }
+            stripPrev = new Button(() => StepStrip(-1)) { text = "", focusable = false };
+            stripPrev.AddToClassList("bk-sarrow");
+            stripPrev.AddToClassList("bk-sarrow--l");
+            shelf.Add(stripPrev);
+
+            stripRow = new VisualElement();
+            stripRow.AddToClassList("bk-strip-row");
+            shelf.Add(stripRow);
+
+            stripNext = new Button(() => StepStrip(1)) { text = "", focusable = false };
+            stripNext.AddToClassList("bk-sarrow");
+            stripNext.AddToClassList("bk-sarrow--r");
+            shelf.Add(stripNext);
         }
 
         /// <summary>底列：[Esc] 關閉　[←][→] 翻頁（置中，暗幕上用淺色字）。</summary>
@@ -350,19 +371,7 @@ namespace WitchShop.UI
         void Refresh()
         {
             if (!built) return;
-            // 目錄格的成品圖與名稱說明（圖要等 GameArt 載好，所以放這裡不放 Build）
-            var all = Recipes.All;
-            for (int i = 0; i < all.Length; i++)
-            {
-                var sp = GameArt.Item(all[i].Name);
-                slotIcons[i].style.backgroundImage = sp != null ? new StyleBackground(sp) : new StyleBackground(StyleKeyword.Null);
-                if (!slots[i].ClassListContains("bk-slot--tip"))
-                {
-                    slots[i].AddToClassList("bk-slot--tip");     // 只註冊一次（Refresh 每次開面板都會跑）
-                    UiSkin.Tip(slots[i], tip, panel, all[i].Name);
-                }
-            }
-            Fill();
+            Fill();                       // 目錄條的成品圖與浮動說明在 RenderStrip（圖要等 GameArt 載好，所以不放 Build）
         }
 
         /// <summary>把目前這頁（<see cref="page"/>）的配方填進兩頁，並更新目錄格的狀態。</summary>
@@ -386,12 +395,15 @@ namespace WitchShop.UI
             priceBox.Add(UiSkin.Money(r.SellPrice, "bk-price-num"));
             pageLabel.text = $"{page + 1} / {all.Length}";
 
-            // 右頁：材料卡（中間用「+」隔開）
+            // 右頁：材料卡（中間一顆燙金「＋」）。材料欄固定寬、超出隱藏；4 種材料換窄卡、5 種以上再窄一號（小圖 36）
             matsRow.Clear();
+            int nMats = r.Inputs.Count;
+            matsRow.EnableInClassList("bk-mats--4", nMats == 4);
+            matsRow.EnableInClassList("bk-mats--5", nMats >= 5);
             bool first = true;
             foreach (var kv in r.Inputs)
             {
-                if (!first) matsRow.Add(Text("bk-plus", "+"));
+                if (!first) matsRow.Add(Pic("bk-plus"));
                 first = false;
                 matsRow.Add(MaterialCard(kv.Key, kv.Value));
             }
@@ -404,15 +416,82 @@ namespace WitchShop.UI
             brewMax.text = max > 0 ? $"熬 {max}" : "熬最大";
             brewMax.SetEnabled(max >= 1);
 
-            // 目錄格
-            for (int i = 0; i < all.Length; i++)
+            // 目錄條：書翻到別的配方 → 目錄條翻到那個配方所在的頁（使用者自己翻目錄條時 page 沒變，不會被拉回來）
+            if (page != stripFor)
             {
-                bool can = PotionRecipes.MaxCraftable(all[i]) >= 1;
-                var s = slots[i];
-                s.EnableInClassList("bk-slot--sel", i == page);
-                s.EnableInClassList("bk-slot--can", can);
-                s.EnableInClassList("bk-slot--off", !can);
+                stripPage = page / StripPer;
+                stripFor = page;
             }
+            RenderStrip();
+        }
+
+        // ═══════════════════════════════ 目錄條 ═══════════════════════════════
+
+        int StripPages => Mathf.Max(1, (Recipes.All.Length + StripPer - 1) / StripPer);
+
+        /// <summary>
+        /// 重建目錄條這一頁的 StripPer 格：配方格（目前這頁＝--sel 亮金框抬起、做得出來＝--can 小綠寶石、做不出來＝--off 暗格淡圖仍可點）、
+        /// 不滿一頁的補空位（--empty，不收滑鼠），寬度永遠不變。兩端的鈕：到頭停用、只有一頁時藏起來但位置照留。
+        /// </summary>
+        void RenderStrip()
+        {
+            if (stripRow == null) return;
+            var all = Recipes.All;
+            int pages = StripPages;
+            stripPage = Mathf.Clamp(stripPage, 0, pages - 1);
+            UiSkin.HideTip(tip);          // 被 Clear 掉的格子不會再送 PointerLeave
+            stripRow.Clear();
+            for (int i = 0; i < StripPer; i++)
+            {
+                int idx = stripPage * StripPer + i;
+                VisualElement slot;
+                if (idx < all.Length)
+                {
+                    bool can = PotionRecipes.MaxCraftable(all[idx]) >= 1;
+                    slot = new VisualElement();
+                    slot.AddToClassList("bk-slot");
+                    slot.EnableInClassList("bk-slot--sel", idx == page);
+                    slot.EnableInClassList("bk-slot--can", can);
+                    slot.EnableInClassList("bk-slot--off", !can);
+                    slot.RegisterCallback<ClickEvent>(_ => GoTo(idx));
+                    var ic = Pic("bk-slot-icon");
+                    var sp = GameArt.Item(all[idx].Name);
+                    if (sp != null) ic.style.backgroundImage = new StyleBackground(sp);
+                    slot.Add(ic);
+                    slot.Add(Pic("bk-slot-dot"));
+                    UiSkin.Tip(slot, tip, panel, all[idx].Name);
+                }
+                else
+                {
+                    slot = Pic("bk-slot", "bk-slot--empty");
+                }
+                if (i == StripPer - 1) slot.AddToClassList("bk-slot--end");
+                stripRow.Add(slot);
+            }
+            stripPrev.SetEnabled(stripPage > 0);
+            stripNext.SetEnabled(stripPage < pages - 1);
+            var vis = pages > 1 ? Visibility.Visible : Visibility.Hidden;
+            stripPrev.style.visibility = vis;
+            stripNext.style.visibility = vis;
+        }
+
+        /// <summary>目錄條往前／往後一頁（不換攤開的配方）。到頭不動、不出聲。</summary>
+        void StepStrip(int dir)
+        {
+            int target = stripPage + (dir < 0 ? -1 : 1);
+            if (target < 0 || target >= StripPages) return;
+            stripPage = target;
+            Sfx.Play("page");                                       // 音效：翻頁的紙張「唰」（同 Pager）
+            RenderStrip();
+        }
+
+        void OnStripWheel(WheelEvent e)
+        {
+            e.StopPropagation();          // 不讓書（panel 上的 OnWheel）跟著翻
+            if (anim == null || !anim.IsOpen) return;
+            if (StripPages < 2 || Mathf.Abs(e.delta.y) < 0.01f || Time.unscaledTime < stripWheelReadyAt) return;
+            stripWheelReadyAt = Time.unscaledTime + StripWheelGap;
+            StepStrip(e.delta.y > 0 ? 1 : -1);
         }
 
         /// <summary>

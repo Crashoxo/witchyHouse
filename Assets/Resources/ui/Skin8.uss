@@ -888,13 +888,14 @@
 .sk .toast-icon-text { font-size: 18px; color: rgb(255, 248, 230); text-shadow: 0px 2px 0px rgb(42, 27, 36); }
 
 /* ════════════════════════ 時鐘周圍（ClockHud）════════════════════════ */
-/* 鐘面本身（ui/clock/*）一律不動；底下改成兩顆靠右的深木膠囊：時刻（大）、日期（小）。 */
+/* 鐘面本身（ui/clock/*）一律不動；底下改成兩顆靠右的牌：時刻（大）、日期（小）。
+   2026-11-27：牌改成跟上方工具列同一套的深紫金邊牌（tb-plate，slice 9；圖的最下 2 列是落地陰影，所以下 padding 多 2 讓字對準牌面中間）。 */
 .sk .sk-clock-info { top: 154px; }
 .sk .sk-clock-time {
     height: 27px;
     margin-bottom: 3px;
-    padding: 0 9px;
-    background-image: resource("ui/skin8/badge");
+    padding: 0 9px 2px 9px;
+    background-image: resource("ui/skin8/tb-plate");
     -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
     -unity-slice-scale: 1px;
     font-size: 16px;
@@ -904,8 +905,8 @@
 }
 .sk .sk-clock-date {
     height: 24px;
-    padding: 0 9px;
-    background-image: resource("ui/skin8/badge");
+    padding: 0 9px 2px 9px;
+    background-image: resource("ui/skin8/tb-plate");
     -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
     -unity-slice-scale: 1px;
     font-size: 13px;
@@ -961,15 +962,17 @@
 .sk .tray-empty { font-size: 15px; color: rgb(236, 224, 200); }
 
 /* ════════════════════════ 上方工具列（CornerHud）════════════════════════ */
-/* 跟下排背包列同一塊底座（hud-bar，slice 18）；按鈕用 skin 的九宮格鈕：
-   開店＝金、關店＝紫（夜色）、佈置中停用＝灰；R 佈置提示：可按＝金膠囊、上鎖＝深木膠囊；設定＝木鈕 [齒輪][O]。
+/* 2026-11-27 細畫版：跟下排「魔女腰包」同一套 —— 深紫布底座＋金滾邊（tb-bar，slice 18）、縫線分隔（tb-sep 6×30）、
+   開店＝暖蜂蜜金牌（tb-open）、關店＝夜色靛藍牌（tb-closed）、佈置中停用＝灰藕（tb-off）、設定＝紫布金邊牌（tb-set）；
+   R 佈置提示：可按＝亮紫浮起膠囊（tb-tag）、上鎖＝暗紫凹槽（tb-tag-off）；名聲量表＝金邊槽（tb-gauge）＋金色填充。
+   tb-* 只有這一段與時鐘牌在用；舊的 hud-bar／btn-*／badge／tag-gold 別的面板還在用，沒動。圖：gen_ui_skin.py 檔尾「上方工具列」。
    ⚠️ 舊樣式（HudExtraStyle 的 .hud-*）是兩個 class 疊的狀態規則，這裡一律再多一個 .sk（三個 class）才蓋得過。
    ⚠️ 不要在這些元素上寫 transition：開關店時的 UIAnim.Bump 靠 .uia-bump 的 scale。 */
 .sk .hud-corner {
     top: 9px; left: 9px;
     padding: 9px 12px 9px 12px;
     border-width: 0;
-    background-image: resource("ui/skin8/hud-bar");
+    background-image: resource("ui/skin8/tb-bar");
     -unity-slice-left: 18; -unity-slice-top: 18; -unity-slice-right: 18; -unity-slice-bottom: 18;
     -unity-slice-scale: 1px;
 }
@@ -977,30 +980,51 @@
 .sk .hud-seg { padding: 0 9px; }
 .sk .hud-seg--gold { min-width: 102px; }
 .sk .hud-seg--rep { min-width: 204px; flex-direction: row; align-items: center; }
-/* 分隔：暗 3＋亮 3 ＝ 刻進木頭的凹槽 */
+/* 分隔：縫線（凹槽＋一排金針腳＋上下小金釘），固定 6×30 的圖、不拉伸 */
 .sk .hud-sep {
     width: 6px; height: 30px;
-    background-color: rgb(75, 41, 28);
-    border-right-width: 3px;
-    border-right-color: rgb(149, 90, 56);
+    background-color: rgba(0, 0, 0, 0);
+    border-right-width: 0;
+    background-image: resource("ui/skin8/tb-sep");
 }
 .sk .hud-gold { font-size: 20px; }
 .sk .hud-seg--gold .sk-coin { margin-right: 3px; }
-.sk .hud-seg--rep .sk-ico--star { margin-right: 6px; }
-.sk .hud-rep { flex-grow: 1; font-size: 13px; color: rgb(236, 224, 200); }
-.sk .sk-hud-rep-num { font-size: 12px; color: rgb(214, 186, 140); margin-left: 6px; }
-/* 名聲進度條：深色凹槽（框 3 外輪廓色、底深木）＋金色填充（上緣 3 亮金） */
+/* 名聲這一塊（2026-11-28，使用者：「經驗條要往上一點」）：[字列 17][2][量表 12]＝31 高，固定尺寸、不靠 Label 的自然高度
+   （字型行高約 19＋預設主題的 padding，自然撐開會把量表推到貼著下面的金滾邊）。
+   工具列內容 36 高、從底座第 9 列開始，但底座的金滾邊在第 3～4 列與第 46～47 列 → 看得到的內框中心比內容中心高 1.5：
+   整塊貼內容上緣（下面 margin 5 讓開），字的筆畫上方與量表下方離金滾邊都約 6。星星同樣 margin-bottom 5 → 跟整塊對齊置中。 */
+.sk .hud-seg--rep .sk-ico--star { margin-right: 6px; margin-bottom: 5px; }
+.sk .sk-hud-rep-box { height: 31px; margin-bottom: 5px; justify-content: flex-start; flex-shrink: 0; }
+.sk .sk-hud-rep-top { height: 17px; flex-shrink: 0; overflow: visible; align-items: center; }
+.sk .hud-rep {
+    flex-grow: 1;
+    height: 17px; margin: 0; padding: 0;
+    font-size: 13px; color: rgb(236, 224, 200);
+    -unity-text-align: middle-left;
+}
+.sk .sk-hud-rep-num {
+    height: 17px; margin: 0 0 0 6px; padding: 0;
+    font-size: 12px; color: rgb(214, 186, 140);
+    -unity-text-align: middle-right;
+}
+/* 名聲進度條：金邊小量表（tb-gauge，slice 6；padding 3 讓填充塞進 6 px 高的槽）＋金色填充（上緣 1 亮金、下緣 1 暗金） */
 .sk .hud-rep-bar {
     height: 12px;
-    margin-top: 3px;
-    border-width: 3px;
-    border-color: rgb(42, 27, 36);
-    background-color: rgb(75, 41, 28);
+    flex-shrink: 0;
+    margin-top: 2px;
+    padding: 3px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/tb-gauge");
+    -unity-slice-left: 6; -unity-slice-top: 6; -unity-slice-right: 6; -unity-slice-bottom: 6;
+    -unity-slice-scale: 1px;
 }
 .sk .hud-bar-fill {
-    background-color: rgb(220, 174, 76);
-    border-top-width: 3px;
-    border-top-color: rgb(251, 224, 138);
+    background-color: rgb(240, 203, 106);
+    border-top-width: 1px;
+    border-top-color: rgb(255, 240, 180);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(176, 118, 50);
 }
 
 /* 開店／關店鈕：[招牌 24][P 24]，高 36（九宮格同 .btn：slice 12／12／12／15，按下時字與圖往下 3） */
@@ -1012,21 +1036,21 @@
     -unity-slice-scale: 1px;
 }
 .sk .hud-shop-key { margin: 0 0 0 3px; }
-.sk .hud-shop.hud-shop--open { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-gold"); }
-.sk .hud-shop.hud-shop--open:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-gold-hover"); }
+.sk .hud-shop.hud-shop--open { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/tb-open"); }
+.sk .hud-shop.hud-shop--open:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/tb-open-hover"); }
 .sk .hud-shop.hud-shop--open:active,
 .sk .hud-shop.hud-shop--open:hover:active {
     background-color: rgba(0, 0, 0, 0);
-    background-image: resource("ui/skin8/btn-gold-down");
+    background-image: resource("ui/skin8/tb-open-down");
     padding: 3px 9px 0 9px;
     translate: 0px 0px;
 }
-.sk .hud-shop.hud-shop--closed { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-purple"); }
-.sk .hud-shop.hud-shop--closed:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-purple-hover"); }
+.sk .hud-shop.hud-shop--closed { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/tb-closed"); }
+.sk .hud-shop.hud-shop--closed:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/tb-closed-hover"); }
 .sk .hud-shop.hud-shop--closed:active,
 .sk .hud-shop.hud-shop--closed:hover:active {
     background-color: rgba(0, 0, 0, 0);
-    background-image: resource("ui/skin8/btn-purple-down");
+    background-image: resource("ui/skin8/tb-closed-down");
     padding: 3px 9px 0 9px;
     translate: 0px 0px;
 }
@@ -1034,42 +1058,42 @@
 .sk .hud-shop.hud-shop--open:disabled,
 .sk .hud-shop.hud-shop--closed:disabled,
 .sk .hud-shop.hud-shop--open:disabled:hover,
-.sk .hud-shop.hud-shop--closed:disabled:hover { background-image: resource("ui/skin8/btn-off"); opacity: 0.8; }
+.sk .hud-shop.hud-shop--closed:disabled:hover { background-image: resource("ui/skin8/tb-off"); opacity: 0.8; }
 /* 開店中按了 R：抖一下的同時整顆染紅（九宮格鈕沒有邊框可以閃，改用圖的染色） */
 .sk .hud-shop.hud-shop--open.hud-shop--nudge,
 .sk .hud-shop.hud-shop--closed.hud-shop--nudge { -unity-background-image-tint-color: rgb(255, 140, 130); }
 
-/* R 佈置提示：[R 24(+鎖)][3][木槌 24]。可按＝金膠囊；開店中上鎖＝深木膠囊（R 與木槌淡掉，舊規則 .hud-edit--locked .hud-edit-dim 沿用） */
+/* R 佈置提示：[R 24(+鎖)][3][木槌 24]。可按＝亮紫浮起膠囊（tb-tag）；開店中上鎖＝暗紫凹槽（tb-tag-off）（R 與木槌淡掉，舊規則 .hud-edit--locked .hud-edit-dim 沿用） */
 .sk .hud-edit {
     height: 36px;
     margin-left: 6px;
     padding: 0 6px 3px 6px;
     border-width: 0;
     background-color: rgba(0, 0, 0, 0);
-    background-image: resource("ui/skin8/tag-gold");
+    background-image: resource("ui/skin8/tb-tag");
     -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
     -unity-slice-scale: 1px;
 }
-.sk .hud-edit.hud-edit--locked { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/badge"); }
+.sk .hud-edit.hud-edit--locked { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/tb-tag-off"); }
 .sk .hud-edit-icon { margin: 0; }
 .sk .hud-edit-keybox { margin: 0 3px 0 0; }
 .sk .hud-edit.hud-edit--nudge { -unity-background-image-tint-color: rgb(255, 140, 130); }
 
-/* 設定：木鈕 [齒輪 33][O 鍵帽 24]（按鈕文字留給舊外觀，像素外觀時程式設成空字串） */
+/* 設定：紫布金邊牌（tb-set）[齒輪 33][O 鍵帽 24]（按鈕文字留給舊外觀，像素外觀時程式設成空字串） */
 .sk .hud-btn.hud-settings {
     height: 36px;
     padding: 0 9px 3px 3px;
     border-width: 0; border-radius: 0;
     background-color: rgba(0, 0, 0, 0);
-    background-image: resource("ui/skin8/btn-wood");
+    background-image: resource("ui/skin8/tb-set");
     -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 15;
     -unity-slice-scale: 1px;
 }
-.sk .hud-btn.hud-settings:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/btn-wood-hover"); }
+.sk .hud-btn.hud-settings:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/tb-set-hover"); }
 .sk .hud-btn.hud-settings:active,
 .sk .hud-btn.hud-settings:hover:active {
     background-color: rgba(0, 0, 0, 0);
-    background-image: resource("ui/skin8/btn-wood-down");
+    background-image: resource("ui/skin8/tb-set-down");
     padding: 3px 9px 0 3px;
     translate: 0px 0px;
 }
@@ -1079,3 +1103,31 @@
     padding: 0 0 3px 0;
     font-size: 12px;
 }
+
+/* ════════════════════════ 清單翻頁（UI/Pager.cs，2026-11-27）════════════════════════ */
+/* [◀ 33][n / m][▶ 33]：箭頭跟 ± 小鈕同一顆木頭鈕（skin8/page-*，gen_ui_skin.py 第五輪，11 格 ×3 固定尺寸、不是九宮格），
+   符號畫在圖裡（按鈕文字是空字串）。第一頁的 ◀／最後一頁的 ▶ 換灰鈕（page-*-off），不靠 opacity。
+   數字＝羊皮紙上的墨水字；疊在深木底上的（佈置托盤）加 pg-bar--dark 換米白字。
+   ⚠️ 停用那幾條排在最後（同特異度後寫的贏），而且 :disabled:hover 也要寫，不然滑過停用的 ▶ 會被 ◀ 的 off 圖蓋掉。 */
+.sk .pg-arrow {
+    width: 33px; height: 33px;
+    margin: 0; padding: 0;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: resource("ui/skin8/page-prev");
+    color: rgba(0, 0, 0, 0);
+    opacity: 1;
+}
+.sk .pg-arrow:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/page-prev-hover"); }
+.sk .pg-arrow:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/page-prev-down"); }
+.sk .pg-arrow--next { background-image: resource("ui/skin8/page-next"); }
+.sk .pg-arrow--next:hover { background-image: resource("ui/skin8/page-next-hover"); }
+.sk .pg-arrow--next:hover:active { background-image: resource("ui/skin8/page-next-down"); }
+.sk .pg-arrow:disabled,
+.sk .pg-arrow:disabled:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/page-prev-off"); opacity: 1; }
+.sk .pg-arrow--next:disabled,
+.sk .pg-arrow--next:disabled:hover { background-image: resource("ui/skin8/page-next-off"); }
+.sk .pg-num { margin: 0 3px; font-size: 15px; color: rgb(74, 47, 37); -unity-font-style: bold; }
+.sk .pg-bar--dark .pg-num { color: rgb(255, 248, 230); }
+/* 清單列的說明欄（.up-desc，字 13）最多兩行：行高 ≈18 → 36（SkinBase 的 40 是給舊外觀字 15 的） */
+.sk .pg-body > .row > .up-desc { max-height: 36px; }

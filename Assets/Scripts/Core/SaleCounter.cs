@@ -28,7 +28,6 @@ namespace WitchShop.Core
         public const float InteractRange = 90f;
 
         Transform player;
-        GameObject hint;
 
         void Awake() { Instance = this; }
         void OnDestroy() { if (Instance == this) Instance = null; }
@@ -37,46 +36,20 @@ namespace WitchShop.Core
         {
             var p = GameObject.Find("Player");
             player = p != null ? p.transform : null;
-            BuildHint();
+
+            // 提示與按 E 交給共用的互動系統（2026-11-28）：頭上 [E][金幣]（以前是「按 E 經營商店」）。
+            // 佈置模式中（ShopRoomEditor）Interact 整個暫停，不會冒提示。
+            var it = Interactable.Attach(gameObject, InteractRange, () => UI.ShopManagePanel.Ensure().Open(),
+                () => HintLook.E(HintIcons.Ui("act_sell"), "按 E 經營商店"));
+            it.available = () => RoomLayout.SaleFront() != null;
+            it.anchor = () => transform.position + new Vector3(0f, 40f, 0f);
         }
 
         void Update()
         {
-            if (player == null) return;
-
+            // 櫃台每幀跟著販售桌搬家（佈置模式會搬桌子）；按 E 由 Interact 處理
             var spot = RoomLayout.SaleFront();
-            if (spot == null) { if (hint != null) hint.SetActive(false); return; }
-
-            transform.position = new Vector3(spot.Value.x, spot.Value.y, 0f);
-
-            bool near = Vector2.Distance(player.position, spot.Value) <= InteractRange;
-            if (hint != null) hint.SetActive(near && !UIState.ModalOpen);
-
-            if (near && !UIState.ModalOpen && Input.GetKeyDown(KeyCode.E))
-                UI.ShopManagePanel.Ensure().Open();
-        }
-
-        void BuildHint()
-        {
-            hint = new GameObject("hint");
-            hint.transform.SetParent(transform, false);
-            hint.transform.localPosition = new Vector3(0f, 54f, 0f);
-
-            var tm = hint.AddComponent<TextMesh>();
-            tm.text = "按 E 經營商店";
-            tm.fontSize = 36;
-            tm.characterSize = 4.5f;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.color = new Color32(255, 244, 214, 255);
-
-            var font = UI.CjkFont.Get();
-            if (font != null)
-            {
-                tm.font = font;
-                hint.GetComponent<MeshRenderer>().material = font.material;
-            }
-            hint.GetComponent<MeshRenderer>().sortingOrder = 9400;
-            hint.SetActive(false);
+            if (spot != null) transform.position = new Vector3(spot.Value.x, spot.Value.y, 0f);
         }
     }
 }

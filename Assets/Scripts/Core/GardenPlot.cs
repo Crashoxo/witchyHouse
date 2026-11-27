@@ -14,7 +14,9 @@ namespace WitchShop.Core
 
         SpriteRenderer soil;
         SpriteRenderer plant;
-        GameObject thirsty;      // 「缺水」提醒
+        GameObject thirsty;      // 「缺水」提醒（新版：一顆輕輕上下晃的水滴；InteractHint 開關關掉時是舊的「缺水」兩個字）
+        /// <summary>這塊花圃的互動（GardenRoom 生的）—— 它正在冒提示時，缺水的水滴先收起來，兩個不疊在一起。</summary>
+        public Interactable interactable;
 
         public void Init(int i, Vector2 pos)
         {
@@ -29,8 +31,8 @@ namespace WitchShop.Core
 
             var plantGo = new GameObject("plant");
             plantGo.transform.SetParent(transform, false);
-            // 從磚面偏下一點長出來（同原版的 -6）
-            plantGo.transform.localPosition = new Vector3(0f, -6f, 0f);
+            // 從磚面中心長出來（新圖入土點＝花圃中心；舊圖同原版的 -6，見 GardenData.PlantBottomY）
+            plantGo.transform.localPosition = new Vector3(0f, GardenData.PlantBottomY, 0f);
             plantGo.transform.localScale = new Vector3(GardenData.FlowerScale, GardenData.FlowerScale, 1f);
             plant = plantGo.AddComponent<SpriteRenderer>();
             plant.sortingOrder = Mathf.RoundToInt(-pos.y);
@@ -52,17 +54,86 @@ namespace WitchShop.Core
             {
                 // 花的圖是從走圖切出來的，錨點在中心 → 往上推半個高度才像長在土上
                 plant.transform.localPosition =
-                    new Vector3(0f, -6f + f.rect.height * 0.5f * GardenData.FlowerScale, 0f);
+                    new Vector3(0f, GardenData.PlantBottomY + f.rect.height * 0.5f * GardenData.FlowerScale, 0f);
             }
 
-            if (thirsty != null) thirsty.SetActive(Garden.NeedsWater(index));
+            if (thirsty != null) thirsty.SetActive(ShowThirsty());
+        }
+
+        bool ShowThirsty() => Garden.NeedsWater(index) && (interactable == null || Interact.Shown != interactable);
+
+        void LateUpdate()
+        {
+            if (thirsty == null) return;
+            bool on = ShowThirsty();
+            if (thirsty.activeSelf != on) thirsty.SetActive(on);
+        }
+
+        /// <summary>互動提示的底邊：土＋花的最上緣（不算缺水水滴）往上一點。</summary>
+        public Vector3 HintAnchor()
+        {
+            float top = soil != null && soil.sprite != null ? soil.bounds.max.y : transform.position.y + 20f;
+            if (plant != null && plant.gameObject.activeSelf && plant.sprite != null) top = Mathf.Max(top, plant.bounds.max.y);
+            return new Vector3(transform.position.x, top + 4f, 0f);
+        }
+
+        // ──────────── 佈置模式（8-bit 後花園：花圃可以搬，見 GardenArrange）────────────
+
+        /// <summary>拖著走時的排序：蓋過別的花圃、前景牆（GardenRoomData.FrontOrder 3000）與格線預覽，提示字（9300 起）之下。</summary>
+        const int LiftOrder = 5000;
+        bool lifted;
+        Color soilCol0 = Color.white, plantCol0 = Color.white;
+
+        /// <summary>
+        /// 搬到別格（佈置模式放下時）：整塊（土、花、缺水提醒、之後的飄字）跟著物件走，
+        /// 排序照新位置重算（跟 Init 同一條規則）。花長到哪、澆過水沒都在 Garden 的資料裡，不受影響。
+        /// </summary>
+        public void MoveTo(Vector2 pos)
+        {
+            transform.position = new Vector3(pos.x, pos.y, 0f);
+            if (!lifted) ApplyOrder(pos.y);
+        }
+
+        /// <summary>拖曳中：整塊浮到最上層並乘上 tint（綠＝放得下、紅＝不行）；on=false ＝ 放下：顏色還原、排序照目前位置。</summary>
+        public void SetLifted(bool on, Color tint = default)
+        {
+            if (soil == null || plant == null) return;
+            if (on)
+            {
+                if (!lifted) { soilCol0 = soil.color; plantCol0 = plant.color; lifted = true; }
+                soil.color = soilCol0 * tint;
+                plant.color = plantCol0 * tint;
+                soil.sortingOrder = LiftOrder - 1;
+                plant.sortingOrder = LiftOrder;
+                return;
+            }
+            if (lifted) { soil.color = soilCol0; plant.color = plantCol0; }
+            lifted = false;
+            ApplyOrder(transform.position.y);
+        }
+
+        /// <summary>⚠️ 跟 Init 裡設的排序是同一條規則（土在花下面一層）；改 Init 的話這裡一起改。</summary>
+        void ApplyOrder(float y)
+        {
+            soil.sortingOrder = Mathf.RoundToInt(-y) - 1;
+            plant.sortingOrder = Mathf.RoundToInt(-y);
         }
 
         void BuildThirsty()
         {
+            if (InteractHint.Enabled)
+            {
+                // 「缺水」兩個字 → 一顆水滴（要高過盛開的花頂，同舊字的高度）
+                var drop = StatusBubble.Create(transform, new Vector3(0f, GardenData.ThirstyLabelY, 0f),
+                                               HintIcons.Items8("water-drop"), 24f, 9300);
+                thirsty = drop.gameObject;
+                thirsty.SetActive(false);
+                return;
+            }
+
             thirsty = new GameObject("thirsty");
             thirsty.transform.SetParent(transform, false);
-            thirsty.transform.localPosition = new Vector3(0f, 46f, 0f);
+            thirsty.transform.localPosition = new Vector3(0f, GardenData.ThirstyLabelY, 0f);   // 要高過盛開的花頂
 
             var tm = thirsty.AddComponent<TextMesh>();
             tm.text = "缺水";
@@ -81,28 +152,10 @@ namespace WitchShop.Core
             thirsty.SetActive(false);
         }
 
-        /// <summary>操作後在花圃上方冒一行字（種下了/澆好水了/收成…）。</summary>
-        public void Popup(string msg)
+        /// <summary>操作後在花圃上方冒的小圖（[圖][小圖][×N]）；開關關掉時退回舊的一行字 legacy。</summary>
+        public void PopIcon(Sprite icon, string count, Sprite icon2, string legacy)
         {
-            var go = new GameObject("popup");
-            go.transform.position = transform.position + new Vector3(0f, 30f, 0f);
-
-            var tm = go.AddComponent<TextMesh>();
-            tm.text = msg;
-            tm.fontSize = 36;
-            tm.characterSize = 4.5f;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.color = new Color32(255, 246, 214, 255);
-
-            var font = UI.CjkFont.Get();
-            if (font != null)
-            {
-                tm.font = font;
-                go.GetComponent<MeshRenderer>().material = font.material;
-            }
-            go.GetComponent<MeshRenderer>().sortingOrder = 9500;
-
-            go.AddComponent<FloatAway>().Begin(new Vector3(0f, 40f, 0f), 1.1f, 0.5f);
+            IconPopup.Show(transform.position + new Vector3(0f, 30f, 0f), icon, count, icon2, legacy);
         }
 
         /// <summary>

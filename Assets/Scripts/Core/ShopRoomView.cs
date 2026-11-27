@@ -100,6 +100,7 @@ namespace WitchShop.Core
             spawned.Clear();
             Furnitures.Clear();
             Decors.Clear();
+            FlatDecors.Clear();
             sortPieces.Clear();
 
             ApplyRoomArt();
@@ -219,11 +220,13 @@ namespace WitchShop.Core
                 var d = Furniture.ById(p.id);
                 if (d == null) continue;
                 var sp = GameArt.FurnitureArt(d.Id);
-                if (sp == null) { Debug.LogWarning($"[ShopRoomView] 沒有家具圖 furniture/{d.Id}"); continue; }
+                if (sp == null) { Debug.LogWarning($"[ShopRoomView] 沒有家具圖 furniture8/{d.Id}"); continue; }
 
                 // 落地點依基準角＋轉向後的佔地算（見 PlacedFurniture.Size / FurnitureAnchor）
                 var front = RoomLayout.AnchorPos(p);
-                var go = MakeGrounded($"furn-{d.Id}", sp, front, 1f, p.flip);
+                // 圖＋燈的光暈都由共用工廠生（家裡之後也走同一支）
+                var go = FurnishingVisual.Create(d.Id, front, p.flip, null, FurnitureLight.Mode.Shop);
+                if (go == null) continue;
                 spawned.Add(go);
                 Furnitures.Add((go, p));
 
@@ -248,39 +251,22 @@ namespace WitchShop.Core
                 var placed = list[i];
                 var d = Decor.ById(placed.id);
                 if (d == null) continue;
-                var sp = GameArt.Decoration(d.Id);
-                if (sp == null) continue;
-
-                // Scale 0 ＝ 沿用預設縮放（最早那批是從大張圖切下來的，不縮會比房間還大）
-                float scale = d.Scale > 0f ? d.Scale : DecorCatalog.DefaultScale;
-                // ⚠️ 裝飾用的是自由座標 (x, y)，不吃家具那套格盤 —— 它們可以擺在桌上、架上
-                var dgo = MakeGrounded($"decor-{d.Id}", sp,
-                                       new Vector2(placed.x, placed.y), scale, placed.flip);
+                // ⚠️ 裝飾用的是自由座標 (x, y)，不吃家具那套格盤 —— 它們可以擺在桌上、架上。
+                //    縮放（細畫版 1、舊圖 DecorDef.Scale）、地毯的排序（壓在最底）都在 FurnishingVisual 裡。
+                var dgo = FurnishingVisual.Create(d.Id, new Vector2(placed.x, placed.y), placed.flip, null,
+                                                  FurnitureLight.Mode.Shop);
+                if (dgo == null) continue;
                 spawned.Add(dgo);
                 Decors.Add((dgo, i));
+                if (d.Flat) FlatDecors.Add(dgo);
             }
         }
 
         /// <summary>
-        /// 生一個「腳底站在 pos」的圖。
-        /// SpriteRenderer 掛在子物件上往上推半身高，所以父物件的 position 就是落地點，
-        /// YSort 用它算才正確。
+        /// 平貼地板的裝飾（地毯）。佈置模式點選時排在最後（家具、一般裝飾優先）——
+        /// 地毯很大、又壓在家具底下，先試它的話點家具永遠只會抓到地毯。
         /// </summary>
-        static GameObject MakeGrounded(string name, Sprite sp, Vector2 pos, float scale, bool flip)
-        {
-            var go = new GameObject(name);
-            go.transform.position = new Vector3(pos.x, pos.y, 0f);
-
-            var art = new GameObject("art");
-            art.transform.SetParent(go.transform, false);
-            art.transform.localScale = new Vector3(flip ? -scale : scale, scale, 1f);
-            art.transform.localPosition = new Vector3(0f, sp.rect.height * 0.5f * scale, 0f);
-
-            var sr = art.AddComponent<SpriteRenderer>();
-            sr.sprite = sp;
-            sr.sortingOrder = Mathf.RoundToInt(-pos.y);
-            return go;
-        }
+        public readonly HashSet<GameObject> FlatDecors = new();
 
         // ──────────── 架上的商品 ────────────
 
@@ -532,8 +518,24 @@ namespace WitchShop.Core
             var lane = RoomLayout.FrontClearance(at.Furn);
             if (lane.Count == 0)
             {
-                // 不是貨架也不是販售桌、卻有陳列位的家具：站在它的前角往下一點
+                // 陳列桌（不靠牆、沒有固定走道）：站在桌邊一圈空格裡離那樣商品最近的一格；
+                // 優先畫面下方那兩邊（+gx／+gy，看得到桌面的那側），一圈都被堵住才退回前角往下一點。
                 var (w, h) = at.Furn.Size;
+                var blocked = ShopPath.BlockedCells();
+                Vector2? pick = null;
+                float pickD = float.MaxValue;
+                for (int gx = at.Furn.gx - 1; gx <= at.Furn.gx + w; gx++)
+                    for (int gy = at.Furn.gy - 1; gy <= at.Furn.gy + h; gy++)
+                    {
+                        bool inside = gx >= at.Furn.gx && gx < at.Furn.gx + w && gy >= at.Furn.gy && gy < at.Furn.gy + h;
+                        bool corner = (gx < at.Furn.gx || gx >= at.Furn.gx + w) && (gy < at.Furn.gy || gy >= at.Furn.gy + h);
+                        if (inside || corner || !ShopRoom.InGrid(gx, gy) || blocked[gx, gy]) continue;
+                        var wc = ShopRoom.TileCenter(gx, gy);
+                        bool back = gx < at.Furn.gx || gy < at.Furn.gy;      // 桌子後面（-gx／-gy 側）
+                        float dd = (wc - at.Pos).sqrMagnitude + (back ? 4000f : 0f);
+                        if (dd < pickD) { pickD = dd; pick = wc; }
+                    }
+                if (pick.HasValue) return pick.Value;
                 var f = ShopRoom.FrontCorner(at.Furn.gx, at.Furn.gy, w, h);
                 return new Vector2(f.x, f.y - 26f);
             }

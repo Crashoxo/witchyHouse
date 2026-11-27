@@ -95,7 +95,7 @@
 .ts-icon { width: 34px; height: 34px; margin-right: 8px; flex-shrink: 0; }
 .ts-icon--big { width: 40px; height: 40px; }
 .ts-profit { font-size: 15px; color: rgb(170, 220, 160); margin-left: 6px; }
-.ts-owned { width: 150px; flex-direction: row; align-items: center; justify-content: center; }
+.ts-owned { width: 120px; flex-direction: row; align-items: center; justify-content: center; }   /* 2026-11-27：150 → 120，讓說明欄有地方（見檔尾「防跑版」） */
 .btn-money { flex-direction: row; align-items: center; justify-content: center; }
 .btn-money-text { font-size: 16px; color: rgb(244, 240, 232); }
 .btn-money .sk-money-num { font-size: 16px; color: rgb(244, 240, 232); }
@@ -187,3 +187,54 @@
 
 /* ── 下排背包 HUD：格子外面多包的一層（像素外觀時是木頭底座；這裡只負責跟以前一樣換行置中）── */
 .hud-bar { flex-direction: row; flex-wrap: wrap; justify-content: center; max-width: 100%; flex-shrink: 1; }
+
+/* ══════════════ 清單翻頁（UI/Pager.cs，2026-11-27）══════════════
+   Body 的高度由程式 inline 鎖死（＝每頁列數 × 列距），這裡只管排版；Bar ＝ [◀ 33][n / m][▶ 33]。
+   只有一頁時 Bar 是 visibility: hidden（位置照留）。舊外觀：箭頭是 < > 字、停用時淡掉；像素外觀在 Skin8.uss。 */
+.pg-body { flex-direction: column; }
+.pg-body--empty { justify-content: center; align-items: center; }
+.pg-body--empty .pg-empty { margin: 0; -unity-text-align: middle-center; white-space: normal; }
+.pg-bar { flex-direction: row; align-items: center; flex-shrink: 0; height: 33px; }
+/* 擺在底列正中間（不佔底列的排版，左右的鍵帽／按鈕／短字照原樣） */
+.pg-bar--center { position: absolute; left: 50%; top: 50%; translate: -50% -50%; }
+/* 擺在一列的最右邊（公告板的 OK 那列） */
+.pg-bar--right { position: absolute; right: 0; top: 50%; translate: 0 -50%; }
+.pg-arrow {
+    width: 33px; height: 33px;
+    margin: 0; padding: 0;
+    font-size: 16px;
+    -unity-text-align: middle-center;
+}
+.pg-arrow:disabled { opacity: 0.35; }
+.pg-num {
+    min-width: 54px; height: 33px;
+    margin: 0 3px; padding: 0;
+    font-size: 15px;
+    color: rgb(220, 210, 196);
+    -unity-text-align: middle-center;
+}
+
+/* ── 清單列防跑版（2026-11-27）──────────────────────────
+   起因：花店的家具／貨架列 [圖 57][名稱 120][說明 flex][佔地 150][售價 74][擁有 150][買 1 94] 固定欄加起來就 645，
+   列內寬只有 679 —— 說明欄的 flex-basis 是「整句字的寬」（≈200），整列超出 ≈170，所有欄位（含按鈕）一起被 flex-shrink 擠扁，
+   說明被擠到 ≈30 px 寬、折成五六行，衝出 57 高的卡片壓到上下列。
+   規則：翻頁清單裡的列一律固定高、超出的隱藏；**只有說明欄（.up-desc）可伸縮**（basis 0、吃剩下的寬，最多兩行），
+   其他欄照自己的寬、不縮；名稱太長就「…」。欄位標頭（.pg-head 裡的 .head-row）同一套，才對得齊。 */
+.pg-body > .row,
+.pg-body > .day-item,
+.pg-body > .quest-entry { flex-shrink: 0; overflow: hidden; }
+.pg-body > .row > *,
+.pg-head > .head-row > * { flex-shrink: 0; }
+.pg-body > .row > .up-desc,
+.pg-head > .head-row > .up-desc {
+    flex-grow: 1; flex-shrink: 1; flex-basis: 0;
+    min-width: 0; max-height: 40px;
+    overflow: hidden;
+}
+.pg-body > .row > .col-name,
+.pg-body > .row > .row-name,
+.pg-body .day-item-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* 道具／家具／裝飾圖：家具與裝飾的原圖不是正方形（例如貨架 166×177、販售桌 128×79），照比例縮進方框，不拉變形 */
+.ts-icon, .stock-icon, .row-icon, .day-icon { -unity-background-scale-mode: scale-to-fit; }
+/* 花店家具列的「佔地」欄（1×3 格）：原本借用 .up-effect 的 150 寬，縮成 66 */
+.up-effect.ts-size { width: 66px; }

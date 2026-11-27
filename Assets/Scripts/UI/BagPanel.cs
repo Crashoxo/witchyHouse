@@ -100,11 +100,21 @@ namespace WitchShop.UI
 
         // ── 狀態與 UI 參照 ───────────────────────────────────────
 
+        /// <summary>
+        /// 一頁幾列（2026-11-27 改成固定高度＋翻頁，見 <see cref="Pager"/>）。
+        /// 面板高（像素外觀）＝ padding 30 ＋ 標題列 5（36 往上拉 40、下 9）＋ 分頁 48（39＋9）
+        ///   ＋ 清單 6 × 60 ＝ 360 ＋ 分隔線 18 ＋ 底列 30 ＋ padding 24 ＝ 515（max-height 88%＝563 以內）。
+        /// </summary>
+        const int RowsPerPage = 6;
+        /// <summary>列距：`.sk .row` 高 57 ＋ margin-bottom 3。</summary>
+        const int RowPitch = 60;
+
         UIDocument doc;
         VisualElement root;
         Label titleLabel, capLabel, hintLabel;
         VisualElement tabsBox;
-        ScrollView rowsBox;
+        VisualElement rowsBox;       // ＝ pager.Body（UXML 的 rows）
+        Pager pager;
         Button stashAllBtn;
         UIAnim anim;                 // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
 
@@ -134,8 +144,9 @@ namespace WitchShop.UI
         {
             if (!built || root == null) return;
             // ⚠️ 只吃 Esc 關閉，不吃 B/E —— 開啟的那一下按鍵同一幀還會再被讀到。
-            if (anim.IsOpen && Input.GetKeyDown(KeyCode.Escape))
-                Close();
+            if (!anim.IsOpen) return;
+            if (Input.GetKeyDown(KeyCode.Escape)) Close();
+            else pager.HandleKeys();     // ←／→、A／D 翻頁
         }
 
         /// <summary>B 鍵：看背包。</summary>
@@ -151,6 +162,7 @@ namespace WitchShop.UI
             if (!built) return;          // 建不起來就別往下走（Build 會印出原因）
             anim.Show();                 // 淡入＋輕微放大（邏輯上立刻算開著）
             UIState.ModalOpen = true;
+            pager.Reset();               // 每次打開都從第 1 頁看
             Sfx.Play("ui-open");                                    // 音效：面板打開
             GameArt.OnReady(Refresh);
         }
@@ -192,7 +204,7 @@ namespace WitchShop.UI
             capLabel = root.Q<Label>("cap");
             hintLabel = root.Q<Label>("hint");
             tabsBox = root.Q<VisualElement>("tabs");
-            rowsBox = root.Q<ScrollView>("rows");
+            rowsBox = root.Q<VisualElement>("rows");
             stashAllBtn = root.Q<Button>("stashAll");
 
             var closeBtn = root.Q<Button>("close");
@@ -210,11 +222,16 @@ namespace WitchShop.UI
 
             anim = UIAnim.Pop(root, root.Q<VisualElement>("panel"), root.Q<VisualElement>("dim"));
 
+            // 清單區固定 6 列高、超過就翻頁（不捲動）；翻頁鈕擺在底列正中間
+            pager = new Pager(RowsPerPage, RowsPerPage * RowPitch, Refresh, rowsBox);
+
             // 底列：最前面插「[Esc] 關閉」鍵帽（UXML 的 footer 是現成的：全部存入 ─ spacer ─ hint）
             var footer = root.Q<VisualElement>("footer");
             if (footer != null)
             {
                 UiSkin.AddKeys(footer, "關閉", "Esc");
+                pager.Bar.AddToClassList("pg-bar--center");
+                footer.Add(pager.Bar);
                 var div = new VisualElement();
                 div.AddToClassList("sk-divider");
                 footer.parent.Insert(footer.parent.IndexOf(footer), div);   // 底列上面一條分隔線
@@ -226,7 +243,7 @@ namespace WitchShop.UI
             foreach (var d in TabDefs)
             {
                 var t = d.Tab;
-                var b = new Button(() => { tab = t; Sfx.Play("ui-tab"); Refresh(); }) { text = d.Label };
+                var b = new Button(() => { tab = t; pager.Reset(); Sfx.Play("ui-tab"); Refresh(); }) { text = d.Label };
                 b.AddToClassList("tab");
                 b.userData = t;
                 tabsBox.Add(b);
@@ -280,16 +297,10 @@ namespace WitchShop.UI
             foreach (var b in tabsBox.Children())
                 b.EnableInClassList("active", (BagTab)b.userData == tab);
 
-            rowsBox.Clear();
+            // 只畫目前這一頁；存入／取回後東西變少也只是把頁碼夾回範圍內（不跳回第 1 頁）
             var items = ItemsToShow();
-            if (items.Count == 0)
-            {
-                var msg = new Label(tab == BagTab.All ? "空空如也 —— 去森林採點東西吧" : "這一類目前沒有東西");
-                msg.AddToClassList("empty-msg");
-                rowsBox.Add(msg);
-                return;
-            }
-            foreach (var name in items) rowsBox.Add(MakeRow(name));
+            pager.Render(items.Count, i => MakeRow(items[i]),
+                tab == BagTab.All ? "空空如也 —— 去森林採點東西吧" : "這一類目前沒有東西");
             UiSkin.Stripe(rowsBox);
         }
 

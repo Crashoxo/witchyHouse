@@ -84,6 +84,15 @@ for sid, depth in re.findall(r'\("(shelf_\w+)",\s*"[^"]*",\s*\d+,\s*"[^"]*",\s*(
     DEFS[sid] = (1, int(depth), True)
 if 'shelf_box' not in DEFS or 'shelf_tall' not in DEFS:
     raise SystemExit('Furniture.cs 的貨架表讀不到')
+# 2026-11-28：陳列桌（TableStyles：最後兩欄 W, H）與家具／燈（PieceStyles：W, H, kind, wall）—— 不留走道
+TABLES = set()
+for tid, w, h in re.findall(r'\("(\w+)",\s*"[^"]*",\s*\d+,\s*"[^"]*",\s*(\d+),\s*(\d+)\)', FURN):
+    DEFS[tid] = (int(w), int(h), False)
+    TABLES.add(tid)
+for tid, w, h in re.findall(r'\("(\w+)",\s*"[^"]*",\s*\d+,\s*"[^"]*",\s*(\d+),\s*(\d+),\s*FurnKind\.\w+,\s*(?:true|false)\)', FURN):
+    DEFS[tid] = (int(w), int(h), False)
+if 'table_tier' not in DEFS or 'lamp_lantern' not in DEFS:
+    raise SystemExit('Furniture.cs 的陳列桌／家具表讀不到')
 
 
 # ──────────── 格盤數學（跟 ShopRoom.cs 同一套）────────────
@@ -281,11 +290,24 @@ def run(name, items, note=''):
                 aisle_n += 1
                 if not reachable_within(gx, gy, reach, tile_center(c), 10.0):
                     bad.append(f"走道{c}（{p['id']}）")
+        # 陳列桌：桌邊（四鄰、不含斜角）至少一格空格的中心走得到（＝ShopRoomView.BrowseSpotFor 挑得到站位）
+        occ = set()
+        for p in items:
+            occ |= cells_of(p)
+        for p in items:
+            if p['id'] not in TABLES:
+                continue
+            w, h = size(p)
+            ring = [(gx, gy) for gx in range(p['gx'] - 1, p['gx'] + w + 1) for gy in range(p['gy'] - 1, p['gy'] + h + 1)
+                    if ((p['gx'] <= gx < p['gx'] + w) != (p['gy'] <= gy < p['gy'] + h)) and in_grid((gx, gy)) and (gx, gy) not in occ]
+            aisle_n += 1
+            if not any(reachable_within(gx, gy, reach, tile_center(c), 10.0) for c in ring):
+                bad.append(f"桌邊（{p['id']}）")
         spawn_free = bool(free_mask_point(items, sp))
         results[step] = bad
         label = f'取樣 {step:.0f}px' + (f'＋寬裕 {extra:.0f}px' if extra else '')
         print(f'  {label}：可走 {100.0 * reach.sum() / max(1, free.sum()):.1f}% 的空地；'
-              f'出生點{"可站" if spawn_free else "⚠️ 在障礙裡"}；檢查 3 扇門＋販售桌前＋{aisle_n} 格走道 → '
+              f'出生點{"可站" if spawn_free else "⚠️ 在障礙裡"}；檢查 3 扇門＋販售桌前＋{aisle_n} 格走道／桌邊 → '
               + ('全部走得到' if not bad else '⚠️ 走不到：' + '、'.join(bad)))
         all_ok &= not bad and spawn_free
     return all_ok
@@ -377,6 +399,26 @@ def main():
         ('前排地板邊（以前的招牌格）', [
             sale, {'id': 'shelf_box', 'gx': 7, 'gy': 7},
         ], '招牌搬到城鎮後 (7,9) 不再是保留格：1×3 貨架一路壓到前排地板邊（佔 (7,7)~(7,9)、離城鎮門 4 格），擺法合法、門與走道都走得到'),
+        ('細畫版陳列桌＋燈＋家具（預覽 d_shop_full 那一組）', [
+            sale,
+            {'id': 'shelf_arch', 'gx': 0, 'gy': 0}, {'id': 'shelf_scallop', 'gx': 0, 'gy': 3},
+            {'id': 'shelf_peak', 'gx': 2, 'gy': 0, 'flip': True}, {'id': 'shelf_drawer', 'gx': 5, 'gy': 0, 'flip': True},
+            {'id': 'bookshelf', 'gx': 8, 'gy': 0, 'flip': True},
+            {'id': 'table_tier', 'gx': 4, 'gy': 6}, {'id': 'table_round', 'gx': 8, 'gy': 4},
+            {'id': 'table_barrel', 'gx': 2, 'gy': 7}, {'id': 'table_cart', 'gx': 9, 'gy': 6},
+            {'id': 'table_pedestal', 'gx': 11, 'gy': 3},
+            {'id': 'lamp_lantern', 'gx': 12, 'gy': 1}, {'id': 'lamp_mushroom', 'gx': 7, 'gy': 6},
+            {'id': 'lamp_moon', 'gx': 2, 'gy': 5}, {'id': 'armchair', 'gx': 10, 'gy': 0},
+            {'id': 'plant_monstera', 'gx': 11, 'gy': 0},
+        ], '五座靠牆貨架／書櫃、五張陳列桌、三盞燈、椅子與盆栽；桌邊都要有走得到的空格'),
+        ('陳列桌擠一排（桌子圍成一圈）', [
+            sale, {'id': 'table_long', 'gx': 2, 'gy': 6}, {'id': 'table_crate', 'gx': 4, 'gy': 6},
+            {'id': 'table_round', 'gx': 7, 'gy': 6}, {'id': 'table_tier', 'gx': 2, 'gy': 7, 'flip': False},
+            {'id': 'sofa_small', 'gx': 9, 'gy': 2}, {'id': 'clock_tall', 'gx': 0, 'gy': 1},
+            {'id': 'lamp_candelabra', 'gx': 1, 'gy': 4}, {'id': 'cat_tree', 'gx': 12, 'gy': 4},
+            {'id': 'side_table', 'gx': 11, 'gy': 2}, {'id': 'lamp_crystal', 'gx': 10, 'gy': 7},
+            {'id': 'lamp_pumpkin', 'gx': 3, 'gy': 3},
+        ], '2×1 的桌子並排、上下兩排貼著；其他家具與燈散在各處'),
     ]
     ok = True
     for name, items, note in layouts:

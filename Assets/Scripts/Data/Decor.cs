@@ -10,6 +10,11 @@ namespace WitchShop.Data
         /// 切下來的，不縮會比房間還大。**新的美術直接畫在遊戲尺度上的就標 Scale = 1。**
         /// </summary>
         public float Scale;
+        /// <summary>種類：Decor（一般擺飾）／Rug（地毯：平貼地板、排在最底下）。</summary>
+        public FurnKind Kind = FurnKind.Decor;
+        /// <summary>會發光的（星光花櫃）：光暈設定；位置在 FurnitureArt8。</summary>
+        public LightSpec? Light;
+        public bool Flat => Kind == FurnKind.Rug;
     }
 
     /// <summary>
@@ -35,12 +40,16 @@ namespace WitchShop.Data
             new() { Id = "birdcage_large",    Name = "大花鳥籠",   Price = 220 },
             new() { Id = "blue_urn",          Name = "藍花石甕",   Price = 260 },
             new() { Id = "wildflower_basket", Name = "野花籃",     Price = 300 },
-            new() { Id = "flower_case",       Name = "星光花櫃",   Price = 500 },
+            new() { Id = "flower_case",       Name = "星光花櫃",   Price = 500,
+                    Light = new LightSpec(40f, new UnityEngine.Color32(255, 226, 150, 255), 0.4f, 0.1f) },
             // PixelLab 出的三個展示架。⚠️ 雖然跟貨架畫在同一個 72px 畫布上，但畫的是**小擺飾**，
             // Scale 1 會讓藥水瓶跟女巫一樣高（試過）—— 0.45 才是桌上擺飾該有的大小。
             new() { Id = "herb_shelf",    Name = "乾燥花草架", Price = 150, Scale = 0.45f },
             new() { Id = "crystal_shelf", Name = "水晶展示架", Price = 200, Scale = 0.45f },
             new() { Id = "potion_shelf",  Name = "藥水展示架", Price = 240, Scale = 0.45f },
+            // 2026-11-28：地毯（平貼地板、不擋路、排在所有東西底下）。只有 decor8 的細畫版，沒有舊圖。
+            new() { Id = "rug_round", Name = "彩虹圓毯", Price = 140, Kind = FurnKind.Rug, Scale = 1f },
+            new() { Id = "rug_star",  Name = "星月地毯", Price = 180, Kind = FurnKind.Rug, Scale = 1f },
         };
 
         public static DecorDef ById(string id)

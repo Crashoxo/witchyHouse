@@ -1,0 +1,957 @@
+fileFormatVersion: 2
+guid: ecd53bafd531874449cc094ad68b64c5
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 2886927772747656774
+    second: garden8-fore_0
+  - first:
+      213: 3311354322117477137
+    second: garden8-fore_1
+  - first:
+      213: -9141307179524444078
+    second: garden8-fore_2
+  - first:
+      213: -4042238438223977771
+    second: garden8-fore_3
+  - first:
+      213: -1708903410585966740
+    second: garden8-fore_4
+  - first:
+      213: -4842603431911670596
+    second: garden8-fore_5
+  - first:
+      213: -7734770927338583413
+    second: garden8-fore_6
+  - first:
+      213: -8004579125345644148
+    second: garden8-fore_7
+  - first:
+      213: -5406784433124413191
+    second: garden8-fore_8
+  - first:
+      213: -5635178510580452962
+    second: garden8-fore_9
+  - first:
+      213: 8395068966287631301
+    second: garden8-fore_10
+  - first:
+      213: -730526064365338725
+    second: garden8-fore_11
+  - first:
+      213: -6039377734953164291
+    second: garden8-fore_12
+  - first:
+      213: -5787746804688107981
+    second: garden8-fore_13
+  - first:
+      213: -253270231224639401
+    second: garden8-fore_14
+  - first:
+      213: 4046053196670716287
+    second: garden8-fore_15
+  - first:
+      213: 6564901019911157611
+    second: garden8-fore_16
+  - first:
+      213: -1455286878382265130
+    second: garden8-fore_17
+  - first:
+      213: -2486481891864806796
+    second: garden8-fore_18
+  - first:
+      213: -1080424628227196721
+    second: garden8-fore_19
+  - first:
+      213: -6183154887683257469
+    second: garden8-fore_20
+  - first:
+      213: 3397113759717969649
+    second: garden8-fore_21
+  - first:
+      213: 5982217340908962129
+    second: garden8-fore_22
+  - first:
+      213: -3266149116988973606
+    second: garden8-fore_23
+  - first:
+      213: 7634108093395941940
+    second: garden8-fore_24
+  - first:
+      213: 2124403346069283988
+    second: garden8-fore_25
+  - first:
+      213: 8366207779788069767
+    second: garden8-fore_26
+  - first:
+      213: 2703724283574601322
+    second: garden8-fore_27
+  - first:
+      213: 8731357087507474049
+    second: garden8-fore_28
+  - first:
+      213: -4810449245697777086
+    second: garden8-fore_29
+  - first:
+      213: 6165925432273312343
+    second: garden8-fore_30
+  - first:
+      213: -3407874166847899358
+    second: garden8-fore_31
+  - first:
+      213: -6672782002437442999
+    second: garden8-fore_32
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 1
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: garden8-fore_0
+      rect:
+        serializedVersion: 2
+        x: 1715
+        y: 597
+        width: 98
+        height: 106
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64e65d2838d601820800000000000000
+      internalID: 2886927772747656774
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_1
+      rect:
+        serializedVersion: 2
+        x: 1797
+        y: 655
+        width: 96
+        height: 99
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 113444f263b44fd20800000000000000
+      internalID: 3311354322117477137
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_2
+      rect:
+        serializedVersion: 2
+        x: 1875
+        y: 625
+        width: 29
+        height: 76
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 250b7bd8d8d832180800000000000000
+      internalID: -9141307179524444078
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_3
+      rect:
+        serializedVersion: 2
+        x: 1837
+        y: 531
+        width: 67
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d2ea30ae8517e7c0800000000000000
+      internalID: -4042238438223977771
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_4
+      rect:
+        serializedVersion: 2
+        x: 117
+        y: 453
+        width: 50
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c67e198f661c848e0800000000000000
+      internalID: -1708903410585966740
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_5
+      rect:
+        serializedVersion: 2
+        x: 1789
+        y: 419
+        width: 96
+        height: 110
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cbc31dcf5dd9bccb0800000000000000
+      internalID: -4842603431911670596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_6
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 291
+        width: 101
+        height: 118
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8a07f872d298a490800000000000000
+      internalID: -7734770927338583413
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_7
+      rect:
+        serializedVersion: 2
+        x: 77
+        y: 395
+        width: 54
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c81144112b50ae090800000000000000
+      internalID: -8004579125345644148
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_8
+      rect:
+        serializedVersion: 2
+        x: 163
+        y: 275
+        width: 134
+        height: 174
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9f0f186543e37f4b0800000000000000
+      internalID: -5406784433124413191
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_9
+      rect:
+        serializedVersion: 2
+        x: 325
+        y: 341
+        width: 90
+        height: 102
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e91ffe64003dbc1b0800000000000000
+      internalID: -5635178510580452962
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_10
+      rect:
+        serializedVersion: 2
+        x: 445
+        y: 303
+        width: 54
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c3ea70feb6418470800000000000000
+      internalID: 8395068966287631301
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_11
+      rect:
+        serializedVersion: 2
+        x: 1393
+        y: 241
+        width: 92
+        height: 104
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9ff65a3a66acd5f0800000000000000
+      internalID: -730526064365338725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_12
+      rect:
+        serializedVersion: 2
+        x: 1617
+        y: 335
+        width: 50
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df1a6b3b2f1df2ca0800000000000000
+      internalID: -6039377734953164291
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_13
+      rect:
+        serializedVersion: 2
+        x: 1673
+        y: 289
+        width: 70
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 336c9a822facdafa0800000000000000
+      internalID: -5787746804688107981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_14
+      rect:
+        serializedVersion: 2
+        x: 1867
+        y: 319
+        width: 37
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 750acab01143c7cf0800000000000000
+      internalID: -253270231224639401
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_15
+      rect:
+        serializedVersion: 2
+        x: 61
+        y: 169
+        width: 94
+        height: 104
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7944e902f7762830800000000000000
+      internalID: 4046053196670716287
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_16
+      rect:
+        serializedVersion: 2
+        x: 283
+        y: 135
+        width: 216
+        height: 190
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b67776df1b63b1b50800000000000000
+      internalID: 6564901019911157611
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_17
+      rect:
+        serializedVersion: 2
+        x: 647
+        y: 187
+        width: 96
+        height: 110
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6dcecb76b48cdcbe0800000000000000
+      internalID: -1455286878382265130
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_18
+      rect:
+        serializedVersion: 2
+        x: 1323
+        y: 109
+        width: 134
+        height: 156
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47af4fea4ed3e7dd0800000000000000
+      internalID: -2486481891864806796
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_19
+      rect:
+        serializedVersion: 2
+        x: 161
+        y: 121
+        width: 64
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc83fe3668f8101f0800000000000000
+      internalID: -1080424628227196721
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_20
+      rect:
+        serializedVersion: 2
+        x: 263
+        y: 63
+        width: 82
+        height: 96
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 38b4b60b365013aa0800000000000000
+      internalID: -6183154887683257469
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_21
+      rect:
+        serializedVersion: 2
+        x: 541
+        y: 113
+        width: 70
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1fec49d37f8f42f20800000000000000
+      internalID: 3397113759717969649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_22
+      rect:
+        serializedVersion: 2
+        x: 759
+        y: 0
+        width: 86
+        height: 143
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1518f06f9fa150350800000000000000
+      internalID: 5982217340908962129
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_23
+      rect:
+        serializedVersion: 2
+        x: 1087
+        y: 61
+        width: 92
+        height: 104
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: add9a62deae4ca2d0800000000000000
+      internalID: -3266149116988973606
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_24
+      rect:
+        serializedVersion: 2
+        x: 1195
+        y: 35
+        width: 98
+        height: 112
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43abccb1ddcc1f960800000000000000
+      internalID: 7634108093395941940
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_25
+      rect:
+        serializedVersion: 2
+        x: 1623
+        y: 137
+        width: 54
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4946c1276956b7d10800000000000000
+      internalID: 2124403346069283988
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_26
+      rect:
+        serializedVersion: 2
+        x: 1739
+        y: 0
+        width: 158
+        height: 137
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 78b906f46adba1470800000000000000
+      internalID: 8366207779788069767
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_27
+      rect:
+        serializedVersion: 2
+        x: 453
+        y: 69
+        width: 50
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a66cf0539ee858520800000000000000
+      internalID: 2703724283574601322
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_28
+      rect:
+        serializedVersion: 2
+        x: 699
+        y: 87
+        width: 54
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 186e8f7a2030c2970800000000000000
+      internalID: 8731357087507474049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_29
+      rect:
+        serializedVersion: 2
+        x: 1325
+        y: 59
+        width: 50
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 242632cd5e9dd3db0800000000000000
+      internalID: -4810449245697777086
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_30
+      rect:
+        serializedVersion: 2
+        x: 1659
+        y: 65
+        width: 60
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 75a923e1384c19550800000000000000
+      internalID: 6165925432273312343
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_31
+      rect:
+        serializedVersion: 2
+        x: 577
+        y: 23
+        width: 54
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 229fccd308cc4b0d0800000000000000
+      internalID: -3407874166847899358
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: garden8-fore_32
+      rect:
+        serializedVersion: 2
+        x: 1537
+        y: 0
+        width: 112
+        height: 69
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 942b8196f148563a0800000000000000
+      internalID: -6672782002437442999
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable: {}
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

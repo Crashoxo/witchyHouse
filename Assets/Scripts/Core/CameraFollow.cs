@@ -55,6 +55,31 @@ namespace WitchShop.Core
             maxY = b.max.y - halfH;
         }
 
+        /// <summary>
+        /// 由程式指定鏡頭能拍到的世界範圍，取代 Awake 從場景 Ground 量的那份（8-bit 後花園用：場景檔裡的 Ground
+        /// 還是舊圖 1376×768，新底圖比它大）。範圍比畫面窄（或矮）的那一軸固定在範圍中線，永遠不會拍到範圍外。
+        /// 順便把鏡頭直接擺到夾好的位置（進場不會從原點慢慢滑過去）。
+        /// ⚠️ 跟 ComputeBounds 一樣只在呼叫當下量一次 cam.aspect —— 執行中改視窗比例不會重算（所有場景都是這樣）。
+        /// </summary>
+        public void ClampTo(Rect world)
+        {
+            if (cam == null) cam = GetComponent<Camera>();
+            if (cam == null) return;
+            float halfH = cam.orthographicSize;
+            float halfW = halfH * cam.aspect;
+            hasBounds = true;
+            if (world.width <= halfW * 2f) minX = maxX = world.center.x;
+            else { minX = world.xMin + halfW; maxX = world.xMax - halfW; }
+            if (world.height <= halfH * 2f) minY = maxY = world.center.y;
+            else { minY = world.yMin + halfH; maxY = world.yMax - halfH; }
+            if (target != null)
+            {
+                transform.position = new Vector3(Mathf.Clamp(target.position.x, minX, maxX),
+                                                 Mathf.Clamp(target.position.y, minY, maxY), transform.position.z);
+                vel = Vector3.zero;
+            }
+        }
+
         void LateUpdate()
         {
             if (target == null) return;

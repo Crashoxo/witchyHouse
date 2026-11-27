@@ -70,9 +70,10 @@ namespace WitchShop.Core
             AddNpc("spell-shop", "魔法貓", "fox", new[] { "喵～今天也是好天氣呢。" });
 
             // ── 兩間可以買賣的商店 ────────────────────────────────
-            AddShop("general-store", "按 E 收購材料",
+            // 頭上的提示是 [E][圖]（共用的 InteractHint）：雜貨鋪收購材料 → 金幣、花店 → 一朵花；文字只在開關關掉時用
+            AddShop("general-store", "按 E 收購材料", HintIcons.Ui("act_sell"),
                     () => UI.GeneralStorePanel.Ensure().Open());
-            AddShop("flower-shop", "按 E 逛花店",
+            AddShop("flower-shop", "按 E 逛花店", HintIcons.Items8("lavender"),
                     () => UI.FlowerShopPanel.Ensure().Open());
         }
 
@@ -89,7 +90,7 @@ namespace WitchShop.Core
             t.interactRange = 220f;
         }
 
-        static void AddShop(string nodeName, string hint, System.Action open)
+        static void AddShop(string nodeName, string hint, Sprite icon, System.Action open)
         {
             var go = GameObject.Find(nodeName);
             if (go == null) { Debug.LogWarning($"[Doorways] 城鎮裡找不到 {nodeName}"); return; }
@@ -97,6 +98,7 @@ namespace WitchShop.Core
 
             var a = go.AddComponent<ActionPoint>();
             a.hintText = hint;
+            a.hintSprite = icon;
             a.interactRange = 225f;
             a.onActivate = open;
         }

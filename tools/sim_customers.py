@@ -10,10 +10,10 @@
         每位以 BuyChance 的機率要買；同時上限 ceil(舊上限×1.5)+2，滿了就在門外等（不丟掉）。
 
 停留時間用估的（離線看不到真的路徑）：
-  走一趟（門 ↔ 商品）150～320px ÷ 120px/s，BFS 繞路再 ×1.15。
+  走一趟（門 ↔ 商品）150～320px ÷ 走路速度（舊版 120；11/28 起進 84、出 96 px/s），BFS 繞路再 ×1.15。
   舊版：走進 + 1.2 + 1.0 + 走出。
   新版買的人：走進 + 1.6（想要）+ 1.4（+金額）+ 0.6（道謝）+ 走出。
-  新版只逛的人：走進 + 每樣 2.4～3.2 秒、兩樣之間再走 0.6～1.6 秒 + 55% 留一句話 0.8 秒 + 走出。
+  新版只逛的人：走進 + 每樣 LOOK_MIN～LOOK_MAX 秒、兩樣之間再走 0.6～1.6 秒（×120/WALK_IN） + 55% 留一句話 0.8 秒 + 走出。
 
 ⚠️ 假設架上一直有貨（沒貨是「玩家沒補貨」，新舊版一樣都會空手而歸，不影響比較）。
 ⚠️ 改了 CustomerManager 的常數要跟著改這裡上面那幾個值。
@@ -23,7 +23,11 @@ import math
 import random
 
 SEC_PER_GAME_HOUR = 43.8          # TimeSystem：10 遊戲分鐘 = 7.3 真實秒
-WALK = 120.0
+WALK = 120.0                      # 舊版（11/26）顧客走路速度，sim_old 用
+# 2026-11-28 使用者：「客人進來買東西走慢一點」—— 同 CustomerManager.WalkSpeed／LeaveSpeed
+WALK_IN = 84.0                    # 進門、在商品之間走（舊 120 × 0.7）
+LOOK_MIN, LOOK_MAX = 2.0, 2.8     # 只逛不買的人每樣商品前站多久（舊 2.4～3.2；走慢了，站短一點補回滿座）
+WALK_OUT = 96.0                   # 走出去（舊 120 × 0.8，要走了腳步快一點點）
 
 GAP_MIN, GAP_SPAN, GAP_POW = 0.35, 1.4, 1.5
 MEAN_GAP = GAP_MIN + GAP_SPAN / (GAP_POW + 1)
@@ -36,8 +40,8 @@ MAX_AT = [2, 3, 3, 4, 5]
 REP = [(0, 1.00), (0, 0.92), (1, 0.85), (1, 0.78), (2, 0.70)]   # (Extra, Scale)
 
 
-def walk_time(rng):
-    return rng.uniform(150, 320) * 1.15 / WALK
+def walk_time(rng, speed=WALK):
+    return rng.uniform(150, 320) * 1.15 / speed
 
 
 def stay_old(rng):
@@ -45,14 +49,14 @@ def stay_old(rng):
 
 
 def stay_new(rng, buyer):
-    t = walk_time(rng) + walk_time(rng)
+    t = walk_time(rng, WALK_IN) + walk_time(rng, WALK_OUT)
     if buyer:
         return t + 1.6 + 1.4 + 0.6
     n = 2 if rng.random() < 0.5 else 1
     for k in range(n):
-        t += rng.uniform(2.4, 3.2)
+        t += rng.uniform(LOOK_MIN, LOOK_MAX)
         if k > 0:
-            t += rng.uniform(0.6, 1.6)
+            t += rng.uniform(0.6, 1.6) * WALK / WALK_IN   # 兩樣商品之間的那段路（舊速度量的 0.6～1.6 秒）
     if rng.random() < 0.55:
         t += 0.8
     return t

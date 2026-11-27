@@ -34,9 +34,18 @@ namespace WitchShop.UI
             return outList;
         }
 
+        /// <summary>
+        /// 一頁幾列（2026-11-27 改成固定高度＋翻頁，見 <see cref="Pager"/>）。
+        /// 面板高（像素外觀）＝ padding 30 ＋ 標題列 5 ＋ 清單 5 × 60 ＝ 300 ＋ 分隔線 18 ＋ 底列 30 ＋ padding 24 ＝ 407。
+        /// </summary>
+        const int RowsPerPage = 5;
+        /// <summary>列距：`.sk .row` 高 57 ＋ margin-bottom 3。</summary>
+        const int RowPitch = 60;
+
         UIDocument doc;
         VisualElement root;
-        ScrollView rowsBox;
+        VisualElement rowsBox;       // ＝ pager.Body
+        Pager pager;
         Action<string> onPick;
         bool built;
         UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
@@ -60,7 +69,9 @@ namespace WitchShop.UI
         void Update()
         {
             if (!built || root == null) return;
-            if (anim.IsOpen && Input.GetKeyDown(KeyCode.Escape)) Cancel();
+            if (!anim.IsOpen) return;
+            if (Input.GetKeyDown(KeyCode.Escape)) Cancel();
+            else pager.HandleKeys();     // ←／→、A／D 翻頁
         }
 
         /// <summary>開啟；玩家挑好之後呼叫 pick(種子名)。取消的話不呼叫。</summary>
@@ -71,6 +82,7 @@ namespace WitchShop.UI
             if (!built) return;
             anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
+            pager.Reset();               // 每次打開都從第 1 頁看
             Sfx.Play("ui-open");                                    // 音效：面板打開
             Refresh();
         }
@@ -122,12 +134,15 @@ namespace WitchShop.UI
             close.AddToClassList("close");
             header.Add(close);
 
-            rowsBox = new ScrollView();
+            // 清單：固定 5 列高、超過就翻頁（不捲動）
+            pager = new Pager(RowsPerPage, RowsPerPage * RowPitch, Refresh);
+            rowsBox = pager.Body;
             rowsBox.AddToClassList("rows");
-            rowsBox.style.minHeight = 140;
             panel.Add(rowsBox);
 
-            UiSkin.Footer(panel, "取消", "Esc");
+            var info = UiSkin.Footer(panel, "取消", "Esc");
+            pager.Bar.AddToClassList("pg-bar--center");      // 翻頁鈕擺在底列正中間
+            info.parent.Add(pager.Bar);
 
             anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
             built = true;
@@ -135,65 +150,58 @@ namespace WitchShop.UI
 
         void Refresh()
         {
-            rowsBox.Clear();
             var seeds = SeedsInBag();
-            if (seeds.Count == 0)
-            {
-                var msg = new Label("背包裡沒有種子 —— 森林採集時偶爾會撿到，花店也買得到");
-                msg.AddToClassList("empty-msg");
-                rowsBox.Add(msg);
-                return;
-            }
-
-            foreach (var seed in seeds)
-            {
-                string s = seed;                       // 迴圈變數要抓進閉包
-                var f = GardenData.FlowerBySeed(s);
-
-                var row = new VisualElement();
-                row.AddToClassList("row");
-
-                var icon = new VisualElement();
-                icon.AddToClassList("stock-icon");
-                var sp = GameArt.Item(s);
-                if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
-                row.Add(icon);
-
-                // 名稱＋持有數徽章（舊外觀：名稱與「×3」各自一個字串，看起來跟以前差不多）
-                var name = new Label(s);
-                name.AddToClassList("col-name");
-                name.AddToClassList("seed-name");
-                row.Add(name);
-                row.Add(UiSkin.Badge($"×{Inventory.CountOf(s)}"));
-
-                // 收成：[花的小圖]×3（舊外觀：「收成 3 朵」）
-                VisualElement yieldCell;
-                if (f != null && UiSkin.On)
-                {
-                    yieldCell = UiSkin.IconCount(GameArt.Item(f.Flower), $"×{f.Yield}");
-                    yieldCell.AddToClassList("seed-yield");
-                }
-                else
-                {
-                    yieldCell = new Label(f != null ? $"收成 {f.Yield} 朵" : "");
-                    yieldCell.AddToClassList("up-effect");
-                }
-                row.Add(yieldCell);
-
-                var pick = new Button(() =>
-                {
-                    var cb = onPick;
-                    onPick = null;
-                    Close();
-                    cb?.Invoke(s);          // ⚠️ 先關面板再回呼，不然種下去的動畫會被 modal 擋住
-                }) { text = "種下" };
-                pick.AddToClassList("btn");
-                pick.AddToClassList("btn-list");
-                row.Add(pick);
-
-                rowsBox.Add(row);
-            }
+            pager.Render(seeds.Count, i => SeedRow(seeds[i]),
+                "背包裡沒有種子 —— 森林採集時偶爾會撿到，花店也買得到");
             UiSkin.Stripe(rowsBox);
+        }
+
+        VisualElement SeedRow(string s)
+        {
+            var f = GardenData.FlowerBySeed(s);
+
+            var row = new VisualElement();
+            row.AddToClassList("row");
+
+            var icon = new VisualElement();
+            icon.AddToClassList("stock-icon");
+            var sp = GameArt.Item(s);
+            if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
+            row.Add(icon);
+
+            // 名稱＋持有數徽章（舊外觀：名稱與「×3」各自一個字串，看起來跟以前差不多）
+            var name = new Label(s);
+            name.AddToClassList("col-name");
+            name.AddToClassList("seed-name");
+            row.Add(name);
+            row.Add(UiSkin.Badge($"×{Inventory.CountOf(s)}"));
+
+            // 收成：[花的小圖]×3（舊外觀：「收成 3 朵」）
+            VisualElement yieldCell;
+            if (f != null && UiSkin.On)
+            {
+                yieldCell = UiSkin.IconCount(GameArt.Item(f.Flower), $"×{f.Yield}");
+                yieldCell.AddToClassList("seed-yield");
+            }
+            else
+            {
+                yieldCell = new Label(f != null ? $"收成 {f.Yield} 朵" : "");
+                yieldCell.AddToClassList("up-effect");
+            }
+            row.Add(yieldCell);
+
+            var pick = new Button(() =>
+            {
+                var cb = onPick;
+                onPick = null;
+                Close();
+                cb?.Invoke(s);          // ⚠️ 先關面板再回呼，不然種下去的動畫會被 modal 擋住
+            }) { text = "種下" };
+            pick.AddToClassList("btn");
+            pick.AddToClassList("btn-list");
+            row.Add(pick);
+
+            return row;
         }
     }
 }

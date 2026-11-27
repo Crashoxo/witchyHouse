@@ -57,15 +57,6 @@ namespace WitchShop.Core
             "hedgehog", "rabbit", "bear", "squirrel", "wolf", "mouse",
         };
 
-        static readonly string[] DecorFiles =
-        {
-            "succulent", "daisypot", "violetpot", "birdcage_small", "bonsai",
-            "ivy_hanging", "roses_vase", "lily_vase", "sunflower_vase", "autumn_vase",
-            "potted_fern", "window_box", "birdcage_large", "blue_urn",
-            "wildflower_basket", "flower_case",
-            "herb_shelf", "crystal_shelf", "potion_shelf",
-        };
-
         /// <summary>時鐘盤面零件（Resources/ui/clock 底下）：盤面／日月圖示／指針。</summary>
         static readonly string[] ClockFiles = { "face", "sun", "moon", "hand-hour", "hand-min", "hand-day" };
 
@@ -81,6 +72,39 @@ namespace WitchShop.Core
 
         /// <summary>花的走圖：6 欄（成長階段）× 2 列（第 0 列健康、第 1 列枯萎）。</summary>
         const int FlowerCols = 6, FlowerRows = 2;
+
+        // ──────────── 花圃（8-bit 像素風）────────────
+
+        /// <summary>
+        /// 開關：true ＝ 花圃的土壤磚與花的成長／枯萎走圖改用 tools/gen_garden_plants.py 程式點陣畫的
+        /// 8-bit 圖（Resources/garden8/）；false ＝ 退回原本的 garden/ 舊圖（一張都沒刪）。
+        /// 開著但 garden8 裡缺圖（例如跑過 gen_garden_plants.py --restore），那張自動退回舊圖。
+        ///
+        /// ⚠️ garden8 的規格（別的程式依賴）：
+        ///    * soil-dry / soil-wet：88×62，頂面菱形剛好 88×44（等距格子一格）、下面 9px 側面，上下對稱留邊 →
+        ///      圖片正中心＝頂面中心，置中樞紐、縮放 1 直接放在花圃座標上。
+        ///    * 花：234×96，6 欄 × 2 列（排法同舊圖），每格 39×48 原生像素，遊戲裡跟女巫一樣 ×1.6
+        ///      （像素大小跟她一致）；莖的入土點在每格水平正中、底邊往上 <see cref="PixelFlowerFootPadPx"/>，
+        ///      所有階段同一列 → 換階段不會跳。
+        ///    縮放與位移看 <see cref="PixelSoil"/>／<see cref="PixelFlowers"/>（GardenData.PlotScale 等）。
+        /// ⚠️ 背包裡花的圖示還是 items8（TryPixelItem 蓋過走圖那格），跟這個開關無關。
+        /// </summary>
+        public static readonly bool UsePixelPlants = true;
+
+        /// <summary>新花圖：莖的入土點到格子底邊的距離（px、縮放前）。</summary>
+        public const float PixelFlowerFootPadPx = 3f;
+
+        static bool pixelSoil, pixelFlowers;
+
+        /// <summary>土壤磚實際載到的是 garden8 新圖。</summary>
+        public static bool PixelSoil => pixelSoil;
+
+        /// <summary>
+        /// 花的走圖實際載到的是 garden8 新圖。
+        /// ⚠️ 三種花共用一個旗標（GardenData.FlowerScale 不分花）：garden8 只缺其中一種的話那種會用錯縮放 ——
+        ///    --restore 是整個資料夾一起刪，正常不會發生。
+        /// </summary>
+        public static bool PixelFlowers => pixelFlowers;
 
         // ──────────── 女巫圖集（witch8）────────────
         //
@@ -140,22 +164,38 @@ namespace WitchShop.Core
         /// false ＝ 退回原本那批 AI 厚塗圖（Resources/villagers/，一張都沒刪）。
         /// 開著但 villagers8 裡缺某位（例如跑過 gen_villager_art.py --restore），那位自動退回舊圖。
         ///
-        /// ⚠️ villagers8 的規格（別的程式依賴）：每張 **336×324**、4 欄 × 3 列、每格 **84×108**
-        ///    （邏輯 28×36 × 3）；角色水平置中；**鞋底在格子底邊往上 3px**（最底下一個邏輯格留空），
+        /// ⚠️ villagers8 的規格（別的程式依賴）：每張 **224×216**、4 欄 × 3 列、每格 **56×72**
+        ///    （原生 1px 像素，不放大 —— 跟女巫 witch8 一樣）；角色水平置中；**鞋底在格子底邊往上 3px**，
         ///    11 位、所有幀都一樣 —— 所以不同人的縮放與腳底偏移只看「新圖或舊圖」，見
         ///    <see cref="VillagerArtScale"/>、<see cref="VillagerFootPad"/>。
+        ///    （2026-11-27 第二版；第一版是 28×36 邏輯格 ×3 的 336×324 粗像素圖，已被覆蓋。）
         /// </summary>
         public static readonly bool UsePixelVillagers = true;
 
+        // ──────────── 家具／裝飾（細畫版）────────────
+
+        /// <summary>
+        /// 開關：true ＝ 家具與裝飾先讀 tools/gen_furniture8.py 畫的細畫版（Resources/furniture8/、decor8/，
+        /// 跟魔女房間 brew8 同一套畫法），缺哪張就退回舊資料夾那張（furniture/ 的 ×3 粗像素、decor/ 的厚塗）。
+        /// false ＝ 全部舊圖（2026-11-28 新加的陳列桌、燈、家具、地毯沒有舊圖 → 花店不列、店裡不畫）。
+        /// ⚠️ 陳列位／實心範圍／光暈點跟著圖走：細畫版在 Data/FurnitureArt8.cs、舊圖在 ShopDisplaySlots／FurnitureBounds，
+        ///    兩邊都用「載到的圖尺寸」認，所以逐張混用也不會擺錯位子。
+        /// ⚠️ 細畫版裝飾直接畫在遊戲尺度上（縮放 1）；舊裝飾照 DecorDef.Scale —— 一律經 <see cref="DecorScale"/>。
+        /// </summary>
+        public static readonly bool UsePixelFurniture = true;
+
         /// <summary>
         /// 新走路圖在 <see cref="VillagerAnim.Scale"/> 之上**再乘**的倍數（舊圖是 1）。
-        /// 怎麼定的：新圖大人（法師、旅人）可見高 29～30 邏輯格 ×3 ＝ 87～90px，×1.1 ≈ 96～99px，
-        /// 比女巫（93px）略高；小魔女、兔子、鹿約 92～106px（含帽子／耳朵），青蛙、刺蝟、狐狸、妖精 76～83px。
-        /// ⚠️ tools/gen_villager_art.py 的 GAME_SCALE（實景合成預覽用）要跟著一起改。
+        /// ＝ <see cref="WitchScale"/>：新圖跟女巫一樣是原生 1px 像素，乘同一個倍數**像素才一樣大**（不是量身高湊出來的）。
+        /// 畫面上的可見高（原生 px ×1.6）：主角女巫 58 → 93px；小魔女含帽 59 → 94、騎掃帚 58 → 93、法師含法杖 61 → 98、
+        /// 旅人 48 → 77（沒戴帽）；兔子／兔子魔女含耳朵 54／53 → 86／85、小鹿含角 52 → 83、狐狸含耳朵 49 → 78、
+        /// 妖精含蘑菇帽 46 → 74、青蛙含釣竿 44 → 70、刺蝟 41 → 66。
+        /// ⚠️ 改女巫的 WitchScale 時這裡會一起變（村民跟著女巫走，像素保持一樣大）；
+        ///    tools/gen_villager_art.py 的 GAME_SCALE（實景合成預覽用）要手動跟著改。
         /// </summary>
-        public const float PixelVillagerScale = 1.1f;
+        public const float PixelVillagerScale = WitchScale;
 
-        /// <summary>新走路圖：鞋底到格子底邊的距離（輸出 px、縮放前）。舊圖沒有統一的基準線，當 0。</summary>
+        /// <summary>新走路圖：鞋底到格子底邊的距離（原生 px、縮放前；同女巫的 CharacterAnimator.FootPad）。舊圖沒有統一的基準線，當 0。</summary>
         const float PixelVillagerFootPadPx = 3f;
 
         /// <summary>實際載到 villagers8 新圖的村民（其餘是舊圖）。</summary>
@@ -168,10 +208,16 @@ namespace WitchShop.Core
         public static float VillagerFootPad(string name) => pixelVillagers.Contains(name) ? PixelVillagerFootPadPx : 0f;
 
         /// <summary>
-        /// 影子寬度要用格子寬的幾成。新圖格子 84px 寬、身體約佔 20/28，用整格會讓影子比人寬一圈；
-        /// 舊圖維持原本的整格（之前實機調過）。
+        /// 影子寬度要用格子寬的幾成。新圖格子 56px 寬、身體約佔 22～26，比女巫的格子（49）寬，
+        /// 用 0.85 ≈ 49/56 → 影子跟女巫的一樣大；舊圖維持原本的整格（之前實機調過）。
         /// </summary>
-        public static float VillagerShadowRatio(string name) => pixelVillagers.Contains(name) ? 0.8f : 1f;
+        public static float VillagerShadowRatio(string name) => pixelVillagers.Contains(name) ? 0.85f : 1f;
+
+        /// <summary>
+        /// 這位村民是不是「一直在飄」（騎掃帚的魔女）：站著也要播走路表（上下浮、鬃毛擺），見 VillagerAnim.Update。
+        /// 只有新圖這樣畫；舊圖的 broomwitch 第 0 欄是站姿，維持站著不動。
+        /// </summary>
+        public static bool VillagerHovers(string name) => name == "broomwitch" && pixelVillagers.Contains(name);
 
         // ──────────── 快取 ────────────
 
@@ -186,6 +232,10 @@ namespace WitchShop.Core
         static readonly Dictionary<string, Sprite[][]> flowers = new();   // 花名 → [健康/枯萎][階段]
         static readonly Dictionary<string, Sprite> candyArt = new();
         static readonly Dictionary<string, Sprite> furnitureArt = new();
+        /// <summary>試載過的家具／裝飾（"f:id"／"d:id"）—— 缺圖的也記，FurnitureArt() 才不會每次都去 Resources 找。</summary>
+        static readonly HashSet<string> furnTried = new();
+        /// <summary>實際載到細畫版（decor8）的裝飾：顯示縮放用 1，見 DecorScale。</summary>
+        static readonly HashSet<string> pixelDecor = new();
 
         static readonly Sprite[] cauldron = new Sprite[CauldronFrameCount];
         static readonly Sprite[] gather = new Sprite[GatherFrameCount];
@@ -244,6 +294,29 @@ namespace WitchShop.Core
             if (t == null) return false;
             items[key] = SheetSlicer.Whole(t);
             return true;
+        }
+
+        /// <summary>
+        /// 載入一件家具／裝飾的圖：開關開著先試細畫版（furniture8／decor8），沒有再退回舊資料夾（furniture／decor）。
+        /// 舊資料夾也沒有（例如 2026-11-28 才加的燈、陳列桌）＝這件沒有圖（花店不會列、店裡不會畫）。
+        /// ⚠️ 直接 Resources.Load、不經 Tex()：缺圖是預期中的，不噴警告。試過一次就記下來，不會每幀重試。
+        /// </summary>
+        static Sprite LoadFurnishing(string id, bool isDecor)
+        {
+            furnTried.Add((isDecor ? "d:" : "f:") + id);
+            string newDir = isDecor ? "decor8" : "furniture8", oldDir = isDecor ? "decor" : "furniture";
+            var t = UsePixelFurniture ? Resources.Load<Texture2D>($"{newDir}/{id}") : null;
+            bool pixel = t != null;
+            if (t == null) t = Resources.Load<Texture2D>($"{oldDir}/{id}");
+            if (t == null) return null;
+            var sp = SheetSlicer.Whole(t);
+            if (isDecor)
+            {
+                decor[id] = sp;
+                if (pixel) pixelDecor.Add(id); else pixelDecor.Remove(id);
+            }
+            else furnitureArt[id] = sp;
+            return sp;
         }
 
         static Sprite LoadSingle(string path, Vector2? pivot = null)
@@ -330,7 +403,10 @@ namespace WitchShop.Core
         /// </summary>
         static void LoadFlower(string art, string flowerName)
         {
-            var t = Tex($"garden/{art}");
+            // 8-bit 新圖優先（見 UsePixelPlants）；直接 Resources.Load —— 缺圖退回舊圖是預期中的，不噴警告
+            var t = UsePixelPlants ? Resources.Load<Texture2D>($"garden8/{art}") : null;
+            if (t != null) pixelFlowers = true;
+            else t = Tex($"garden/{art}");
             if (t == null) return;
             var rows = new Sprite[FlowerRows][];
             for (int r = 0; r < FlowerRows; r++)
@@ -391,7 +467,7 @@ namespace WitchShop.Core
                     {
                         LoadFlower(f.Art, f.Flower);
                         // 花的收成圖示：LoadFlower 先登記走圖「盛開那一格」，有 8-bit 圖就蓋過去。
-                        // ⚠️ 只換道具圖示 —— 花圃上的成長走圖（flowers[]）與土壤磚還是原本那批。
+                        // ⚠️ 這裡只換道具圖示；花圃上的成長走圖（flowers[]）與土壤磚走 UsePixelPlants（garden8）。
                         TryPixelItem(f.Flower, f.Art);
                         LoadItemIcon(f.Seed, $"garden/{f.Art}-seed", $"{f.Art}-seed");
                     }
@@ -402,9 +478,11 @@ namespace WitchShop.Core
                     break;
 
                 case "decor":
-                    foreach (var f in DecorFiles) LoadImg(decor, f, $"decor/{f}");
-                    // 家具跟裝飾同一組：花店（城鎮）要畫得出家具圖示，店裡要擺出來，兩邊都載得到
-                    foreach (var f in Furniture.All) LoadImg(furnitureArt, f.Id, $"furniture/{f.Id}");
+                    // 細畫版（furniture8／decor8）優先、逐張退回舊圖，見 UsePixelFurniture。
+                    // 家具跟裝飾同一組：花店（城鎮）要畫得出家具圖示，店裡要擺出來，兩邊都載得到。
+                    // 別的場景（例如家裡）沒載這組也沒關係：FurnitureArt()／Decoration() 查不到會當場補載那一張。
+                    foreach (var d in Decor.Catalog) LoadFurnishing(d.Id, true);
+                    foreach (var f in Furniture.All) LoadFurnishing(f.Id, false);
                     break;
 
                 case "shop":
@@ -417,7 +495,13 @@ namespace WitchShop.Core
                     break;
 
                 case "garden":
-                    foreach (var f in SoilFiles) LoadImg(soil, f, $"garden/{f}");
+                    foreach (var f in SoilFiles)
+                    {
+                        // 8-bit 新圖優先（見 UsePixelPlants），缺圖退回舊圖
+                        var st = UsePixelPlants ? Resources.Load<Texture2D>($"garden8/{f}") : null;
+                        if (st != null) { soil[f] = SheetSlicer.Whole(st); pixelSoil = true; }
+                        else LoadImg(soil, f, $"garden/{f}");
+                    }
                     // 同上：貼到 Player 上的動作圖 → 腳底樞紐
                     for (int i = 0; i < WaterFrameCount; i++)
                         LoadIndexed(water, i, $"witch/water{i + 1}", SheetSlicer.Foot);
@@ -459,23 +543,40 @@ namespace WitchShop.Core
         /// </summary>
         static void LoadBrewRoom()
         {
-            brewRoomDayFrame = LoadSingle(BrewRoomLayout.ShellDay);
-            brewRoomNightFrame = LoadSingle(BrewRoomLayout.ShellNight);
+            var day = BrewTex(BrewRoomLayout.ShellDay);
+            var night = BrewTex(BrewRoomLayout.ShellNight);
+            brewRoomDayFrame = day != null ? SheetSlicer.Whole(day) : null;
+            brewRoomNightFrame = night != null ? SheetSlicer.Whole(night) : null;
             foreach (var p in BrewRoomLayout.Pieces)
                 foreach (var path in p.Frames)
                 {
                     if (brewArt.ContainsKey(path)) continue;
-                    var t = Tex(path);
+                    var t = BrewTex(path);
                     if (t == null) continue;
                     brewArt[path] = SheetSlicer.Whole(t, new Vector2(p.PivotX / t.width, p.PivotY / t.height));
                 }
-            var g = Tex(BrewRoomLayout.Glow);
+            var g = BrewTex(BrewRoomLayout.Glow);
             if (g != null)
             {
                 // 光暈是唯一的漸層圖：放大貼的時候要平滑，不能用像素風的 Point
                 g.filterMode = FilterMode.Bilinear;
                 brewGlowSprite = SheetSlicer.Whole(g);
             }
+        }
+
+        /// <summary>
+        /// 魔女房間的一張圖：Core.BrewRoom.UsePixelRoom 開著時先讀細畫版 rooms/brew8/（同檔名、同尺寸、同樞紐，
+        /// tools/gen_brew_room8.py 產生），缺圖才逐張退回 rooms/brew/。配置表裡的路徑仍是 rooms/brew/…（樞紐照表算）。
+        /// </summary>
+        static Texture2D BrewTex(string path)
+        {
+            const string Old = "rooms/brew/";
+            if (Core.BrewRoom.UsePixelRoom && path.StartsWith(Old, System.StringComparison.Ordinal))
+            {
+                var t = Resources.Load<Texture2D>("rooms/brew8/" + path.Substring(Old.Length));
+                if (t != null) return t;
+            }
+            return Tex(path);
         }
 
         // ──────────── 對外 API（跟 Cocos 版一致，呼叫端不用改）────────────
@@ -576,8 +677,32 @@ namespace WitchShop.Core
 
         public static Sprite Item(string name) => items.GetValueOrDefault(name);
         public static Sprite Portrait(string name) => portraits.GetValueOrDefault(name);
-        public static Sprite Decoration(string id) => decor.GetValueOrDefault(id);
-        public static Sprite FurnitureArt(string id) => furnitureArt.GetValueOrDefault(id);
+        /// <summary>裝飾的圖（沒載過會當場載；細畫版優先、退回舊圖；都沒有回 null）。</summary>
+        public static Sprite Decoration(string id)
+        {
+            if (id == null) return null;
+            if (!decor.TryGetValue(id, out var sp) && !furnTried.Contains("d:" + id)) sp = LoadFurnishing(id, true);
+            return sp;
+        }
+
+        /// <summary>家具的圖（沒載過會當場載；細畫版優先、退回舊圖；都沒有回 null）。</summary>
+        public static Sprite FurnitureArt(string id)
+        {
+            if (id == null) return null;
+            if (!furnitureArt.TryGetValue(id, out var sp) && !furnTried.Contains("f:" + id)) sp = LoadFurnishing(id, false);
+            return sp;
+        }
+
+        /// <summary>這件裝飾的顯示縮放：細畫版畫在遊戲尺度上（1）；舊圖用 DecorDef.Scale（0＝DecorCatalog.DefaultScale）。</summary>
+        public static float DecorScale(string id)
+        {
+            if (Decoration(id) != null && pixelDecor.Contains(id)) return 1f;
+            var d = Decor.ById(id);
+            return d != null && d.Scale > 0f ? d.Scale : Core.DecorCatalog.DefaultScale;
+        }
+
+        /// <summary>任一件（家具或裝飾）的圖。</summary>
+        public static Sprite FurnishingArt(string id) => Furniture.ById(id) != null ? FurnitureArt(id) : Decoration(id);
         public static Sprite CandyArt(string art) => candyArt.GetValueOrDefault(art);
         public static Sprite ClockPart(string name) => clockParts.GetValueOrDefault(name);
         public static Sprite[] Emote(string name) => emotes.GetValueOrDefault(name, Array.Empty<Sprite>());

@@ -7,7 +7,7 @@ namespace WitchShop.UI
     /// <summary>
     /// 畫面上方的工具列（左上角往右排成一條）：
     ///
-    ///   [金幣] ┃ [名聲 Lv／稱號＋進度條] ┃ [開店／關店鈕][R 佈置提示（只在店裡）] ┃ [設定 (O)]
+    ///   [金幣] ┃ [名聲 Lv／稱號＋進度條] ┃ [開店／關店鈕][R 佈置提示（店裡＝佈置店面、8-bit 後花園＝搬花圃）] ┃ [設定 (O)]
     ///
     /// 名聲會影響來客速度與人數，所以放在玩家隨時看得到的地方 ——
     /// 「好好經營 → 店更熱鬧」這條回饋要看得見才有意義。
@@ -95,7 +95,8 @@ namespace WitchShop.UI
         /// 只在店裡佔位（display）；佈置中、開著面板時只隱藏不收位（visibility），後面的設定鈕才不會跳來跳去。
         /// </summary>
         VisualElement editHint, editLock;
-        bool editInShop, editVisible = true;
+        /// <summary>editInShop：R 提示有沒有佔位（店裡或 8-bit 後花園）；editIsShop：是店裡（開店中要上鎖）還是後花園（不用關店）。</summary>
+        bool editInShop, editIsShop, editVisible = true;
         /// <summary>上一次畫的是不是開店（R 上鎖）；null ＝ 還沒畫過。</summary>
         bool? editOpenShown;
 
@@ -332,14 +333,21 @@ namespace WitchShop.UI
                 shopBtn.SetEnabled(!locked);
             }
 
-            // 店裡（ShopRoomEditor 只在 shop 場景存在）才佔位；沒在佈置、沒開面板才看得到。
+            // 店裡（ShopRoomEditor 只在 shop 場景存在）與 8-bit 後花園（GardenArrange：R 搬花圃）才佔位；
+            // 沒在佈置、沒開面板才看得到。後花園的 R 不用關店 → 不上鎖。
+            // 家裡（HomeArrange：R 擺家具）也一樣，不上鎖（家裡隨時能佈置）。
             var ed = ShopRoomEditor.Instance;
-            bool inShop = ed != null;
-            bool visible = !inShop || (!ed.Editing && !UIState.ModalOpen);
-            if (inShop != editInShop)
+            var ga = GardenArrange.Instance;
+            var ha = HomeArrange.Instance;
+            bool inShop = ed != null || ga != null || ha != null;
+            bool busy = (ed != null && ed.Editing) || (ga != null && ga.Editing) || HomeArrange.Busy;
+            bool visible = !inShop || (!busy && !UIState.ModalOpen);
+            if (inShop != editInShop || (ed != null) != editIsShop)
             {
                 editInShop = inShop;
+                editIsShop = ed != null;
                 editHint.style.display = inShop ? DisplayStyle.Flex : DisplayStyle.None;
+                RefreshEditLock();
             }
             if (visible != editVisible)
             {
@@ -384,11 +392,19 @@ namespace WitchShop.UI
                 if (!first) UIAnim.Bump(shopBtn);           // 切換時彈一下（第一次畫不彈）
             }
 
-            if (editOpenShown != open)
+            RefreshEditLock();
+        }
+
+        /// <summary>R 提示上鎖：只有店裡、而且開店中（後花園搬花圃不用關店）。值沒變就不動 UI。</summary>
+        void RefreshEditLock()
+        {
+            if (editHint == null) return;
+            bool locked = ShopSign.IsOpen && editIsShop;
+            if (editOpenShown != locked)
             {
-                editOpenShown = open;
-                editHint.EnableInClassList("hud-edit--locked", open);
-                editLock.style.display = open ? DisplayStyle.Flex : DisplayStyle.None;
+                editOpenShown = locked;
+                editHint.EnableInClassList("hud-edit--locked", locked);
+                editLock.style.display = locked ? DisplayStyle.Flex : DisplayStyle.None;
             }
         }
 

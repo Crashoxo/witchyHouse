@@ -230,6 +230,7 @@ namespace WitchShop.Core
         /// <summary>
         /// 澆一塊花圃時，跟著一起澆到的格子（澆水壺升級後一次澆得更多）。
         /// 0＝只有自己；1＝十字相鄰；2＝整片花園。回傳的 index 都是已開墾的。
+        /// 8-bit 後花園（GardenRoom.UsePixelGarden）的花圃是玩家自己擺的：十字相鄰看**實際擺的格子**（GardenLayout）。
         /// </summary>
         public static List<int> WaterTargets(int i)
         {
@@ -238,6 +239,12 @@ namespace WitchShop.Core
             if (spread >= 2) return open;
             var outList = new List<int> { i };
             if (spread <= 0) return outList;
+
+            if (GardenRoom.UsePixelGarden)
+            {
+                outList.AddRange(GardenLayout.Neighbours(i, open));
+                return outList;
+            }
 
             int col = i % GardenData.PlotCols, row = i / GardenData.PlotCols;
             void Push(int c, int r)

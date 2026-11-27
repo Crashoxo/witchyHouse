@@ -5,6 +5,7 @@ UI 圖示（8-bit 像素風）產生器：佈置模式的鍵帽、滑鼠、動�
 
     python tools/gen_ui_icons.py                    # 輸出 Assets/Resources/ui/icons8/<名稱>.png
     python tools/gen_ui_icons.py --preview DIR      # 另外輸出總覽圖（深色底／淺色底、放大＋實際大小）
+    python tools/gen_ui_icons.py --out DIR          # 圖改寫到 DIR（迭代時用，不碰 Assets）
 
 ── 為什麼要這批圖 ─────────────────────────────────────────────────────
   使用者實機回饋：「解釋擺放東西不用要字，用圖文的方式，解釋的文字太多了」。
@@ -56,6 +57,17 @@ UI_EXTRA = {
     'key_face': '#fbf4e4',
     'ink': '#3a2548',                                   # 鍵帽上的字（深紫，比外輪廓亮一點才分得出邊）
     'night': '#3c3466', 'night_dk': '#2a2448', 'night_hi': '#575092',
+    # ── 2026-11-27 工具列細修（鍵帽、招牌、鎖頭、木槌）：多一兩階、色相偏移，跟腰包／上方工具列同一套 ──
+    'fk_w': '#fffdf6', 'fk': '#f8efda', 'fk_md': '#ecdfc0', 'fk_dk': '#d9c7a0',      # 鍵帽頂面
+    'fk_s1': '#c9b38c', 'fk_s2': '#a8906c', 'fk_s3': '#7d6650',                      # 鍵帽前緣
+    'fk_ink': '#3a2548', 'fk_sh': '#cdb994',                                         # 字、字下的淡陰影
+    'fo_1': '#fffbe8', 'fo_2': '#fff0a6', 'fo_3': '#ffe06a', 'fo_4': '#ffc94c',      # 開店招牌的暖光
+    'fo_5': '#f2aa3c', 'fo_6': '#d98a2e', 'fo_r': '#e57a26',
+    'fn_1': '#221d44', 'fn_2': '#2d2756', 'fn_3': '#383066', 'fn_4': '#443b78',      # 關店招牌的夜空
+    'fw_hi': '#c48a5a', 'fw': '#9a6440', 'fw_dk': '#6e4230', 'fw_dk2': '#4a2a26',     # 暖木（招牌框、木槌）
+    'fi_hi': '#d6d2e0', 'fi': '#9a96ad', 'fi_dk': '#666179', 'fi_dk2': '#45405a',     # 鐵（橫桿、鎖環）
+    'fg_w': '#fff6cc', 'fg_hi': '#fbe08a', 'fg': '#e6b955', 'fg_md': '#cf9a3e',       # 金（鎖身、月亮、槌箍）
+    'fg_dk': '#a8722c', 'fg_dk2': '#764c20', 'fg_hole': '#3a2216',
 }
 PAL = ia.PAL                                            # 同一個 dict：補色後 gen_item_art.rgb() 也認得
 for _k, _v in UI_EXTRA.items():
@@ -239,40 +251,50 @@ class UiIcon(Icon):
 
 def keycap(glyphs, w=24):
     """
-    立體鍵帽：亮米白的頂面、往下的厚邊（前緣）、右側暗一階。
-    頂面左上一圈打亮、字母深紫置中。glyphs＝[(字, 下緣對齊用的高度差)]，橫排。
+    立體鍵帽（2026-11-27 細修）：圓一點的角（每角切 3 格）、頂面三階（上左亮邊、右下與最下兩列暗一階）、
+    前緣厚邊三階、左右側面一亮一暗；字下面一列淡陰影（印上去的厚度）。glyphs＝[字…]，橫排、底對齊、置中。
     """
     ic = UiIcon(w, 24)
-    x0, x1 = 2, w - 3
-    y0, y1 = 2, 21
+    x0, x1, y0, y1 = 2, w - 3, 2, 21
     cap = rect(x0, y0, x1, y1)
-    # 去掉四個角（圓角）
-    for p in ((x0, y0), (x1, y0), (x0, y1), (x1, y1)):
-        cap.discard(p)
-    ic.put(cap, 'li_dk')                                    # 前緣／側面
-    face = rect(x0 + 1, y0, x1 - 1, y1 - 5)
-    for p in ((x0 + 1, y0), (x1 - 1, y0)):
-        face.discard(p)
-    ic.put(face, 'key_face')
-    for x, y in face:                                       # 頂面左上亮邊、右下一階暗
+    for dx, dy in ((0, 0), (1, 0), (0, 1)):
+        for p in ((x0 + dx, y0 + dy), (x1 - dx, y0 + dy), (x0 + dx, y1 - dy), (x1 - dx, y1 - dy)):
+            cap.discard(p)
+    fb = y1 - 5                                             # 頂面最下一列
+    for x, y in cap:
+        if y > fb:
+            c = ('fk_s1', 'fk_s1', 'fk_s2', 'fk_s2', 'fk_s3')[y - fb - 1]
+        else:
+            c = 'fk_s1' if x == x0 else ('fk_s2' if x == x1 else 'fk')
+        ic.px[(x, y)] = c
+    face = {(x, y) for x, y in cap if y <= fb and x0 < x < x1}
+    for x, y in face:
         if (x, y - 1) not in face or (x - 1, y) not in face:
-            ic.px[(x, y)] = 'wh'
-        elif (x + 1, y) not in face:
-            ic.px[(x, y)] = 'li'
-    for x in range(x0 + 1, x1):                             # 前緣最下面一列更暗（立體感）
-        ic.px[(x, y1)] = 'st_dk'
-    ic.px[(x0, y1 - 1)] = 'st_dk'
-    ic.px[(x1, y1 - 1)] = 'st_dk'
-    # 字母：整串置中在頂面、底對齊
+            ic.px[(x, y)] = 'fk_w'
+        elif y == fb:
+            ic.px[(x, y)] = 'fk_dk'
+        elif (x + 1, y) not in face or y >= fb - 2 or x >= x1 - 2:
+            ic.px[(x, y)] = 'fk_md'
+    ic.px[(x0, fb + 1)] = 'fk_s2'
+    ic.px[(x1, fb + 1)] = 'fk_s3'
     total = sum(gw(g) for g in glyphs) + (len(glyphs) - 1)
     base = max(gh(g) for g in glyphs)
     fx0 = x0 + 1 + ((x1 - 1) - (x0 + 1) + 1 - total) // 2
-    fy = y0 + 1 + ((y1 - 5) - (y0 + 1) + 1 - base) // 2 + 1
+    fy = y0 + 1 + (fb - (y0 + 1) + 1 - base) // 2 + 1
+    pts = set()
     for g in glyphs:
-        glyph(ic, g, fx0, fy + base - gh(g))
+        gy = fy + base - gh(g)
+        for j, row in enumerate(GLYPHS[g]):
+            for i, ch in enumerate(row):
+                if ch == '#':
+                    pts.add((fx0 + i, gy + j))
         fx0 += gw(g) + 1
+    for x, y in pts:
+        if (x, y + 1) not in pts and (x, y + 1) in face:
+            ic.px[(x, y + 1)] = 'fk_sh'
+    for p in pts:
+        ic.px[p] = 'fk_ink'
     return ic
-
 
 def mouse(ic, cx, cy, rx, ry, lit=None, split=None):
     """滑鼠本體：米白圓殼、上半分左右鍵、中間一條縫。lit＝'L'／'R' 那一顆亮起（金黃）。"""
@@ -532,18 +554,30 @@ def draw_act_walk():
 
 
 def draw_act_edit():
-    """佈置（HUD 用）：一把小木槌斜放。"""
+    """佈置（HUD 用）：木槌 —— 暖木柄（上亮下暗、握把纏一段紫布）、圓木槌頭（三階木色＋兩端金箍）、旁邊一顆光點。"""
     ic = UiIcon()
-    ic.stick(line(4, 19, 13, 10), 'wd_hi', 'wd_dk')
+    handle = sorted(line(4, 19, 12, 11))
+    for x, y in handle:
+        ic.px[(x, y)] = 'fw_hi'
+        ic.px[(x, y + 1)] = 'fw_dk'
+    for x, y in handle[:3]:
+        ic.px[(x, y)] = 'pu_hi'
+        ic.px[(x, y + 1)] = 'pu_dk'
     c = (15.5, 8.0)
-    u = (5.0 / math.sqrt(2), 5.0 / math.sqrt(2))
-    v = (2.8 / math.sqrt(2), -2.8 / math.sqrt(2))
-    head = poly([(c[0] + u[0] + v[0], c[1] + u[1] + v[1]), (c[0] + u[0] - v[0], c[1] + u[1] - v[1]),
-                 (c[0] - u[0] - v[0], c[1] - u[1] - v[1]), (c[0] - u[0] + v[0], c[1] - u[1] + v[1])])
-    ic.flat(head, ('ir_hi', 'ir', 'ir_dk'))
-    ic.sparkle(20, 3, col='go_hi')
+    k = 1 / math.sqrt(2)
+    for y in range(0, 18):
+        for x in range(6, 24):
+            dx, dy = x + 0.5 - c[0], y + 0.5 - c[1]
+            u = (dx + dy) * k                                  # 槌頭長軸（左上→右下）
+            v = (dx - dy) * k                                  # 短軸（負＝右上的受光面）
+            if abs(u) <= 5.2 and abs(v) <= 3.0:
+                if abs(u) > 3.9:
+                    col = 'fg_hi' if v < -0.8 else ('fg' if v < 1.0 else 'fg_dk')
+                else:
+                    col = 'fw_hi' if v < -1.2 else ('fw' if v < 0.9 else 'fw_dk')
+                ic.px[(x, y)] = col
+    ic.sparkle(20, 2, col='go_hi')
     return ic
-
 
 def draw_arrow():
     """連環圖之間的箭頭（米白）。"""
@@ -664,55 +698,107 @@ def draw_st_no():
     return ic
 
 
-def sign_board(ic, face, edge):
-    """掛著的小招牌：上方一根橫桿、兩條鍊子、木框板子。回傳板面遮罩。"""
-    ic.put(rect(2, 2, 21, 3), 'wd_dk')
-    ic.put(rect(2, 2, 21, 2), 'wd_hi')
+def sign_board(ic):
+    """掛著的小招牌（2026-11-27 細修）：鐵橫桿（左亮右暗）、兩條鍊子、暖木框（外亮內暗、四角金釘）。回傳板面遮罩。"""
+    for x in range(1, 23):
+        ic.px[(x, 2)] = 'fi_hi' if x < 12 else 'fi'
+        ic.px[(x, 3)] = 'fi_dk' if 1 < x < 22 else ('fi' if x == 1 else 'fi_dk2')
     for x in (6, 17):
-        ic.put({(x, 4), (x, 5)}, 'ir_hi')
-    board = rect(2, 6, 21, 20)
-    ic.flat(board, ('wd_hi', 'wd', 'wd_dk'))
-    inner = rect(4, 8, 19, 18)
-    ic.put(inner, face)
-    ic.put(border(inner) & {(x, y) for x, y in inner if x == 4 or y == 8}, edge)
-    return inner
+        ic.px[(x, 4)] = 'fi_hi'
+        ic.px[(x, 5)] = 'fi_dk'
+    for x, y in rect(2, 6, 21, 20):
+        if y == 6 or x == 2:
+            c = 'fw_hi'
+        elif y == 20 or x == 21:
+            c = 'fw_dk2'
+        elif y == 19 or x == 20:
+            c = 'fw_dk'
+        else:
+            c = 'fw'
+        ic.px[(x, y)] = c
+    ic.px[(2, 20)] = 'fw_dk'
+    ic.px[(21, 6)] = 'fw'
+    for p in ((3, 7), (20, 7), (3, 19), (20, 19)):
+        ic.px[p] = 'fg_hi'
+    return rect(4, 8, 19, 18)
 
 
 def draw_shop_open():
-    """開店中：亮黃的招牌、中間一顆太陽、旁邊有光點。"""
+    """開店中：板面由中心往外的暖光漸層（四階，框下一圈內陰影）、中間白芯小太陽＋八道細光、旁邊兩顆光點。"""
     ic = UiIcon()
-    sign_board(ic, 'cy_y', 'go_hi')
-    sun = ell(11.5, 13.0, 3.5, 3.5)
-    ic.sphere(sun, ('wh', 'fire_y', 'fire_o'), 11.5, 13.0, 3.5, 3.5)
-    for dx, dy in ((0, -5), (0, 5), (-5, 0), (5, 0), (-4, -4), (4, -4), (-4, 4), (4, 4)):
-        ic.px[(11 + dx + (1 if dx > 0 else 0), 12 + dy + (1 if dy > 0 else 0))] = 'fire_o'
+    inner = sign_board(ic)
+    cx, cy = 12.0, 13.5
+    for x, y in inner:
+        d = math.hypot(x + 0.5 - cx, (y + 0.5 - cy) * 1.25)
+        c = 'fo_2' if d < 4.2 else ('fo_3' if d < 6.2 else ('fo_4' if d < 8.2 else 'fo_5'))
+        ic.px[(x, y)] = 'fo_6' if (y == 8 or x == 4) else c
+    for x, y in inner:
+        if math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= 2.6:
+            ic.px[(x, y)] = 'fo_1'
+    ic.px[(11, 12)] = 'wh'
+    ic.px[(12, 12)] = 'wh'
+    for ang in range(0, 360, 45):
+        a = math.radians(ang)
+        for r in (3.8, 4.8):
+            p = (int(math.floor(cx + r * math.cos(a))), int(math.floor(cy + r * math.sin(a))))
+            if p in inner:
+                ic.px[p] = 'fo_r' if r > 4 else 'fo_5'
     ic.sparkle(1, 1, col='go_hi')
     ic.sparkle(22, 7, col='go_hi')
     return ic
 
 
 def draw_shop_closed():
-    """關店：暗藍紫的招牌、一彎金色月亮。"""
+    """關店：深夜空（上暗下亮四階）、四階金弦月、一顆帶光暈的星＋一顆小星＋一點暗星。"""
     ic = UiIcon()
-    sign_board(ic, 'night', 'night_hi')
-    moon = ell(11.5, 13.0, 4.0, 4.0) - ell(13.8, 11.6, 3.4, 3.4)
-    ic.put(moon, 'go_hi')
-    ic.put({p for p in moon if p[1] >= 14}, 'go')
-    ic.put({(16, 10), (17, 15)}, 'n_star')
+    inner = sign_board(ic)
+    for x, y in inner:
+        ic.px[(x, y)] = 'fn_1' if (y <= 9 or x == 4) else ('fn_2' if y <= 12 else ('fn_3' if y <= 15 else 'fn_4'))
+    moon = ell(11.5, 13.0, 4.2, 4.2) - ell(13.9, 11.6, 3.5, 3.5)
+    for x, y in moon:
+        t = (x - 8) * 0.4 + (y - 9)
+        ic.px[(x, y)] = 'fg_w' if t < 2 else ('fg_hi' if t < 5 else ('fg' if t < 7.5 else 'fg_md'))
+    for p in ((16, 9), (15, 10), (17, 10), (16, 11), (6, 16)):
+        ic.px[p] = 'fn_4'
+    for p in ((16, 10), (17, 16)):
+        ic.px[p] = 'n_star'
     return ic
 
 
 def draw_lock():
-    """鎖頭：金色鎖身、鐵色鎖環、鑰匙孔。"""
+    """鎖頭：鐵鎖環（左亮右暗三階、頂緣受光）、金鎖身（頂亮底暗、左右各一階、上方一道箍線）、鑰匙孔＋下緣反光、兩顆小鉚釘。"""
     ic = UiIcon()
     shackle = arc(12.0, 9.5, 5.0, 2.4, 180, 360) | rect(6, 9, 7, 12) | rect(16, 9, 17, 12)
-    ic.put(shackle, 'ir_hi')
-    ic.put({p for p in shackle if p[0] >= 13}, 'ir')
-    body = rect(4, 11, 19, 21)
-    ic.flat(body, ('go_hi', 'go', 'go_dk'))
-    ic.put(ell(11.5, 15.0, 1.6, 1.6) | rect(11, 15, 12, 18), 'go_dk2')
+    for x, y in shackle:
+        top_edge = (x, y - 1) not in shackle and x < 14
+        ic.px[(x, y)] = 'fi_hi' if (x <= 8 or top_edge) else ('fi' if x <= 14 else 'fi_dk')
+    body = rect(4, 11, 19, 21) - {(4, 11), (19, 11), (4, 21), (19, 21)}
+    for x, y in body:
+        if y == 11:
+            c = 'fg_w'
+        elif y == 12:
+            c = 'fg_hi'
+        elif y >= 20:
+            c = 'fg_dk2' if y == 21 else 'fg_dk'
+        elif x == 4:
+            c = 'fg_hi'
+        elif x == 19:
+            c = 'fg_dk'
+        elif y >= 18:
+            c = 'fg_md'
+        else:
+            c = 'fg'
+        ic.px[(x, y)] = c
+    for x in range(5, 19):
+        ic.px[(x, 13)] = 'fg' if x == 5 else 'fg_md'
+    for p in ell(11.5, 15.4, 1.6, 1.6) | rect(11, 16, 12, 18):
+        ic.px[p] = 'fg_hole'
+    ic.px[(11, 19)] = 'fg_hi'
+    ic.px[(12, 19)] = 'fg_hi'
+    for x, y in ((6, 15), (17, 15)):
+        ic.px[(x, y)] = 'fg_w'
+        ic.px[(x, y + 1)] = 'fg_dk'
     return ic
-
 
 # ═══════════════════════════════ 圖例 ═══════════════════════════════
 
@@ -733,6 +819,311 @@ def draw_ring(col, dk):
         ic.put({p for p in ring if p[0] + p[1] >= 26}, dk)
         return ic
     return fn
+
+
+# ═══════════════════════════════ 互動提示（2026-11-28）═══════════════════════════════
+# 世界裡「走近就冒、按 E 做什麼」的提示改成 [E 鍵帽][動作圖]（Core/InteractHint.cs），不再寫句子。
+# 畫法跟上面細修過的 key_*／lock／shop_open 一樣：fk／fw／fi／fg 那幾組多階色、左上受光、外輪廓由 finish_ui 補。
+# 只**新增**，上面的圖一張都不動（gen 完逐檔比對 md5）。
+
+def bubble(ic, fill=('wh', 'li_hi', 'li')):
+    """對話泡泡：圓角方框（左上亮、右下暗一階）＋左下的小尾巴。回傳泡泡本體的遮罩。"""
+    body = rect(2, 3, 21, 15) - {(2, 3), (21, 3), (2, 15), (21, 15), (3, 3), (2, 4), (20, 3), (21, 4),
+                                (2, 14), (3, 15), (21, 14), (20, 15)}
+    tail = tri(5.0, 15.0, 4.0, 21.0, 11.0, 15.0)
+    m = body | tail
+    for x, y in m:
+        if (x, y - 1) not in m or (x - 1, y) not in m:
+            c = fill[0]
+        elif (x + 1, y) not in m or (x, y + 1) not in m:
+            c = fill[2]
+        else:
+            c = fill[1]
+        ic.px[(x, y)] = c
+    return m
+
+
+def draw_act_talk():
+    """交談：白色對話泡泡＋三個點。"""
+    ic = UiIcon()
+    bubble(ic)
+    for x in (6, 11, 16):
+        ic.put(rect(x, 8, x + 1, 9), 'ink')
+    return ic
+
+
+def draw_act_quest():
+    """有任務可以接：泡泡裡一個橘色的「！」。"""
+    ic = UiIcon()
+    bubble(ic, ('fo_1', 'fo_2', 'fo_4'))
+    ic.put(rect(11, 5, 12, 10), 'sw_dk')
+    ic.put(rect(11, 5, 11, 9), 'sw')
+    ic.put(rect(11, 12, 12, 13), 'sw_dk')
+    return ic
+
+
+def draw_act_quest_done():
+    """任務可以回報：泡泡裡一顆金星（平塗：左上亮、右下暗一階、深金描邊）。"""
+    ic = UiIcon()
+    bubble(ic, ('fo_1', 'fo_2', 'fo_4'))
+    s5 = ia.star(11.5, 9.6, 6.2, 2.8)
+    ic.put(s5, 'fg')
+    ic.put(border(s5), 'fg_dk')
+    ic.put({(x, y) for x, y in s5 if (x, y) not in border(s5) and x + y <= 19}, 'fg_hi')
+    return ic
+
+
+def draw_act_door():
+    """門（換地方）：石框拱門、三片木板、鐵鉸鍊、金門把、門前一階石階。"""
+    ic = UiIcon()
+    frame = rect(5, 4, 18, 20) | ell(11.5, 5.5, 6.5, 4.2)
+    for x, y in frame:
+        ic.px[(x, y)] = 'st_hi' if x <= 6 or y <= 2 else ('st' if x <= 16 else 'st_dk')
+    door = rect(7, 6, 16, 20) | ell(11.5, 7.0, 4.5, 3.2)
+    ic.cyl(door, ('fw_hi', 'fw', 'fw_dk'))
+    for x in (9, 12, 14):
+        ic.put({(x, y) for y in range(5, 21) if (x, y) in door}, 'fw_dk2')
+    for y in (9, 16):
+        ic.put(rect(7, y, 9, y), 'fi_dk')
+    ic.put(rect(14, 12, 15, 13), 'fg_hi')
+    ic.px[(15, 13)] = 'fg_dk'
+    ic.put(rect(3, 21, 20, 22), 'st')
+    ic.put(rect(3, 21, 20, 21), 'st_hi')
+    return ic
+
+
+def house(ic, x0, x1, ytop, ywall, ybot, roof, wall=('pa_hi', 'pa', 'pa_dk'), win='fo_3'):
+    """小房子：三角屋頂（roof 三階）＋米色牆＋門＋窗。x0..x1 是牆的寬。"""
+    cx = (x0 + x1 + 1) / 2.0
+    rf = tri(x0 - 2.0, ywall + 0.5, cx, ytop, x1 + 3.0, ywall + 0.5)
+    w = rect(x0, ywall, x1, ybot)
+    ic.flat(w, wall)
+    ic.sphere(rf, roof, cx - 2, ytop + 2, (x1 - x0) * 0.8 + 2, (ywall - ytop) + 2)
+    ic.put({(x, ywall) for x in range(x0 - 1, x1 + 2)}, roof[2])
+    dx = int(cx) - 1
+    ic.put(rect(dx, ybot - 3, dx + 2, ybot), 'fw_dk')
+    ic.put(rect(dx, ybot - 3, dx, ybot), 'fw')
+    return rf | w
+
+
+def draw_dest_shop():
+    """目的地：自己的店（紅屋頂小屋，窗裡亮著暖光、門邊掛一塊小招牌）。"""
+    ic = UiIcon()
+    ic.put(rect(15, 3, 17, 7), 'st')
+    ic.put(rect(15, 3, 17, 3), 'st_hi')
+    house(ic, 4, 19, 2, 11, 21, ('rd_hi', 'rd', 'rd_dk'))
+    ic.put(rect(6, 13, 8, 15), 'fo_3')
+    ic.px[(6, 13)] = 'fo_1'
+    ic.put(rect(15, 13, 17, 15), 'fo_3')
+    ic.px[(15, 13)] = 'fo_1'
+    ic.put(rect(15, 17, 18, 19), 'fg')                       # 小招牌
+    ic.put(rect(15, 19, 18, 19), 'fg_dk')
+    return ic
+
+
+def draw_dest_town():
+    """目的地：城鎮（兩棟不同顏色屋頂的房子，一高一矮）。"""
+    ic = UiIcon()
+    house(ic, 12, 21, 3, 10, 21, ('bl_hi', 'bl', 'bl_dk'))
+    ic.put(rect(17, 13, 19, 15), 'fo_3')
+    house(ic, 2, 10, 8, 14, 21, ('gr_hi', 'gr', 'gr_dk'))
+    ic.put(rect(3, 16, 4, 17), 'fo_3')
+    return ic
+
+
+def draw_dest_cauldron():
+    """目的地：魔女的房間（黑鐵鍋、冒綠泡泡的藥水、底下一點火）。"""
+    ic = UiIcon()
+    pot = ell(12.0, 14.0, 9.0, 6.5) - rect(0, 0, 24, 9)
+    ic.sphere(pot, ('fi', 'fi_dk', 'fi_dk2'), 9.0, 11.0, 9.0, 6.5)
+    ic.put(rect(3, 8, 20, 9), 'fi_hi')
+    ic.put(rect(3, 9, 20, 9), 'fi')
+    ic.put(rect(5, 7, 18, 7), 'cr')
+    ic.put(rect(6, 6, 9, 6), 'cr_hi')
+    ic.put(rect(5, 19, 7, 21), 'fi_dk2')
+    ic.put(rect(16, 19, 18, 21), 'fi_dk2')
+    ic.put(rect(9, 20, 14, 21), 'fire_o')
+    ic.put(rect(10, 20, 13, 20), 'fire_y')
+    for x, y in ((8, 3), (14, 2), (11, 4)):
+        ic.glow_dot(x, y, 'cr_hi')
+    return ic
+
+
+def draw_dest_tree():
+    """目的地：森林（圓圓的樹冠、木頭樹幹、兩顆紅果子）。"""
+    ic = UiIcon()
+    ic.cyl(rect(10, 14, 13, 21), ('fw_hi', 'fw', 'fw_dk'))
+    can = ell(12.0, 9.0, 9.0, 7.5)
+    ic.sphere(can, ('gr_hi', 'gr', 'gr_dk', 'gr_dk2'), 12.0, 9.0, 9.0, 7.5)
+    for x, y in ((8, 10), (15, 7)):
+        ic.put(rect(x, y, x + 1, y + 1), 'rd')
+        ic.px[(x, y)] = 'rd_hi'
+    return ic
+
+
+def draw_act_sleep():
+    """睡覺：金色彎月＋右上一個淡紫的 Z。"""
+    ic = UiIcon()
+    moon = ell(10.5, 13.0, 8.0, 8.0) - ell(15.0, 10.0, 6.8, 6.8)
+    for x, y in moon:
+        ic.px[(x, y)] = 'fg_hi' if x <= 5 else ('fg' if y <= 15 else 'fg_md')
+    ic.put({(x, y) for x, y in moon if (x + 1, y + 1) not in moon and y >= 17}, 'fg_dk')
+    z = {(16, 2), (17, 2), (18, 2), (19, 2), (18, 3), (17, 4), (16, 5), (17, 5), (18, 5), (19, 5)}
+    ic.put(z, 'vi_hi')
+    ic.put({(13, 7), (14, 7), (14, 8), (13, 9), (14, 9)}, 'vi_hi')
+    return ic
+
+
+def draw_act_chest():
+    """開倉庫：打開的木箱（蓋子往後翻、裡面金光閃閃）、金色箍、前面一個小鎖扣。"""
+    ic = UiIcon()
+    lid = poly([(3.0, 11.0), (21.0, 11.0), (22.0, 4.0), (5.0, 4.0)])
+    ic.put(lid, 'fw_dk')
+    ic.put({(x, y) for x, y in lid if y <= 5}, 'fw')
+    inner = rect(4, 9, 19, 11)
+    ic.put(inner, 'fw_dk2')
+    body = rect(3, 12, 20, 21)
+    ic.flat(body, ('fw_hi', 'fw', 'fw_dk'))
+    for x in (6, 17):
+        ic.put(rect(x, 12, x, 21), 'fg_md')
+    ic.put(rect(3, 12, 20, 12), 'fg')
+    ic.put(rect(11, 13, 12, 15), 'fg_hi')
+    ic.px[(12, 15)] = 'fg_dk'
+    for x, y in ((8, 10), (13, 9), (16, 10)):
+        ic.px[(x, y)] = 'fg_hi'
+    ic.sparkle(12, 6, col='go_hi')
+    return ic
+
+
+def draw_act_wardrobe():
+    """換衣服：鐵衣架掛一件紫色洋裝（腰帶金色）。"""
+    ic = UiIcon()
+    hook = arc(12.5, 3.5, 1.8, 1.2, 180, 360) | {(14, 4), (14, 5)}
+    ic.put(hook, 'fi_hi')
+    hanger = line(12, 5, 3, 9) | line(13, 5, 21, 9) | line(3, 9, 21, 9)
+    ic.put(hanger, 'fi')
+    dress = poly([(8.5, 8.5), (15.5, 8.5), (16.0, 12.0), (20.5, 21.5), (3.5, 21.5), (8.0, 12.0)])
+    for x, y in dress:
+        ic.px[(x, y)] = 'pu_hi' if x <= 7 or (x <= 9 and y < 12) else ('pu' if x <= 14 else 'pu_dk')
+    ic.put(rect(8, 12, 16, 12), 'fg')
+    ic.put(rect(5, 21, 19, 21), 'pu_dk2')
+    for x, y in ((10, 16), (13, 18), (8, 19)):
+        ic.px[(x, y)] = 'vi_hi'
+    return ic
+
+
+def draw_act_brewing():
+    """熬煮中：沙漏（木框、玻璃、金色的沙一半在上一半在下）。"""
+    ic = UiIcon()
+    ic.put(rect(4, 2, 19, 3), 'fw')
+    ic.put(rect(4, 2, 19, 2), 'fw_hi')
+    ic.put(rect(4, 20, 19, 21), 'fw_dk')
+    ic.put(rect(4, 20, 19, 20), 'fw')
+    glass = poly([(6.0, 4.0), (18.0, 4.0), (13.0, 12.0), (18.0, 20.0), (6.0, 20.0), (11.0, 12.0)])
+    ic.put(glass, 'sb')
+    ic.put({(x, y) for x, y in glass if x <= 8}, 'sb_hi')
+    top = {(x, y) for x, y in glass if 8 <= y <= 10}
+    bot = {(x, y) for x, y in glass if y >= 16}
+    ic.put(top, 'go')
+    ic.put(bot | {(11, 13), (12, 14), (11, 15)}, 'go_hi')
+    ic.put({(x, y) for x, y in bot if y >= 18}, 'go')
+    return ic
+
+
+def draw_act_sell():
+    """賣東西：兩枚金幣（後面那枚露一半；前面那枚有一圈壓邊、中間一顆星、左上高光）＋一點亮光。"""
+    ic = UiIcon()
+
+    def coin(cx, cy, r, face=True):
+        m = ell(cx, cy, r, r)
+        ic.put(m, 'fg')
+        ic.put({(x, y) for x, y in m if x + y > cx + cy + r * 0.6}, 'fg_md')
+        ic.put(border(m), 'fg_dk')
+        if face:
+            inner = ell(cx, cy, r - 2.0, r - 2.0)
+            ic.put(border(inner), 'fg_md')
+            ic.put(ia.star(cx, cy, r * 0.45, r * 0.2), 'fg_dk')
+            ic.put({(int(cx - r * 0.55), int(cy - r * 0.55)), (int(cx - r * 0.55) + 1, int(cy - r * 0.55) - 1)}, 'fg_w')
+        return m
+    coin(15.5, 9.0, 6.5, face=False)
+    front = ell(9.5, 14.0, 7.5, 7.5)
+    ic.sep(front, 'fg_dk2')
+    coin(9.5, 14.0, 7.5)
+    ic.sparkle(20, 3, col='go_hi')
+    return ic
+
+
+def draw_act_pet():
+    """摸摸：粉紅愛心（左上高光）＋右下一個白色小肉球。"""
+    ic = UiIcon()
+    heart = ell(7.5, 8.5, 5.0, 5.0) | ell(15.5, 8.5, 5.0, 5.0) | tri(2.6, 10.0, 20.4, 10.0, 11.5, 20.5)
+    ic.sphere(heart, ('pk_hi', 'pink', 'rd', 'rd_dk'), 9.0, 9.0, 11.0, 11.0)
+    ic.put({(5, 6), (6, 5), (5, 7)}, 'wh')
+    paw = ell(18.5, 19.5, 2.4, 2.0)
+    ic.sep(paw, 'rd_dk2')
+    ic.put(paw, 'li_hi')
+    for x, y in ((16, 16), (18, 15), (20, 15), (21, 17)):
+        ic.px[(x, y)] = 'li_hi'
+    return ic
+
+
+def draw_act_clear():
+    """清掉枯枝：土堆上一株枯掉垂頭的褐色小苗（就是要清掉的那個）＋右上一把小鐮刀（鋼刃彎月、木柄）。"""
+    ic = UiIcon()
+    mound = ell(9.5, 21.0, 7.0, 2.5) - rect(0, 22, 24, 24)
+    ic.flat(mound, ('co_hi', 'co', 'co_dk'))
+    stem = polyline([(9, 19), (9, 13), (8, 10), (6, 9)])
+    ic.put(stem, 'au_br')
+    ic.put({(5, 10), (4, 11)}, 'au_br')                         # 垂下來的頭
+    ic.put(polyline([(10, 15), (12, 16), (13, 18)]), 'au')        # 兩片垂掉的葉子（細）
+    ic.put(polyline([(8, 14), (6, 15), (5, 17)]), 'au')
+    blade = (ell(17.0, 7.5, 5.5, 5.0) - ell(18.2, 9.0, 4.6, 4.2)) - rect(0, 9, 24, 24)
+    blade |= {(11, 9), (12, 9)}
+    for x, y in blade:
+        ic.px[(x, y)] = 'fi_hi' if (x, y - 1) not in blade else 'fi'
+    ic.put(rect(21, 7, 22, 14), 'fw')
+    ic.put(rect(21, 7, 21, 14), 'fw_hi')
+    ic.put(rect(21, 7, 22, 7), 'fi_dk')
+    return ic
+
+
+def draw_act_water():
+    """澆水：藍色澆花器（把手、長壺嘴、蓮蓬頭）＋三滴水。"""
+    ic = UiIcon()
+    handle = arc(9.5, 11.0, 5.0, 1.8, 180, 360)
+    ic.put(handle, 'ai_dk')
+    spout = thick(line(14, 15, 19, 9), 1)
+    ic.put(spout, 'ai')
+    rose = rect(19, 6, 21, 9)
+    ic.put(rose, 'ai_dk')
+    ic.put(rect(20, 6, 21, 6), 'ai_hi')
+    body = rect(3, 11, 15, 20) - {(3, 11), (15, 11), (3, 20), (15, 20)}
+    ic.cyl(body, ('ai_hi', 'ai', 'ai_dk'))
+    ic.put(rect(4, 13, 14, 13), 'ai_dk2')
+    for x, y in ((21, 12), (22, 15), (20, 17)):
+        ic.glow_dot(x, y, 'wa_hi')
+        ic.glow_dot(x, y + 1, 'wa')
+    return ic
+
+
+INTERACT_ICONS = [
+    ('act_talk', '交談（NPC）', draw_act_talk),
+    ('act_quest', '交談：有任務可以接', draw_act_quest),
+    ('act_quest_done', '交談：任務可以回報', draw_act_quest_done),
+    ('act_door', '門（換地方）', draw_act_door),
+    ('dest_shop', '目的地：自己的店', draw_dest_shop),
+    ('dest_town', '目的地：城鎮', draw_dest_town),
+    ('dest_cauldron', '目的地：魔女的房間（藥水室）', draw_dest_cauldron),
+    ('dest_tree', '目的地：森林', draw_dest_tree),
+    ('act_sleep', '睡覺（床）', draw_act_sleep),
+    ('act_chest', '開倉庫（木箱）', draw_act_chest),
+    ('act_wardrobe', '換衣服（衣櫃）', draw_act_wardrobe),
+    ('act_brewing', '熬煮中（鍋爐忙著）', draw_act_brewing),
+    ('act_sell', '賣東西（販售桌、雜貨鋪收購）', draw_act_sell),
+    ('act_pet', '摸摸（貓）', draw_act_pet),
+    ('act_clear', '清掉枯枝（花圃）', draw_act_clear),
+    ('act_water', '澆水（花圃）', draw_act_water),
+]
 
 
 # ═══════════════════════════════ 清單 ═══════════════════════════════
@@ -778,6 +1169,7 @@ ICONS = [
     ('ring_green', '陳列位：空位', draw_ring('ok', 'ok_dk')),
     ('ring_orange', '陳列位：會交換', draw_ring('sw', 'sw_dk')),
 ]
+ICONS += INTERACT_ICONS                     # 2026-11-28 互動提示（只加在後面，前面的不動）
 
 
 # ═══════════════════════════════ 輸出 ═══════════════════════════════
@@ -864,10 +1256,11 @@ def md5(p):
 def main():
     args = sys.argv[1:]
     preview_dir = args[args.index('--preview') + 1] if '--preview' in args else None
+    out_dir = os.path.abspath(args[args.index('--out') + 1]) if '--out' in args else OUT_DIR   # 迭代用：輸出到別處，不碰 Assets
     arts = render_all()
-    os.makedirs(OUT_DIR, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
     for fname, desc, im in arts:
-        p = os.path.join(OUT_DIR, fname + '.png')
+        p = os.path.join(out_dir, fname + '.png')
         im.save(p, optimize=False)
         print(f'{fname:<14} {im.width}×{im.height}  {md5(p)[:8]}  {desc}')
     print(f'共 {len(arts)} 張')

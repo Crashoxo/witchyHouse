@@ -368,16 +368,11 @@ namespace WitchShop.Core
                 }
             if (hitGood != null) { BeginGoodDrag(hitGood, m); return; }
 
-            // ② 再找裝飾（它們通常疊在家具上面），最後找家具
+            // ② 再找裝飾（它們通常疊在家具上面），再找家具；地毯（平貼地板）最後才試
             foreach (var (go, index) in view.Decors)
             {
-                if (go == null || !HitTest(go, m)) continue;
-                dragGo = go; dragDecorIndex = index; dragFurn = null;
-                selected = null; selectedGo = null; selectedGood = null; selectedGoodGo = null;
-                ClearFootprint();
-                dragOrigPos = go.transform.position;
-                dragOffset = go.transform.position - m;
-                UpdateHint();
+                if (go == null || view.FlatDecors.Contains(go) || !HitTest(go, m)) continue;
+                BeginDecorDrag(go, index, m);
                 return;
             }
             foreach (var (go, data) in view.Furnitures)
@@ -399,11 +394,27 @@ namespace WitchShop.Core
                 UpdateHint();
                 return;
             }
+            foreach (var (go, index) in view.Decors)
+            {
+                if (go == null || !view.FlatDecors.Contains(go) || !HitTest(go, m)) continue;
+                BeginDecorDrag(go, index, m);
+                return;
+            }
 
             // 點空地＝取消選取
             selected = null; selectedGo = null;
             selectedGood = null; selectedGoodGo = null;
             ClearFootprint();
+            UpdateHint();
+        }
+
+        void BeginDecorDrag(GameObject go, int index, Vector3 m)
+        {
+            dragGo = go; dragDecorIndex = index; dragFurn = null;
+            selected = null; selectedGo = null; selectedGood = null; selectedGoodGo = null;
+            ClearFootprint();
+            dragOrigPos = go.transform.position;
+            dragOffset = go.transform.position - m;
             UpdateHint();
         }
 
@@ -487,7 +498,7 @@ namespace WitchShop.Core
 
                 var cell = ShopRoom.WorldToTile(want.x, want.y);
                 cell = ShopRoom.ClampCell(cell.gx - (w - 1), cell.gy - (h - 1), w, h);
-                if (d.Shelf) cell = SnapToWall(cell, w, h);   // 貨架靠近後牆就吸上去
+                if (d.WallSnap) cell = SnapToWall(cell, w, h);   // 貨架（與書櫃、老爺鐘）靠近後牆就吸上去
 
                 // 格子放得下 **而且** 圖不會凸出房間外（貨架比牆高，會穿牆）
                 var block = CheckCell(dragFurn, cell);
@@ -1305,10 +1316,10 @@ namespace WitchShop.Core
         {
             var m = MouseWorld();
 
-            // 先試裝飾（通常疊在家具上面）
+            // 先試裝飾（通常疊在家具上面）；地毯壓在最底，放到家具之後才試
             foreach (var (go, index) in view.Decors)
             {
-                if (go == null || !HitTest(go, m)) continue;
+                if (go == null || view.FlatDecors.Contains(go) || !HitTest(go, m)) continue;
                 DecorCatalog.RemoveAt(index);
                 Done();
                 return;
@@ -1338,6 +1349,13 @@ namespace WitchShop.Core
                 for (int i = 0; i < list.Count; i++)
                     if (list[i].uid == data.uid) { list.RemoveAt(i); break; }
                 RoomLayout.SetPlaced(list);
+                Done();
+                return;
+            }
+            foreach (var (go, index) in view.Decors)
+            {
+                if (go == null || !view.FlatDecors.Contains(go) || !HitTest(go, m)) continue;
+                DecorCatalog.RemoveAt(index);
                 Done();
                 return;
             }

@@ -43,7 +43,7 @@ namespace WitchShop.Core
         ///
         /// ⚠️ 上面量的是**舊圖**。8-bit 新圖（Resources/villagers8，見 GameArt.UsePixelVillagers）
         ///    格子與比例都不同，實際縮放＝這個值 × <see cref="GameArt.VillagerArtScale"/>
-        ///    （新圖 ×1.1：大人約 96～99px），所以這裡維持 1.0 不動、舊圖的比例也不會被弄壞。
+        ///    （新圖是原生 1px 像素、×WitchScale＝1.6，像素跟女巫一樣大），所以這裡維持 1.0 不動、舊圖的比例也不會被弄壞。
         /// </summary>
         public const float Scale = 1.0f;
 
@@ -113,12 +113,31 @@ namespace WitchShop.Core
         /// <summary>站定時要面向哪邊（不播動畫，只換圖）。</summary>
         public void FaceTo(float dx, float dy) { SetMove(dx, dy); moving = false; }
 
+        /// <summary>一直在飄的村民（騎掃帚的魔女）站著時的播放速度：走路表本身就是上下浮＋鬃毛擺，慢一點播。</summary>
+        public const float HoverIdleFps = 4f;
+
+        /// <summary>
+        /// 走路動畫的播放倍數（1 ＝ <see cref="Fps"/>）。走得比較慢的人（店裡的顧客）調低，腳步才跟得上位移、不會滑步。
+        /// 只影響走路，不影響騎掃帚魔女站著飄的速度。
+        /// </summary>
+        public float FpsScale = 1f;
+
         void Update()
         {
             if (frames.Length == 0) return;
-            if (!moving) { ShowFrame(0); timer = 0f; return; }
+            if (!moving)
+            {
+                // 騎掃帚的魔女站著也在飄（GameArt.VillagerHovers）：照樣播，只是慢一點；其他人停在第 0 幀
+                if (GameArt.VillagerHovers(villager))
+                {
+                    timer += Time.deltaTime;
+                    ShowFrame(Mathf.FloorToInt(timer * HoverIdleFps) % frames.Length);
+                    return;
+                }
+                ShowFrame(0); timer = 0f; return;
+            }
             timer += Time.deltaTime;
-            ShowFrame(Mathf.FloorToInt(timer * Fps) % frames.Length);
+            ShowFrame(Mathf.FloorToInt(timer * Fps * FpsScale) % frames.Length);
         }
 
         void LateUpdate()
@@ -147,7 +166,7 @@ namespace WitchShop.Core
             width = r.width * k;
             art.localScale = new Vector3(k, k, 1f);
             // 腳底錨點：圖往上推半個格子高 → 格子底邊＝position。
-            // 新圖的鞋底在格子底邊往上 3px（×k），跟女巫一樣**不把圖往下拉**（女巫的鞋底也在 position
+            // 新圖的鞋底在格子底邊往上 3px（×k，同女巫），跟女巫一樣**不把圖往下拉**（女巫的鞋底也在 position
             // 上方 FootPad×1.6），兩邊站在同一個 y 時腳才對齊；那段落差交給影子的 footY 對準鞋底。
             art.localPosition = new Vector3(0f, height * 0.5f, 0f);
 
@@ -155,7 +174,8 @@ namespace WitchShop.Core
             ShadowLayer.Follow(transform, width * GameArt.VillagerShadowRatio(villager),
                                GameArt.VillagerFootPad(villager) * k);
 
-            ShowFrame(moving ? Mathf.FloorToInt(timer * Fps) % f.Length : 0);
+            ShowFrame(moving ? Mathf.FloorToInt(timer * Fps * FpsScale) % f.Length
+                      : GameArt.VillagerHovers(villager) ? Mathf.FloorToInt(timer * HoverIdleFps) % f.Length : 0);
         }
 
         void SetFacing(bool right)

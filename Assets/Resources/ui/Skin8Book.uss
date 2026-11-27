@@ -6,13 +6,18 @@
     離線預覽：python tools/gen_ui_book.py --preview DIR（那支的版面常數必須跟這裡一致）。
     九宮格數字檢查：python tools/gen_ui_book.py --check。
 
-    ── 版面（參考高 640 的 UI 單位；全部 3 的倍數）──────────────────────
+    2026-11-28 細畫版：全部 1 px 原生像素（跟腰包、上方工具列同一套紫＋金）。尺寸固定的元素（封面、書頁、熬鈕、
+    目錄條、格子）改用**整張原尺寸的圖、不切九宮格**；只有標題緞帶與材料卡還是九宮格。
+    標題緞帶、關閉鈕、材料卡、熬鈕都改用 book-* 自己的圖（skin8 的 ribbon／close／chip／btn-* 別的面板還在用，沒動）。
+
+    ── 版面（參考高 640 的 UI 單位）──────────────────────
       [標題緞帶壓在書的上緣]
-      ┌ 書 840×420（皮革封面九宮格，padding 上 21／左右 24／下 30）─────────────┐
-      │ 左頁 396×369：魔法陣 156＋成品圖 144、名稱、一句說明、金幣售價、頁碼        │
-      │ 右頁 396×369：「材料」小標、材料卡 90×108（＋號隔開）、可做幾份、熬 1／熬 N   │
-      └ 兩側翻頁箭頭 45×51 各凸出 27；右上角關閉鈕；左頁上緣掛一條絲帶書籤 ──────────┘
-      下排目錄格：木頭底座（hud-bar）上一排 60×60 的格子，每格一個配方的成品圖 48
+      ┌ 書 840×420（book-cover 原尺寸；padding 上 21／左右 24／下 30）─────────────────┐
+      │ 左頁 396×369：金絲框 156＋成品圖 96、名稱、一句說明（兩行，超出「…」）、金幣售價、頁碼  │
+      │ 右頁 396×369：「材料」小標、材料卡 90×108（燙金＋隔開；4 種換窄卡、5 種以上再窄一號）、 │
+      │              可做幾份、熬 1／熬 N                                                       │
+      └ 兩側翻頁箭頭 45×51 各凸出 27；右上角關閉鈕；左頁上緣掛一條絲帶書籤 ──────────────────┘
+      下排目錄條 768×78（固定寬）：[◀ 33][格 60 ×10，間距 6][▶ 33]，一頁 10 格（BrewPanel.StripPer），不滿補空位
       最底下：[Esc] 關閉　[←][→] 翻頁
 
     ── 翻頁動畫（BrewPanel.StartFlip）──────────────────────────────
@@ -27,7 +32,7 @@
 
 /* ════════════════════════ 外框 ════════════════════════ */
 
-/* 不用 .panel（ShopManageStyle／Skin8 都有規則），自己一個欄：書 → 目錄格 → 底列。
+/* 不用 .panel（ShopManageStyle／Skin8 都有規則），自己一個欄：書 → 目錄條 → 底列。
    padding-top 15 ＝ 標題緞帶凸出書上緣的高度，暗幕置中時才把它算進去。 */
 .bk .bk-panel {
     width: 840px;
@@ -37,6 +42,7 @@
     flex-shrink: 0;
 }
 
+/* 封面：840×420 原尺寸的圖（不切；最下 4 列是落地陰影） */
 .bk .bk-book {
     width: 840px;
     height: 420px;
@@ -44,26 +50,16 @@
     flex-direction: row;
     padding: 21px 24px 30px 24px;
     background-image: resource("ui/skin8/book-cover");
-    -unity-slice-left: 39; -unity-slice-top: 39; -unity-slice-right: 39; -unity-slice-bottom: 39;
-    -unity-slice-scale: 1px;
 }
 
-/* ── 書頁：底下不動的空白頁 ── */
+/* ── 書頁：底下不動的空白頁（396×369 原尺寸的圖）── */
 .bk .bk-page {
     width: 396px;
     height: 369px;
     flex-shrink: 0;
 }
-.bk .bk-page--l {
-    background-image: resource("ui/skin8/book-page-l");
-    -unity-slice-left: 12; -unity-slice-top: 9; -unity-slice-right: 15; -unity-slice-bottom: 18;
-    -unity-slice-scale: 1px;
-}
-.bk .bk-page--r {
-    background-image: resource("ui/skin8/book-page-r");
-    -unity-slice-left: 15; -unity-slice-top: 9; -unity-slice-right: 27; -unity-slice-bottom: 27;
-    -unity-slice-scale: 1px;
-}
+.bk .bk-page--l { background-image: resource("ui/skin8/book-page-l"); }
+.bk .bk-page--r { background-image: resource("ui/skin8/book-page-r"); }
 
 /* ── 葉子：會翻的那張（有自己的底圖＋內容）── */
 .bk .bk-leaf {
@@ -79,15 +75,11 @@
     padding: 21px 30px 21px 36px;           /* 外側（左）36：頁緣疊層；書脊側 30 */
     transform-origin: 100% 50%;             /* 以書脊為軸 */
     background-image: resource("ui/skin8/book-page-l");
-    -unity-slice-left: 12; -unity-slice-top: 9; -unity-slice-right: 15; -unity-slice-bottom: 18;
-    -unity-slice-scale: 1px;
 }
 .bk .bk-leaf--r {
     padding: 21px 36px 21px 30px;
     transform-origin: 0% 50%;
     background-image: resource("ui/skin8/book-page-r");
-    -unity-slice-left: 15; -unity-slice-top: 9; -unity-slice-right: 27; -unity-slice-bottom: 27;
-    -unity-slice-scale: 1px;
 }
 /* 翻起來：壓扁到書脊＋染暗（0.1s）。⚠️ 跟 BrewPanel.FoldMs 同步 */
 .bk .bk-leaf--fold {
@@ -115,7 +107,7 @@
 
 /* ════════════════════════ 左頁：成品 ════════════════════════ */
 
-/* 魔法陣 156（52 邏輯格 ×3）＋成品圖 144（道具圖 24 邏輯格 ×6，最銳利）。
+/* 金絲框 156＋成品圖 96（道具圖 24 邏輯格 ×4：每格 4 px，比以前的 144＝6 px 細，跟頁面的 1～2 px 細節比較搭）。
    ⚠️ items8 的圖是 PPU 1：一定要給明確寬高，不能靠原尺寸撐開。 */
 .bk .bk-hero {
     width: 156px; height: 156px;
@@ -124,20 +116,27 @@
     justify-content: center;
     background-image: resource("ui/skin8/book-circle");
 }
-.bk .bk-hero-icon { width: 144px; height: 144px; flex-shrink: 0; }
+.bk .bk-hero-icon { width: 96px; height: 96px; flex-shrink: 0; }
 
+/* 名稱：固定寬高、一行，太長就「…」 */
 .bk .bk-name {
+    width: 330px;
     height: 36px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     font-size: 24px;
     color: rgb(74, 47, 37);
     -unity-font-style: bold;
     -unity-text-align: middle-center;
 }
+/* 說明：固定兩行（字 14、行高約 21），超出隱藏、最後「…」 */
 .bk .bk-desc {
     width: 294px;
-    height: 42px;                           /* 兩行（字 14、行高約 21） */
+    height: 42px;
     overflow: hidden;
     white-space: normal;
+    text-overflow: ellipsis;
     font-size: 14px;
     color: rgb(122, 90, 68);
     -unity-text-align: upper-center;
@@ -173,10 +172,14 @@
 }
 .bk .bk-head-text { font-size: 15px; color: rgb(122, 90, 68); -unity-font-style: bold; margin: 0 9px; }
 
-/* 材料卡：[材料圖 48]／[持有/需要]。夠＝綠字米白卡、不夠＝紅字淡紅卡（skin8 的 chip／chip-short）。
-   名稱不寫在卡上，滑鼠移上去才浮出「藍莓　有 3／要 2」（UiSkin.Tip）。 */
+/* 材料卡：[材料圖 48]／[持有/需要]。夠＝綠字米白卡、不夠＝紅字淡紅卡（book-card／book-card-short，slice 9）。
+   名稱不寫在卡上，滑鼠移上去才浮出「藍莓　有 3／要 2」（UiSkin.Tip）。
+   材料欄固定寬 330、超出隱藏：3 種（目前最多）＝ 90×3＋24×2＝318；4 種換窄卡 63×4＋15×3＝297；
+   5 種以上 54 寬、小圖 36、「＋」只留 6 的空隙（54×5＋6×4＝294，6 種以上會被切掉）。 */
 .bk .bk-mats {
+    width: 330px;
     height: 108px;
+    overflow: hidden;
     flex-direction: row;
     align-items: center;
     justify-content: center;
@@ -187,11 +190,11 @@
     padding-top: 15px;
     flex-direction: column;
     align-items: center;
-    background-image: resource("ui/skin8/chip");
+    background-image: resource("ui/skin8/book-card");
     -unity-slice-left: 9; -unity-slice-top: 9; -unity-slice-right: 9; -unity-slice-bottom: 9;
     -unity-slice-scale: 1px;
 }
-.bk .bk-mat--short { background-image: resource("ui/skin8/chip-short"); }
+.bk .bk-mat--short { background-image: resource("ui/skin8/book-card-short"); }
 .bk .bk-mat-icon { width: 48px; height: 48px; flex-shrink: 0; }
 .bk .bk-mat-num {
     height: 30px;
@@ -203,13 +206,19 @@
 }
 .bk .bk-mat--short .bk-mat-num { color: rgb(179, 38, 58); }
 .bk .bk-mat-num--name { font-size: 13px; white-space: normal; }     /* 沒有圖時把名字寫出來（理論上不會） */
+/* 材料之間的燙金「＋」（15×15 的圖，左右各留 4／5 → 佔 24） */
 .bk .bk-plus {
-    width: 24px;
-    font-size: 22px;
-    color: rgb(122, 90, 68);
-    -unity-font-style: bold;
-    -unity-text-align: middle-center;
+    width: 15px; height: 15px;
+    margin: 0 5px 0 4px;
+    flex-shrink: 0;
+    background-image: resource("ui/skin8/book-plus");
 }
+.bk .bk-mats--4 .bk-mat { width: 63px; }
+.bk .bk-mats--4 .bk-plus { margin: 0; }
+.bk .bk-mats--5 .bk-mat { width: 54px; }
+.bk .bk-mats--5 .bk-mat-icon { width: 36px; height: 36px; margin-top: 6px; }
+.bk .bk-mats--5 .bk-mat-num { font-size: 16px; }
+.bk .bk-mats--5 .bk-plus { width: 6px; margin: 0; background-image: none; }
 
 /* 可做幾份：[成品小圖 24] ×3（0 份＝紅字） */
 .bk .bk-can {
@@ -223,8 +232,9 @@
 .bk .bk-can-num { font-size: 20px; color: rgb(63, 122, 44); -unity-font-style: bold; }
 .bk .bk-can-num--zero { color: rgb(179, 38, 58); }
 
-/* 熬 1（綠）／熬 N（金）：比清單版大一號。按鈕圖、滑過、按下、停用都沿用 Skin8 的 .sk .btn 系列，
-   這裡只改尺寸（同特異度、這張後掛 → 贏）。 */
+/* 熬 1（紫皮金邊）／熬 N（金牌）：108×42 原尺寸的圖（book-brew-*，不切）。
+   按鈕本身還帶 Skin8 的 .btn／.btn-list／.btn-buy（字粗、按下時 padding 對調讓字往下 3 都沿用），這裡只換圖與字色；
+   ⚠️ 每條都多帶一個 class（.bk-brew.btn-list 等）才蓋得過 .sk .btn-list:hover／.sk .btn:disabled:hover。 */
 .bk .bk-btns {
     margin-top: 18px;
     flex-direction: row;
@@ -235,11 +245,26 @@
     height: 42px;
     margin: 0 6px;
     font-size: 17px;
+    -unity-slice-left: 0; -unity-slice-top: 0; -unity-slice-right: 0; -unity-slice-bottom: 0;
+}
+.bk .bk-brew.btn-list { background-image: resource("ui/skin8/book-brew-a"); color: rgb(255, 248, 230); text-shadow: 0px 1px 0px rgb(42, 27, 36); }
+.bk .bk-brew.btn-list:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-brew-a-hover"); }
+.bk .bk-brew.btn-list:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-brew-a-down"); }
+.bk .bk-brew.btn-buy { background-image: resource("ui/skin8/book-brew-b"); color: rgb(74, 47, 37); text-shadow: 0px 1px 0px rgb(255, 244, 205); }
+.bk .bk-brew.btn-buy:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-brew-b-hover"); }
+.bk .bk-brew.btn-buy:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-brew-b-down"); }
+/* 做不出來：灰藕石＋淡斜紋，字用深灰藕（看得清楚、一看就是不能按）。⚠️ 排在最後 */
+.bk .bk-brew.btn:disabled,
+.bk .bk-brew.btn:disabled:hover {
+    background-image: resource("ui/skin8/book-brew-off");
+    color: rgb(108, 99, 118);
+    text-shadow: 0px 1px 0px rgb(232, 228, 236);
+    opacity: 1;
 }
 
 /* ════════════════════════ 書上的零件（絕對定位）════════════════════════ */
 
-/* 標題緞帶：同 Skin8 的 .sk .title 那張圖與字，只是掛在書的上緣（不用 .title，免得吃到別的規則） */
+/* 標題緞帶：book-ribbon（slice 27／15／27／15，跟 skin8/ribbon 同尺寸），掛在書的上緣 */
 .bk .bk-title {
     position: absolute;
     left: 50%;
@@ -248,7 +273,7 @@
     height: 51px;
     min-width: 150px;
     padding: 0 36px 6px 36px;
-    background-image: resource("ui/skin8/ribbon");
+    background-image: resource("ui/skin8/book-ribbon");
     -unity-slice-left: 27; -unity-slice-top: 15; -unity-slice-right: 27; -unity-slice-bottom: 15;
     -unity-slice-scale: 1px;
     font-size: 21px;
@@ -258,13 +283,16 @@
     text-shadow: 0px 2px 0px rgb(42, 27, 36);
 }
 
-/* 關閉鈕：圖與狀態沿用 .sk .close，這裡只把它釘在書的右上角（三個 class 才蓋得過 .sk .close 的 margin） */
+/* 關閉鈕：book-close（圓形紫皮金邊），釘在書的右上角（三個 class 才蓋得過 .sk .close 的圖與 margin） */
 .bk .bk-book .bk-close {
     position: absolute;
     right: -12px;
     top: -12px;
     margin: 0;
+    background-image: resource("ui/skin8/book-close");
 }
+.bk .bk-book .bk-close:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-close-hover"); }
+.bk .bk-book .bk-close:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-close-down"); }
 
 /* 翻頁箭頭（Button）：⚠️ 要蓋過預設主題的 .unity-button／:hover／:hover:active，每條都疊兩個 class。 */
 .bk .bk-arrow {
@@ -291,7 +319,7 @@
     background-image: resource("ui/skin8/book-mark");
 }
 
-/* 書頁小裝飾（放在葉子裡，翻頁時跟著一起翻；都是原尺寸 ×3，不縮放） */
+/* 書頁小裝飾（放在葉子裡，翻頁時跟著一起翻；原尺寸，不縮放） */
 .bk .bk-deco { position: absolute; }
 .bk .bk-star { width: 15px; height: 15px; background-image: resource("ui/skin8/book-star"); }
 .bk .bk-star--a { right: 48px; top: 36px; }
@@ -300,42 +328,73 @@
 .bk .bk-moon { right: 21px; top: 18px; width: 39px; height: 39px; background-image: resource("ui/skin8/book-moon"); }
 .bk .bk-vine { right: 42px; bottom: 27px; width: 81px; height: 33px; background-image: resource("ui/skin8/book-vine"); }
 
-/* ════════════════════════ 下排目錄格 ════════════════════════ */
+/* ════════════════════════ 下排目錄條（分頁）════════════════════════ */
 
-/* 木頭底座（skin8 的 hud-bar）。格子 60＋左邊距 3 ＝ 63；13 格 ＝ 819 ＝ 840 − 左右 padding 9×2 − 3 的餘裕。
-   多到一排放不下會自動換第二排（flex-wrap），格子下邊距 3 撐開排距。 */
+/* 768×78 原尺寸的圖（book-shelf，最下 3 列是落地陰影）。[◀ 33][12][格列 654][12][▶ 33]，左右 padding 12。
+   ⚠️ 寬度固定、不換行：一頁 10 格（BrewPanel.StripPer），改格數要一起改 .bk-strip-row 寬與 book-shelf 的圖。 */
 .bk .bk-shelf {
-    width: 840px;
+    width: 768px;
+    height: 78px;
     margin-top: 9px;
-    padding: 9px 9px 6px 9px;
+    padding: 7px 12px 11px 12px;
     flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    flex-wrap: nowrap;
+    align-items: center;
     flex-shrink: 0;
-    background-image: resource("ui/skin8/hud-bar");
-    -unity-slice-left: 18; -unity-slice-top: 18; -unity-slice-right: 18; -unity-slice-bottom: 18;
-    -unity-slice-scale: 1px;
+    background-image: resource("ui/skin8/book-shelf");
 }
-/* 一格：做得出來＝紫布金框＋右上小綠寶石；做不出來＝木框暗格、圖淡一點（仍可點）；目前這頁＝亮金框、往上抬 6。 */
+.bk .bk-strip-row {
+    width: 654px;                           /* 60×10 ＋ 6×9 */
+    height: 60px;
+    margin: 0 12px;
+    flex-direction: row;
+    flex-shrink: 0;
+}
+/* 兩端的小翻頁鈕（Button）：只有一頁時程式設 visibility: hidden（位置照留）；到頭停用＝暗梅鈕 */
+.bk .bk-sarrow {
+    width: 33px; height: 33px;
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+    border-width: 0; border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+.bk .bk-sarrow--l { background-image: resource("ui/skin8/book-sarrow-l"); }
+.bk .bk-sarrow--r { background-image: resource("ui/skin8/book-sarrow-r"); }
+.bk .bk-sarrow--l:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-sarrow-l-hover"); }
+.bk .bk-sarrow--r:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-sarrow-r-hover"); }
+.bk .bk-sarrow--l:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-sarrow-l-down"); }
+.bk .bk-sarrow--r:hover:active { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-sarrow-r-down"); }
+.bk .bk-sarrow--l:disabled,
+.bk .bk-sarrow--l:disabled:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-sarrow-l-off"); opacity: 1; }
+.bk .bk-sarrow--r:disabled,
+.bk .bk-sarrow--r:disabled:hover { background-color: rgba(0, 0, 0, 0); background-image: resource("ui/skin8/book-sarrow-r-off"); opacity: 1; }
+
+/* 一格 60×60（原尺寸的圖）：做得出來＝梅紫凹窗金框＋右上小綠寶石；做不出來＝暗框暗底、圖淡一點（仍可點）；
+   目前這頁＝亮金雙框＋四角金星、往上抬 6；空位（最後一頁補滿）＝淺凹槽、不收滑鼠也不抬。 */
 .bk .bk-slot {
     width: 60px; height: 60px;
-    margin: 0 0 3px 3px;
+    margin: 0 6px 0 0;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    background-image: resource("ui/skin8/slot");
-    -unity-slice-left: 12; -unity-slice-top: 12; -unity-slice-right: 12; -unity-slice-bottom: 12;
-    -unity-slice-scale: 1px;
+    background-image: resource("ui/skin8/book-slot");
     transition-property: translate;
     transition-duration: 0.08s;
     transition-timing-function: ease-out;
 }
-.bk .bk-slot--off { background-image: resource("ui/skin8/slot-empty"); }
+.bk .bk-slot--end { margin-right: 0; }
+.bk .bk-slot--off { background-image: resource("ui/skin8/book-slot-off"); }
 .bk .bk-slot:hover { translate: 0 -3px; }
 .bk .bk-slot--sel,
 .bk .bk-slot--sel:hover {
     translate: 0 -6px;
-    background-image: resource("ui/skin8/slot-sel");
+    background-image: resource("ui/skin8/book-slot-sel");
+}
+.bk .bk-slot--empty,
+.bk .bk-slot--empty:hover {
+    translate: 0 0;
+    background-image: resource("ui/skin8/book-slot-empty");
 }
 .bk .bk-slot-icon { width: 48px; height: 48px; flex-shrink: 0; }
 .bk .bk-slot--off .bk-slot-icon { opacity: 0.55; }

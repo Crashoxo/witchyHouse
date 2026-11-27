@@ -28,6 +28,8 @@ UI 外觀圖（8-bit 像素風的九宮格面板框、清單列、按鈕、分�
   → 取 ×3：輸出圖的 1 px ＝ UI 的 1 單位（-unity-slice-scale: 1px，九宮格的邊照圖的原始像素畫），
     在參考解析度（高 640，例如 960×640 視窗）剛好 1:1 完全銳利；720p 時誤差 1 px／格，肉眼幾乎看不出來；
     1080p 時 5.06 px／格，幾乎是整數。
+  * 例外：下排道具列「魔女腰包」7 張 belt-*（2026-11-27 細畫版）直接以 1 px 原生像素畫（_BeltPx，不放大），
+    圖的尺寸與 slice 仍是 3 的倍數，排版規則不變。見檔尾「下排道具列」一段。
   * 所以 Skin8.uss 裡**所有跟這些圖對齊的尺寸都是 3 的倍數**（slice、按鈕高、圖示寬高）。
     小圖示（金幣、鎖頭…）一律照「邏輯格數 ×3」原尺寸顯示，不要叫 UI Toolkit 縮放它們 ——
     縮成非 3 倍數的大小，Point 取樣會隨機吃掉某幾列像素。
@@ -43,6 +45,7 @@ UI 外觀圖（8-bit 像素風的九宮格面板框、清單列、按鈕、分�
   * 結果是確定的：沒有亂數，重跑 md5 相同。
 """
 import hashlib
+import math
 import os
 import re
 import sys
@@ -567,23 +570,7 @@ KEY_W, KEY_H = 8, 9
 KEY_SLICE = (3, 3, 3, 4)
 
 
-def draw_keycap():
-    """鍵帽（底部說明列的「Esc」）：米白鍵面＋2 列鍵身。"""
-    W, H = KEY_W, KEY_H
-    px = Px(W, H)
-    m = rrect(0, 0, W - 1, H - 1, 1)
-    e = edge(m)
-    for x, y in m:
-        if (x, y) in e:
-            c = OL
-        elif y >= H - 3:
-            c = 'li_dk'
-        elif y == 1:
-            c = 'wh'
-        else:
-            c = 'li_hi'
-        px.put(x, y, c)
-    return px
+# draw_keycap（鍵帽 24×27）：2026-11-27 改成 1 px 細畫版，移到檔尾「上方工具列」一段。
 
 
 DIV_W, DIV_H = 11, 5
@@ -620,17 +607,7 @@ def from_rows(rows, keymap):
     return px
 
 
-def draw_coin():
-    """金幣（7×7）：圓幣、左上打光、中間一道壓印。"""
-    return from_rows([
-        '..ooo..',
-        '.ohhgo.',
-        'ohHggdo',
-        'ohgggdo',
-        'ohggddo',
-        '.oddko.',
-        '..ooo..',
-    ], {'o': OL, 'H': 'wh', 'h': 'go_hi', 'g': 'go', 'd': 'go_dk', 'k': 'go_dk2'})
+# draw_coin（金幣 21×21）：2026-11-27 改成 1 px 細畫版，移到檔尾「上方工具列」一段。
 
 
 def draw_lock():
@@ -722,6 +699,31 @@ def draw_step(sym, state):
     return px
 
 
+def draw_page(side, state):
+    """
+    翻頁小鈕（11×11 固定尺寸，2026-11-27 清單翻頁用，UI/Pager.cs）：跟 ± 小鈕同一顆木頭按鈕，
+    符號換成實心三角（◀／▶，3 格寬 5 格高，尖端朝外）。state 多一個 'x'＝停用（第一頁的 ◀、最後一頁的 ▶）。
+    """
+    if state == 'x':
+        px = button_face(11, 11, BTN_RAMPS['off'], 'n')
+        ink, sh = 'st_off_hi', 'st_off_dk'
+    else:
+        px = button_face(11, 11, HOVER['wood'] if state == 'h' else BTN_RAMPS['wood'], state)
+        ink, sh = 'li_hi', 'wd_dk2'
+    oy = 1 if state == 'd' else 0
+    # 往左：x=4 尖端（1 格）、x=5 三格、x=6 五格；往右左右對調
+    cols = [(4, 1), (5, 3), (6, 5)] if side == 'prev' else [(6, 1), (5, 3), (4, 5)]
+    pts = []
+    for x, n in cols:
+        y0 = 4 - n // 2
+        pts += [(x, y0 + i + oy) for i in range(n)]
+    for x, y in pts:
+        px.put(x, y + 1, sh)
+    for x, y in pts:
+        px.put(x, y, ink)
+    return px
+
+
 # ═══════════════════════════════ 第二輪：任務簿／對話框／工具列／結算 ═══════════════════════════════
 # 以下是第二輪加的圖（任務簿、對話框、上方工具列、每日結算、Toast 共用）。**只往清單尾巴加**，
 # 前 53 張的畫法與輸出一個像素都沒動（md5 不變）。
@@ -804,51 +806,10 @@ def draw_plate():
     return px
 
 
-def draw_gear():
-    """設定（齒輪，11×11 → 33 px）：金色、左上打光，中心一個十字形深色軸孔。
-    程式算形狀：半徑 3.7 的圓盤＋8 個齒（上下左右 3×2、斜角 2×2）。9×9 試過，齒全被外輪廓吃掉、看起來像太陽。"""
-    import math
-    N = 11
-    c0 = (N - 1) / 2
-    body, hole = set(), set()
-    for y in range(N):
-        for x in range(N):
-            r = math.hypot(x - c0, y - c0)
-            if r <= 1.0:
-                hole.add((x, y))
-            elif r <= 3.7:
-                body.add((x, y))
-    teeth = [(4, 0, 6, 1), (4, 9, 6, 10), (0, 4, 1, 6), (9, 4, 10, 6),
-             (1, 1, 2, 2), (8, 1, 9, 2), (1, 8, 2, 9), (8, 8, 9, 9)]
-    for x0, y0, x1, y1 in teeth:
-        body |= {(x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)}
-    px = Px(N, N)
-    e = edge(body | hole)
-    for x, y in body:
-        if (x, y) in e:
-            c = OL
-        else:
-            s_ = (x - c0) + (y - c0)
-            c = 'go_hi' if s_ < -1.5 else ('go_dk' if s_ > 1.5 else 'go')
-        px.put(x, y, c)
-    for x, y in hole:
-        px.put(x, y, OL)
-    return px
+# draw_gear（齒輪 33×33）：2026-11-27 改成 1 px 細畫版，移到檔尾「上方工具列」一段。
 
 
-def draw_star():
-    """名聲（五角星，9×9，金）。"""
-    return from_rows([
-        '....o....',
-        '...oHo...',
-        'ooooHgooo',
-        'oHHhhggdo',
-        '.ohhggdo.',
-        '..ohgdo..',
-        '.ohgodgo.',
-        '.ogo.odo.',
-        '.oo...oo.',
-    ], {'o': OL, 'H': 'wh', 'h': 'go_hi', 'g': 'go', 'd': 'go_dk'})
+# draw_star（名聲星 27×27）：2026-11-27 改成 1 px 細畫版，移到檔尾「上方工具列」一段。
 
 
 def draw_basket():
@@ -971,177 +932,834 @@ def draw_cell(on):
     ], {'l': 'pp_ln', 'd': 'pp_dk', 'a': 'pp_alt', 'h': 'pp_hi'})
 
 
-# ═══════════════════════════════ 下排道具列：魔女腰包（第三輪）═══════════════════════════════
-# 深紫布條＋上下兩道金虛線，每格是布上縫出來的口袋（亮的薰衣草襯裡墊在道具後面，深色道具也看得清）。
-# ⚠️ 全部是**固定尺寸**的圖、一格一張 —— 金虛線的針腳拉長會變成一條實線，所以不用九宮格拉布條：
-#    InventoryHud 把 [左端][口袋]×N[右端] 一個接一個排起來，布條的虛線剛好接得上（每格 17 格寬，虛線週期 4）。
-#   口袋 belt-pocket / -empty / -new  17×20（51×60 px）：道具圖 48×48 疊在 (3, 6) px ＝ 邏輯 (1, 2)。
-#   兩端 belt-end-l（星星扣）/ belt-end-r（月亮扣） 6×26（18×78 px）：布條收圓角，底下垂一小串金流蘇。
-#   數量徽章 belt-badge  7×7、slice 3（金扣子，墨色字）；新東西亮光 belt-spark 9×9（27 px，固定）。
+# ═══════════════════════════════ 下排道具列：魔女腰包（第三輪；2026-11-27 細畫版）═══════════════════════════════
+# 深紫布條＋上下金線針腳，每格是布上縫出來的口袋，兩端是金扣（左星、右月）＋垂下的金流蘇。
+# ⚠️ 這 7 張**不走上面的 ×3 邏輯格**：直接在輸出解析度上一個 px 一個 px 畫（_BeltPx.image() 不放大），
+#    細緻度對齊女巫走路圖（witch8：1 px 原生像素、約 40 色、多階色相偏移的陰影）。
+#    色盤另開 BELT_PAL（布：暗部偏靛藍、亮部偏粉；金：暗部偏橘棕、亮部偏奶油），不動上面的 PAL。
+#    允許半透明的只有：布條底下 3 列落地陰影、口袋／扣子投在布上的影子、亮光星的柔光。
+# ⚠️ 全部是**固定尺寸**的圖、一格一張（金線針腳拉長會變實線，所以不用九宮格拉布條）：
+#    InventoryHud 把 [左端][口袋]×N[右端] 一個接一個排起來。布條上下的針腳週期 3 px（亮、中、針孔），
+#    口袋寬 51、左端寬 18 都是 3 的倍數，所以任何格數都接得上。
+#   口袋 belt-pocket / -empty / -new  51×60：布條 0～56 列＋57～59 列落地陰影；縫上去的布片 x 4～49、y 9～51
+#     （道具圖 48×48 疊在 (3, 6)，中心 26.5 ＝ 布片中心）。有東西：袋口張開、看得到沉穩的灰藕紫襯裡；
+#     空：袋口闔成一條細縫、前片拉到上面、淡淡的刺繡小星；剛拿到：襯裡透出暖金粉色光、金線變亮。
+#   兩端 belt-end-l（星星金扣）/ belt-end-r（月牙金扣） 18×78：布條外側圓角，底下垂一串金流蘇（到 y≈76）。
+#   數量徽章 belt-badge 21×21、九宮格 slice 9（BELT_BADGE_SLICE＝3 是邏輯格，×3＝9 px；中間 3×3 每欄同色，橫向拉長不出條紋）；
+#   新東西亮光 belt-spark 27×27（固定）。
 # 跟 hud-bar／slot 是不同的圖：那兩張還有上方工具列、Toast、托盤、背包面板在用，一個像素都不動。
 
-BELT_W, BELT_H = 17, 20
-BELT_END_W, BELT_END_H = 6, 26
-BELT_BADGE_N, BELT_BADGE_SLICE = 7, 3
+BELT_W, BELT_H = 51, 60              # 口袋（輸出 px）
+BELT_END_W, BELT_END_H = 18, 78      # 兩端（輸出 px）
+BELT_BADGE_N, BELT_BADGE_SLICE = 21, 3   # 徽章 21 px；slice 照 SLICES 慣例寫邏輯格（×3 ＝ 9 px）
+BELT_SPARK_N = 27
+
+BELT_PAL = {
+    'ol': '#1d1024',    # 外輪廓（深紫黑）
+    # 布：c1 最暗 → c8 最亮；c4 是底色，c4w 是織紋（只亮一點點）
+    'c1': '#28163a', 'c2': '#35204c', 'c3': '#42295d', 'c4': '#4f316c', 'c4w': '#553674',
+    'c5': '#5f3c7d', 'c6': '#73498f', 'c7': '#8c5ea2', 'c8': '#a979b4',
+    # 金線／金扣：g0 針孔 → g5 奶油高光
+    'g0': '#3e2016', 'g1': '#6e4220', 'g2': '#a06c2c', 'g3': '#d39f45', 'g4': '#f0cb6a', 'g5': '#fff0b4',
+    # 口袋襯裡（有東西）：沉穩的中間調灰藕紫，比布條亮 —— 深色道具的外框也分得出來
+    'i0': '#2a1c38', 'i1': '#3e2d4f', 'i2': '#52405f', 'i3': '#644f74', 'i4': '#735e83', 'i5': '#816b90',
+    # 口袋襯裡（剛拿到）：暖暖的金粉色光
+    'n0': '#3e2436', 'n1': '#5e3a4a', 'n2': '#80545c', 'n3': '#a06e66', 'n4': '#bf8c72', 'n5': '#d9ab82',
+    # 徽章扣面（上淺下深的圓頂）
+    'b1': '#fbe9ac', 'b2': '#f5da8a', 'b3': '#ecc96c', 'b4': '#dcb256',
+    'wh': '#fffbef',
+}
+_BELT_SHADOW = ('#140a1c', (0.42, 0.24, 0.10))   # 布條底下 3 列落地陰影（顏色, 每列不透明度）
+_BELT_BAND_H = 57                                  # 布條本體 0～56 列
+_BELT_STITCH_TOP, _BELT_STITCH_BOT = 3, 53
+
+
+def _bc(c):
+    h = BELT_PAL.get(c, c)
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+class _BeltPx:
+    """腰包用的 1 px 畫布（直接是輸出解析度；可以疊半透明）。介面跟 Px 一樣有 image()。"""
+
+    def __init__(self, w, h):
+        self.w, self.h = w, h
+        self.im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+        self.px = self.im.load()
+
+    def put(self, x, y, c):
+        if 0 <= x < self.w and 0 <= y < self.h:
+            self.px[x, y] = _bc(c) + (255,)
+
+    def shade(self, x, y, c, a):
+        """疊一層不透明度 a 的 c；底是透明的就直接放半透明像素（落地陰影）。"""
+        if not (0 <= x < self.w and 0 <= y < self.h):
+            return
+        r, g, b, al = self.px[x, y]
+        cr, cg, cb = _bc(c)
+        if al == 0:
+            self.px[x, y] = (cr, cg, cb, int(round(255 * a)))
+        else:
+            self.px[x, y] = (round(r + (cr - r) * a), round(g + (cg - g) * a), round(b + (cb - b) * a), al)
+
+    def image(self):
+        return self.im
 
 
 def _belt_color(x, y):
-    """布條在 (x, y) 的顏色：外輪廓、亮邊、金虛線、布……布、金虛線、暗邊、外輪廓。"""
-    if y in (0, BELT_H - 1):
-        return OL
+    """
+    布條第 y 列、整條腰帶座標 x 的顏色（由上往下）：外輪廓、捲邊高光兩列、金線（週期 3：亮／中／針孔）、
+    線下小陰影、折邊、摺痕、摺痕受光、布身（上亮下暗＋斜紋織理）、下摺痕、下折邊、金線、線下陰影、暗邊、外輪廓。
+    """
+    if y in (0, _BELT_BAND_H - 1):
+        return 'ol'
     if y == 1:
-        return 'pu'
-    if y == BELT_H - 2:
-        return 'pu_dk2'
-    if y in (2, BELT_H - 3):
-        return 'go' if (x % 4) in (1, 2) else 'pu_dk'
-    return 'pu_dk'
+        return 'c8'
+    if y == 2:
+        return 'c7'
+    ph = x % 3
+    if y == _BELT_STITCH_TOP:
+        return ('g5', 'g3', 'c2')[ph]
+    if y == _BELT_STITCH_TOP + 1:
+        return ('c3', 'c3', 'c5')[ph]
+    if y == _BELT_STITCH_BOT:
+        return ('g4', 'g2', 'c1')[ph]
+    if y == _BELT_STITCH_BOT + 1:
+        return ('c1', 'c1', 'c3')[ph]
+    row = {5: 'c5', 6: 'c2', 7: 'c6', 51: 'c2', 52: 'c5', 55: 'c2'}
+    if y in row:
+        return row[y]
+    t = (y - 8) / 42.0     # 布身 8～50
+    base = 'c5' if t < 0.10 else ('c4' if t < 0.62 else ('c3' if t < 0.88 else 'c2'))
+    if (x + 2 * y) % 5 == 0:
+        return {'c5': 'c6', 'c4': 'c4w', 'c3': 'c4', 'c2': 'c3'}[base]
+    if (x - y) % 7 == 0 and base == 'c4':
+        return 'c3'
+    return base
 
 
-# 口袋袋口的弧線：x → 袋口那一列的 y（中間低、兩邊高 —— 笑臉弧）
-_BELT_LIP = {2: 11, 3: 11, 4: 12, 5: 12, 6: 13, 7: 13, 8: 13, 9: 13, 10: 13, 11: 13, 12: 12, 13: 12, 14: 11, 15: 11}
-_BELT_PX0, _BELT_PX1, _BELT_PTOP, _BELT_PBOT = 2, 15, 4, 16
+# 縫上去的布片（後片上緣直角縫在布條上，下緣圓角）
+_BELT_PX0, _BELT_PX1, _BELT_PTOP, _BELT_PBOT = 4, 49, 9, 51
+
+
+def _belt_pocket_mask():
+    m = set()
+    r = 5
+    for y in range(_BELT_PTOP, _BELT_PBOT + 1):
+        for x in range(_BELT_PX0, _BELT_PX1 + 1):
+            dy = y - (_BELT_PBOT - r)
+            if dy > 0:
+                dx = max(_BELT_PX0 + r - x, x - (_BELT_PX1 - r), 0)
+                if dx > 0 and dx * dx + dy * dy > r * r + 1:
+                    continue
+            m.add((x, y))
+    return m
+
+
+def _belt_lip(x, kind):
+    """袋口（前片上緣）的 y：中間低、兩邊高的笑臉弧。空口袋闔起來：扁、而且在比較上面。"""
+    cx = (_BELT_PX0 + _BELT_PX1) / 2.0
+    u = (x - cx) / ((_BELT_PX1 - _BELT_PX0) / 2.0)
+    if kind == 'empty':
+        return int(round(15 + 3 * (1 - u * u)))
+    return int(round(23 + 6 * (1 - u * u)))
+
+
+def _belt_rivet(px, x, y, bright=True):
+    """袋口兩端的 3×3 金鉚釘（外輪廓去掉四角＝圓的；左上受光）。(x, y)＝中心。"""
+    for dx, dy in ((-2, -1), (-2, 0), (-2, 1), (2, -1), (2, 0), (2, 1),
+                   (-1, -2), (0, -2), (1, -2), (-1, 2), (0, 2), (1, 2)):
+        px.put(x + dx, y + dy, 'ol')
+    hi, mid, dk = ('g5', 'g3', 'g1') if bright else ('g3', 'g2', 'g1')
+    for dx, dy, c in ((-1, -1, hi), (0, -1, hi), (1, -1, mid), (-1, 0, hi), (0, 0, mid), (1, 0, dk),
+                      (-1, 1, mid), (0, 1, dk), (1, 1, dk)):
+        px.put(x + dx, y + dy, c)
 
 
 def draw_belt_pocket(kind):
     """
-    kind：'full'（有東西：薰衣草襯裡）／'empty'（空：不畫襯裡，只剩袋口弧線＋前片＋一顆淡淡的小繡星）／
-    'new'（剛拿到：奶油白襯裡＋亮金線）。
+    kind：'full'（有東西：袋口張開、灰藕紫襯裡、前片左上鼓起的高光）／
+    'empty'（空：袋口闔成細縫、前片平、淡淡的刺繡小星、金線與鉚釘暗一階）／
+    'new'（剛拿到：襯裡換暖金粉色光、金線最亮）。
     """
-    px = Px(BELT_W, BELT_H)
+    px = _BeltPx(BELT_W, BELT_H)
+    col, alphas = _BELT_SHADOW
     for x in range(BELT_W):
-        for y in range(BELT_H):
+        for y in range(_BELT_BAND_H):
             px.put(x, y, _belt_color(x, y))
-    if kind == 'empty':
-        front, lip, stitch = 'pu_dk', 'pu', 'go_dk2'
-    elif kind == 'new':
-        lining = ('pp_hi', 'wh', 'pp')
-        front, lip, stitch = 'pu', 'pu_hi', 'go_hi'
-    else:
-        lining = ('vi_hi', 'li_hi', 'lav_hi')
-        front, lip, stitch = 'pu', 'pu_hi', 'go'
+        for i, a in enumerate(alphas):
+            px.shade(x, _BELT_BAND_H + i, col, a)
+    m = _belt_pocket_mask()
     x0, x1 = _BELT_PX0, _BELT_PX1
-    if kind != 'empty':
-        # 襯裡（袋子裡面）：圓角，上緣一列袋內陰影、左上一點高光
-        m = rrect(x0, _BELT_PTOP, x1, _BELT_PBOT, 2)
-        for x, y in m:
-            px.put(x, y, lining[0])
-        for x in range(x0 + 2, x1 - 1):
-            px.put(x, _BELT_PTOP + 1, lining[2])
-        px.put(x0 + 1, _BELT_PTOP + 2, lining[2])
-        px.put(x1 - 1, _BELT_PTOP + 2, lining[2])
-        px.put(x0 + 1, _BELT_PTOP + 3, lining[1])
-        for x, y in edge(m):
-            px.put(x, y, 'pu_dk2')
-    # 袋子前片：袋口弧線以下；弧線下兩格縫一道金虛線
-    for x in range(x0, x1 + 1):
-        ly = _BELT_LIP[x]
-        px.put(x, ly, lip)
-        for y in range(ly + 1, _BELT_PBOT + 1):
-            px.put(x, y, front)
-        if x not in (x0, x1) and x % 2 == 1:
-            px.put(x, ly + 2, stitch)
-    for y in range(_BELT_LIP[x0] + 1, _BELT_PBOT + 1):
-        px.put(x0, y, 'pu_dk2')
-        px.put(x1, y, 'pu_dk2')
-    if kind == 'empty':
-        cx, cy = 8, 8
-        for x, y in ((cx, cy), (cx - 1, cy), (cx + 1, cy), (cx, cy - 1), (cx, cy + 1)):
-            px.put(x, y, 'pu')
-        px.put(cx, cy, 'pu_hi')
+    cx = (x0 + x1) / 2.0
+    for x, y in m:                       # 布片投在布條上的影子（右下 1 px）
+        q = (x + 1, y + 1)
+        if q not in m and q[1] < _BELT_BAND_H - 1:
+            px.shade(q[0], q[1], 'c1', 0.55)
+    lips = {x: _belt_lip(x, kind) for x in range(x0, x1 + 1)}
+    inner = ('n0', 'n1', 'n2', 'n3', 'n4', 'n5') if kind == 'new' else ('i0', 'i1', 'i2', 'i3', 'i4', 'i5')
+    for x, y in m:
+        ly = lips[x]
+        if y < ly and kind != 'empty':
+            # 襯裡：以 (cx, 16) 為中心的柔和橢圓漸層（道具就躺在最亮那圈），越靠袋口與上緣越暗
+            ex, ey = (x - cx) / 25.0, (y - 16) / 15.0
+            v = 5 - int((ex * ex + ey * ey) ** 0.5 * 4.2)
+            d_lip = ly - y
+            if d_lip <= 1:
+                v = min(v, 0)
+            elif d_lip == 2:
+                v = min(v, 1)
+            elif d_lip == 3:
+                v -= 1
+            if y <= _BELT_PTOP + 1:
+                v = min(v, 1)
+            elif y == _BELT_PTOP + 2:
+                v -= 1
+            px.put(x, y, inner[max(0, min(5, v))])
+        else:
+            # 前片（布）：比布條亮一階；有東西時左上一小團三階的鼓起高光
+            if kind == 'empty':
+                ex, ey = (x - (cx - 3)) / 20.0, (y - 30) / 14.0
+                c = 'c5' if ex * ex + ey * ey < 0.6 else 'c4'
+            else:
+                ex, ey = (x - (cx - 6)) / 15.0, (y - (ly + 9)) / 8.0
+                r2 = ex * ex + ey * ey
+                c = 'c7' if r2 < 0.12 else ('c6' if r2 < 0.6 else 'c5')
+            if (x + 2 * y) % 7 == 0 and c in ('c5', 'c4'):
+                c = 'c6' if c == 'c5' else 'c4w'
+            px.put(x, y, c)
+    for x, y in m:                       # 前片下緣兩列暗（布片的厚度）
+        if ((x, y + 1) not in m or (x, y + 2) not in m) and y >= lips[x]:
+            px.put(x, y, 'c3' if (x, y + 1) in m else 'c2')
+    for x, y in m:                       # 布片外框（上緣是後片縫在布條上，用暗紫不用外輪廓）
+        if not {(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)} <= m:
+            px.put(x, y, 'ol' if (y > _BELT_PTOP or kind == 'empty') else 'c1')
+    for x in range(x0 + 1, x1):
+        px.put(x, _BELT_PTOP, 'c1')
+        if kind == 'empty':
+            px.put(x, _BELT_PTOP + 1, 'c6')
+    for y in range(_BELT_PTOP + 1, _BELT_PBOT - 4):   # 前片兩側：左亮右暗
+        if y > lips[x0 + 1]:
+            px.put(x0 + 1, y, 'c5' if kind == 'empty' else 'c7')
+        if y > lips[x1 - 1]:
+            px.put(x1 - 1, y, 'c3')
+    for x in range(x0 + 1, x1):          # 袋口：前片上緣一條亮邊（布的厚度）＋上面一列最暗（袋內陰影／闔起來的細縫）
+        ly = lips[x]
+        if kind == 'empty':
+            px.put(x, ly - 1, 'c1')
+            px.put(x, ly, 'c7')
+        else:
+            px.put(x, ly - 1, inner[0])
+            px.put(x, ly, 'c8')
+        px.put(x, ly + 1, 'c6')
+    # 前片上的金線：沿袋口弧線往下 4 列一道（線下有一點陰影），再一圈 U 形沿兩側與底邊（週期 3：亮、中、空）
+    st_hi, st_lo = {'new': ('g5', 'g3'), 'empty': ('g3', 'g2')}.get(kind, ('g4', 'g2'))
+    for x in range(x0 + 4, x1 - 3):
+        y = lips[x] + 4
+        ph = (x - x0) % 3
+        if ph == 2:
+            px.put(x, y, 'c3')
+        else:
+            px.put(x, y, st_hi if ph == 0 else st_lo)
+            px.shade(x, y + 1, 'c1', 0.35)
+    lx, rx, by = x0 + 3, x1 - 3, _BELT_PBOT - 3
+    pts = [(lx, y) for y in range(lips[lx] + 4, by - 2)]
+    pts += [(x, by) for x in range(lx + 3, rx - 2)]
+    pts += [(rx, y) for y in range(lips[rx] + 4, by - 2)]
+    pts += [(lx + 1, by - 2), (lx + 2, by - 1), (rx - 1, by - 2), (rx - 2, by - 1)]   # 底角斜接
+    for x, y in pts:
+        ph = (x + y) % 3
+        if ph != 2:
+            px.put(x, y, st_hi if ph == 0 else st_lo)
+    _belt_rivet(px, x0 + 3, lips[x0 + 3] + 1, bright=(kind != 'empty'))
+    _belt_rivet(px, x1 - 3, lips[x1 - 3] + 1, bright=(kind != 'empty'))
+    if kind == 'empty':                  # 淡淡的刺繡小星（布色的線，不搶眼）
+        sx, sy = 26, 33
+        for (dx, dy), c in {(0, -4): 'c7', (0, -3): 'c7', (0, -2): 'c7', (-1, -1): 'c7', (0, -1): 'c8', (1, -1): 'c6',
+                            (-4, 0): 'c7', (-3, 0): 'c7', (-2, 0): 'c7', (-1, 0): 'c8', (0, 0): 'c8', (1, 0): 'c7',
+                            (2, 0): 'c6', (3, 0): 'c6', (4, 0): 'c6', (-1, 1): 'c7', (0, 1): 'c7', (1, 1): 'c6',
+                            (0, 2): 'c6', (0, 3): 'c6', (0, 4): 'c6', (5, -4): 'c6', (-5, 4): 'c6'}.items():
+            px.put(sx + dx, sy + dy, c)
     return px
 
 
-def _blob(px, fill, keep=()):
-    """畫一塊形狀＋自動補 4 鄰接的外輪廓（keep 裡的格子不蓋）。fill: {(x, y): 色鍵}。"""
-    for (x, y), c in fill.items():
+def _belt_end_mask(side):
+    """布條端點：外側上下圓角 r=6（接口袋那側直的）。"""
+    m = set()
+    r = 6
+    for y in range(_BELT_BAND_H):
+        for x in range(BELT_END_W):
+            xo = x if side == 'l' else BELT_END_W - 1 - x
+            dx = max(r - xo, 0)
+            dy = max(r - y, y - (_BELT_BAND_H - 1 - r), 0)
+            if dx and dy and (dx - 0.5) ** 2 + (dy - 0.5) ** 2 > r * r:
+                continue
+            m.add((x, y))
+    return m
+
+
+def _belt_disc(px, cx, cy, R):
+    """金圓扣：外輪廓、外斜面（左上亮右下暗）、內斜面（反過來）、扣面，右下投影在布上。"""
+    for y in range(cy - R - 1, cy + R + 2):
+        for x in range(cx - R - 1, cx + R + 2):
+            d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+            if d > R + 0.5:
+                continue
+            lt = (x - cx) + (y - cy) < 0
+            if d > R - 0.6:
+                px.put(x, y, 'ol')
+            elif d > R - 1.7:
+                px.put(x, y, 'g4' if lt else 'g1')
+            elif d > R - 2.8:
+                px.put(x, y, 'g2' if lt else 'g3')
+            else:
+                px.put(x, y, 'g3')
+    for y in range(cy - R, cy + R + 3):
+        for x in range(cx - R, cx + R + 3):
+            d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+            d2 = ((x - cx - 1.5) ** 2 + (y - cy - 1.5) ** 2) ** 0.5
+            if d > R + 0.5 and d2 <= R + 0.5 and y < _BELT_BAND_H - 1:
+                px.shade(x, y, 'c1', 0.6)
+
+
+def _belt_clasp_star(px, cx, cy):
+    """左端：金圓扣，扣面浮雕一顆五角星（星面亮、右下一格壓痕）。"""
+    _belt_disc(px, cx, cy, 7)
+    rows = ['...x...', '...x...', 'xxxxxxx', '.xxxxx.', '..xxx..', '.xx.xx.', 'x.....x']
+    pts = {(cx - 3 + i, cy - 3 + j) for j, r in enumerate(rows) for i, ch in enumerate(r) if ch == 'x'}
+    for x, y in pts:
+        if (x + 1, y + 1) not in pts:
+            px.put(x + 1, y + 1, 'g2')
+    for x, y in pts:
+        px.put(x, y, 'g5' if (x - cx) + (y - cy) <= 0 else 'g4')
+    px.put(cx - 4, cy - 5, 'wh')
+
+
+def _belt_clasp_moon(px, cx, cy):
+    """右端：金月牙扣（往右開口的弦月），多階金色由左上亮到右下暗。"""
+    R = 8
+    pts = set()
+    for y in range(cy - R, cy + R + 1):
+        for x in range(cx - R, cx + R + 1):
+            d1 = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+            d2 = ((x - cx - 4) ** 2 + (y - cy + 1) ** 2) ** 0.5
+            if d1 <= R - 0.3 and d2 > R - 2.2:
+                pts.add((x, y))
+    for x, y in pts:
+        if (x + 1, y + 1) not in pts:
+            px.shade(x + 2, y + 1, 'c1', 0.55)
+    for x, y in pts:
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if (x + dx, y + dy) not in pts:
+                px.put(x + dx, y + dy, 'ol')
+    for x, y in pts:
+        if not all((x + dx, y + dy) in pts for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+            c = 'g4' if (x - cx) + (y - cy) < 0 else 'g1'
+        else:
+            t = (x - cx) * 0.6 + (y - cy)
+            c = 'g5' if t < -4 else ('g4' if t < 0 else ('g3' if t < 4 else 'g2'))
         px.put(x, y, c)
-    for x, y in fill:
+    px.put(cx - 5, cy - 3, 'wh')
+
+
+def _belt_tassel(px, cx):
+    """布條下緣垂下的金流蘇：繩、結、圓帽、一圈紫色纏線、往下散開的七條細流蘇（左亮右暗、末端參差）。"""
+    y0 = _BELT_BAND_H - 2
+    shape = {}
+    for y in range(y0, y0 + 3):
+        shape[(cx, y)] = 'g3' if y % 2 else 'g2'
+    k = y0 + 3
+    for j, row in enumerate((((-1, 'g4'), (0, 'g3'), (1, 'g2')),
+                             ((-1, 'g5'), (0, 'g4'), (1, 'g2')),
+                             ((-2, 'g4'), (-1, 'g5'), (0, 'g4'), (1, 'g3'), (2, 'g1')),
+                             ((-2, 'g3'), (-1, 'g4'), (0, 'g3'), (1, 'g2'), (2, 'g1')),
+                             ((-2, 'c7'), (-1, 'c8'), (0, 'c6'), (1, 'c5'), (2, 'c3')))):
+        for dx, c in row:
+            shape[(cx + dx, k + j)] = c
+    fr = k + 5
+    darker = {'g5': 'g4', 'g4': 'g3', 'g3': 'g2', 'g2': 'g1', 'g1': 'g1'}
+    for dx, (c, start, end) in {-3: ('g4', 2, 7), -2: ('g5', 0, 9), -1: ('g3', 0, 9), 0: ('g4', 0, 11),
+                                1: ('g2', 0, 10), 2: ('g3', 0, 8), 3: ('g1', 2, 6)}.items():
+        for j in range(start, end):
+            shape[(cx + dx, fr + j)] = darker[c] if j == end - 1 else c
+    for (x, y), c in shape.items():
+        px.put(x, y, c)
+    for x, y in shape:
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             q = (x + dx, y + dy)
-            if q not in fill and q not in keep:
-                px.put(q[0], q[1], OL)
-
-
-def _belt_tassel(px, cx, y0, keep):
-    """金流蘇：一格繩、三格寬的結、底下四列流蘇（最後一列參差）。y0 ＝ 繩頭（壓在布條下緣）。"""
-    f = {(cx, y0): 'go_dk',
-         (cx - 1, y0 + 1): 'go_hi', (cx, y0 + 1): 'go', (cx + 1, y0 + 1): 'go_dk'}
-    for y in range(y0 + 2, y0 + 6):
-        f[(cx - 1, y)] = 'go'
-        f[(cx, y)] = 'go_dk' if y % 2 else 'go'
-        f[(cx + 1, y)] = 'go_dk'
-    f[(cx - 1, y0 + 2)] = 'go_hi'
-    del f[(cx, y0 + 5)]
-    _blob(px, f, keep)
-
-
-def _belt_moon(px, x0, y0):
-    """小弦月扣（金）：3×6 的 ( 形，左上受光。"""
-    f = {(x0 + 1, y0): 'go', (x0 + 2, y0): 'go_dk',
-         (x0, y0 + 1): 'go_hi', (x0 + 1, y0 + 1): 'go',
-         (x0, y0 + 2): 'go_hi', (x0, y0 + 3): 'go',
-         (x0, y0 + 4): 'go', (x0 + 1, y0 + 4): 'go_dk',
-         (x0 + 1, y0 + 5): 'go_dk', (x0 + 2, y0 + 5): 'go_dk'}
-    _blob(px, f)
+            if q not in shape and q[1] >= _BELT_BAND_H - 1:
+                px.put(q[0], q[1], 'ol')
 
 
 def draw_belt_end(side):
-    """布條的兩端：'l' ＝ 左端（星星扣），'r' ＝ 右端（月亮扣）。外側切圓角，底下垂一串金流蘇。"""
-    W, H = BELT_END_W, BELT_END_H
-    px = Px(W, H)
-    band = {(x, y) for x in range(W) for y in range(BELT_H)}
-    for dx, dy in ((0, 0), (1, 0), (0, 1), (0, BELT_H - 1), (1, BELT_H - 1), (0, BELT_H - 2)):
-        band.discard((dx, dy) if side == 'l' else (W - 1 - dx, dy))
-    for x, y in band:
-        px.put(x, y, _belt_color(x + (BELT_W - W if side == 'l' else 0), y))
-    for x, y in band:      # 外側收邊
-        if ((x - 1, y) not in band) if side == 'l' else ((x + 1, y) not in band):
-            px.put(x, y, OL)
-    for x, y in edge(band):
-        if y in (0, BELT_H - 1):
-            px.put(x, y, OL)
+    """布條的兩端：'l' ＝ 左端（星星金扣），'r' ＝ 右端（月牙金扣）。外側圓角、底下落地陰影、垂一串金流蘇。"""
+    W = BELT_END_W
+    px = _BeltPx(W, BELT_END_H)
+    m = _belt_end_mask(side)
+    x0w = -W if side == 'l' else 0       # 整條腰帶座標：寬度都是 3 的倍數，針腳週期照樣接得上
+    for x, y in m:
+        px.put(x, y, _belt_color(x + x0w, y))
+    col, alphas = _BELT_SHADOW
+    for x in range(W):
+        ys = [y for (xx, y) in m if xx == x]
+        for i, a in enumerate(alphas):
+            px.shade(x, max(ys) + 1 + i, col, a)
+    for x, y in m:                       # 外輪廓（接口袋那一側不畫）
+        if not {(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)} <= m:
+            if ((side == 'l' and x == W - 1) or (side == 'r' and x == 0)) and y not in (0, _BELT_BAND_H - 1):
+                continue
+            px.put(x, y, 'ol')
     if side == 'l':
-        for y in range(2, BELT_H - 2):
-            px.put(1, y, 'pu')
-        for x, y in ((1, 1), (1, BELT_H - 2)):
-            px.put(x, y, OL)
-        sparkle4(px, 3, 10, big=False)
-        _belt_tassel(px, 2, BELT_H - 1, band)
+        _belt_clasp_star(px, 9, 28)
+        _belt_tassel(px, 9)
     else:
-        for y in range(2, BELT_H - 2):
-            px.put(W - 2, y, 'pu_dk2')
-        for x, y in ((W - 2, 1), (W - 2, BELT_H - 2)):
-            px.put(x, y, OL)
-        _belt_moon(px, 2, 7)
-        _belt_tassel(px, 3, BELT_H - 1, band)
+        _belt_clasp_moon(px, 8, 28)
+        _belt_tassel(px, 8)
     return px
 
 
 def draw_belt_badge():
-    """數量徽章：金扣子（7×7，slice 3）—— 在深紫布上最跳，字是墨色。"""
+    """數量徽章：金扣子（21×21，slice 9）—— 外輪廓、金邊（上亮下暗）、上淺下深的圓頂扣面、左上亮點，字是墨色。"""
     N = BELT_BADGE_N
-    px = Px(N, N)
-    m = rrect(0, 0, N - 1, N - 1, 1)
-    for x, y in m:
-        px.put(x, y, 'go')
-    for x in range(1, N - 1):
-        px.put(x, 1, 'go_hi')
-        px.put(x, N - 2, 'go_dk')
-    for x, y in edge(m):
-        px.put(x, y, OL)
-    for x, y in ((1, 1), (N - 2, 1), (1, N - 2), (N - 2, N - 2)):
-        px.put(x, y, OL)
+    px = _BeltPx(N, N)
+    c = (N - 1) / 2.0
+
+    def inside(x, y, rr):
+        # 角是 1/4 圓、中間 3 欄 3 列是直的（九宮格拉長的部分每欄同色）
+        dx = max(abs(x - c) - 1.0, 0)
+        dy = max(abs(y - c) - 1.0, 0)
+        return dx * dx + dy * dy <= rr * rr
+
+    R = 9.6
+    for y in range(N):
+        for x in range(N):
+            if not inside(x, y, R):
+                continue
+            if not inside(x, y, R - 1.2):
+                px.put(x, y, 'ol')
+            elif not inside(x, y, R - 2.3):
+                px.put(x, y, 'g3' if y < c - 2 else ('g1' if y > c + 2 else 'g2'))
+            else:
+                px.put(x, y, 'b1' if y < c - 4 else ('b2' if y <= c + 2 else ('b3' if y <= c + 5 else 'b4')))
+    for x, y, cc in ((5, 4, 'wh'), (4, 5, 'wh'), (6, 4, 'g5'), (4, 6, 'g5')):
+        px.put(x, y, cc)
     return px
 
 
 def draw_belt_spark():
-    """剛拿到新東西：口袋右上角冒出一顆大四角星＋兩顆小亮點（9×9 固定）。"""
-    px = Px(9, 9)
-    sparkle4(px, 5, 3, big=True)
-    for x, y in ((1, 6), (7, 8)):
-        px.put(x, y, 'go_hi')
-    px.put(1, 7, 'wh')
+    """剛拿到新東西：口袋右上角一顆細長尖的大四角星（帶半透明柔光）＋兩顆小亮點（27×27 固定）。"""
+    N = BELT_SPARK_N
+    px = _BeltPx(N, N)
+    cx, cy = 15, 10
+    for y in range(N):
+        for x in range(N):
+            d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+            if d < 7.5:
+                px.shade(x, y, 'g5', 0.22 * (1 - d / 7.5))
+    pts = {(cx + dx, cy + dy) for dx in range(-2, 3) for dy in range(-2, 3) if abs(dx) + abs(dy) <= 2}
+    for i in range(1, 9):
+        for s in (-1, 1):
+            pts.add((cx + s * i, cy))
+            pts.add((cx, cy + s * i))
+            if i <= 2:
+                pts.add((cx + s * i, cy + s))
+    for x, y in pts:
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if (x + dx, y + dy) not in pts:
+                px.put(x + dx, y + dy, 'ol')
+    for x, y in pts:
+        d = abs(x - cx) + abs(y - cy)
+        c = 'g5' if d <= 1 else ('g4' if d <= 4 else 'g3')
+        px.put(x, y, 'g3' if (x > cx and y > cy) else c)
+    px.put(cx, cy, 'wh')
+    px.put(cx - 1, cy - 1, 'wh')
+    for (x, y), big in (((5, 19), True), ((22, 22), False)):
+        dot = {(x, y), (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)} if big else {(x, y)}
+        for p in dot:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                if (p[0] + dx, p[1] + dy) not in dot:
+                    px.put(p[0] + dx, p[1] + dy, 'ol')
+        for p in dot:
+            px.put(p[0], p[1], 'g4')
+        px.put(x, y, 'wh')
+    return px
+
+
+# ═══════════════════════════════ 上方工具列（2026-11-27 細畫版）═══════════════════════════════
+# 使用者：「上方的狀態列也要精緻化」—— 跟下排腰包同一套：深紫布＋金滾邊／金釘，1 px 原生像素直接畫（_TbPx，不放大）。
+# 新圖一律 tb- 開頭、只給 CornerHud（.hud-corner／.hud-sep／.hud-shop／.hud-edit／.hud-settings／名聲量表）與
+# 時鐘下的兩顆牌（.sk-clock-time／-date）用；舊的 hud-bar／btn-*／badge／tag-gold 一個像素都不動（別的面板還在用）。
+#   tb-bar        48×48  slice 18（＝hud-bar）：布底座、捲邊高光、一圈實線金滾邊、四角金菱形釘、下方 3 列落地陰影。
+#   tb-sep         6×30  固定：縫線分隔（凹槽＋一排金針腳＋上下小金釘），底色＝tb-bar 中間的 c4。
+#   tb-open／-hover／-down、tb-closed／-hover／-down、tb-off、tb-set／-hover／-down  30×36  slice 12/12/12/15（＝btn-*）：
+#                  開店＝暖蜂蜜金牌、關店＝夜色靛藍牌（月白邊）、停用＝灰藕、設定＝紫布牌金邊；按下＝面板往下 3、厚邊收掉。
+#   tb-tag／tb-tag-off  21×21 slice 9：R 佈置提示（可按＝亮紫浮起＋亮金邊；上鎖＝暗紫凹槽＋暗金邊）。
+#   tb-plate      21×21  slice 9：時鐘的時刻／日期牌（深紫面＋金邊＋2 列落地陰影）。
+#   tb-gauge      18×12  slice 6：名聲量表的槽（金邊＋深紫槽）；填充是 uss 的色塊，padding 3 塞在槽裡。
+# ⚠️ 九宮格會拉長的邊只能是「沿拉長方向一致」的實線：金滾邊不畫針腳（拉長會糊成一團），針腳只放在固定尺寸的 tb-sep。
+# ⚠️ 尺寸與 slice 都是 3 的倍數，SLICES 仍照慣例寫邏輯格（×3 才是 px）。
+# 同一輪也把工具列用到的共用小圖重畫成 1 px 細畫（尺寸不變）：coin 21、ico-star 27、ico-gear 33、keycap 24×27（slice 9/9/9/12）。
+#   這四張別的面板也在用（價格、每日結算、任務獎勵、各面板底部的鍵帽說明），外觀概念不變，只是更細。
+
+TB_PAL = {
+    # 開店：暖蜂蜜金面板
+    'o_hi2': '#fff3c4', 'o_hi': '#fbe39a', 'o': '#f3cf74', 'o_md': '#e8b95a', 'o_dk': '#d39d43',
+    'o_e1': '#b07632', 'o_e2': '#8a5424', 'o_e3': '#5e3519',
+    # 關店：夜色靛藍（邊是月白）
+    'n_hi2': '#7d76b4', 'n_hi': '#5f589a', 'n': '#4a4483', 'n_md': '#3f3974', 'n_dk': '#353064',
+    'n_e1': '#28234d', 'n_e2': '#1e1a3c', 'n_e3': '#15112a', 'n_rim': '#b9b2dc', 'n_rim2': '#8a83b8',
+    'n_rim_h': '#d8d2f2', 'n_hi3': '#9690c8',
+    # 停用：灰藕
+    'x_hi2': '#d4cedb', 'x_hi': '#b9b2c2', 'x': '#a39cae', 'x_md': '#968fa2', 'x_dk': '#888196',
+    'x_e1': '#6c6579', 'x_e2': '#554f61', 'x_e3': '#3e3948',
+    # 設定鈕滑過時最亮的布
+    'c9': '#c493c8',
+    # 鍵帽（象牙白）
+    'k_hi': '#fffdf4', 'k': '#f8efda', 'k_md': '#efe2c4', 'k_dk': '#dccaa4',
+    'k_s1': '#c2ab84', 'k_s2': '#a08766', 'k_s3': '#7a6350',
+    'gem_hi': '#e8c8f0',
+}
+_TB_SHADOW = '#140a1c'
+
+
+class _TbPx(_BeltPx):
+    """工具列用的 1 px 畫布：色鍵先查 TB_PAL、再查 BELT_PAL（_BeltPx 也認直接寫的 #hex）。"""
+
+    def put(self, x, y, c):
+        super().put(x, y, TB_PAL.get(c, c))
+
+    def shade(self, x, y, c, a):
+        super().shade(x, y, TB_PAL.get(c, c), a)
+
+
+def _tb_rounded(w, h, r, x0=0, y0=0):
+    """圓角矩形遮罩（像素中心落在圓角內才算）。"""
+    m = set()
+    for y in range(y0, y0 + h):
+        for x in range(x0, x0 + w):
+            cx = min(max(x + 0.5, x0 + r), x0 + w - r)
+            cy = min(max(y + 0.5, y0 + r), y0 + h - r)
+            if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r + 0.3:
+                m.add((x, y))
+    return m
+
+
+def _tb_layers(m, n):
+    """由外往內剝 n 圈（每圈＝目前遮罩的 4 鄰接外緣），回傳 (各圈, 剩下的內部)。"""
+    inner, out = set(m), []
+    for _ in range(n):
+        e = edge(inner)
+        out.append(e)
+        inner -= e
+    return out, inner
+
+
+def _tb_drop_shadow(px, m, alphas):
+    for x in range(px.w):
+        ys = [y for (xx, y) in m if xx == x]
+        if ys:
+            for i, a in enumerate(alphas):
+                px.shade(x, max(ys) + 1 + i, _TB_SHADOW, a)
+
+
+def _tb_stud(px, cx, cy):
+    """5×5 金菱形釘：外輪廓、依「左上→右下」五階金、中心偏左上一點白。"""
+    for dx, dy in ((0, -3), (-1, -2), (1, -2), (-2, -1), (2, -1), (-3, 0), (3, 0),
+                   (-2, 1), (2, 1), (-1, 2), (1, 2), (0, 3)):
+        px.put(cx + dx, cy + dy, 'ol')
+    for dy in range(-2, 3):
+        for dx in range(-2, 3):
+            if abs(dx) + abs(dy) <= 2:
+                s = dx + dy
+                px.put(cx + dx, cy + dy, ('g5', 'g4', 'g3', 'g2', 'g1')[max(0, min(4, s + 2))])
+    px.put(cx - 1, cy - 1, 'wh')
+
+
+def draw_tb_bar():
+    """工具列底座（48×48，slice 18）：外輪廓→捲邊亮兩圈→金滾邊兩圈（亮／暗）→滾邊陰影→中間純色 c4。"""
+    N = 48
+    H = N - 3                       # 本體 0～44，45～47 是落地陰影
+    px = _TbPx(N, N)
+    m = _tb_rounded(N, H, 5)
+    for x, y in m:
+        px.put(x, y, 'c4')
+    L, _ = _tb_layers(m, 6)
+
+    def lit(x, y, d):               # 上緣或左緣（離右下角遠）＝受光
+        return (y <= d and x < N - 1 - d) or (x <= d and y < H - 1 - d)
+    for x, y in L[0]:
+        px.put(x, y, 'ol')
+    for x, y in L[1]:
+        px.put(x, y, 'c8' if (y <= 2 and x < N - 3) else ('c7' if (x <= 2 and y < H - 3) else ('c2' if y >= H - 3 else 'c3')))
+    for x, y in L[2]:
+        px.put(x, y, 'c6' if (y <= 3 and x < N - 4) else ('c5' if (x <= 3 and y < H - 4) else 'c3'))
+    for x, y in L[3]:
+        px.put(x, y, 'g4' if lit(x, y, 4) else 'g3')
+    for x, y in L[4]:
+        px.put(x, y, 'g2' if lit(x, y, 5) else 'g1')
+    for x, y in L[5]:
+        px.put(x, y, 'c3' if lit(x, y, 6) else 'c5')
+    for cx, cy in ((5, 5), (N - 6, 5), (5, H - 6), (N - 6, H - 6)):
+        _tb_stud(px, cx, cy)
+    _tb_drop_shadow(px, m, (0.42, 0.24, 0.10))
+    return px
+
+
+def draw_tb_sep():
+    """分隔（6×30 固定）：布色底、中間一道凹槽（暗＋亮）、槽上縫一排金針腳（週期 3）、上下各一顆小金釘。"""
+    W, H = 6, 30
+    px = _TbPx(W, H)
+    for y in range(H):
+        for x, c in enumerate(('c4', 'c3', 'c1', 'c6', 'c5', 'c4')):
+            px.put(x, y, c)
+    for y in range(4, H - 4):
+        ph = y % 3
+        if ph == 0:
+            px.put(2, y, 'g4'); px.put(3, y, 'g3')
+        elif ph == 1:
+            px.put(2, y, 'g3'); px.put(3, y, 'g2')
+    for cy in (1, H - 2):
+        for x, y in ((2, cy - 1), (3, cy - 1), (1, cy), (4, cy), (2, cy + 1), (3, cy + 1)):
+            px.put(x, y, 'ol')
+        px.put(2, cy, 'g5'); px.put(3, cy, 'g3')
+    return px
+
+
+TB_BTN_W, TB_BTN_H = 30, 36
+#            邊亮      邊        邊暗     面最亮   面亮     面      面中    面暗     厚邊 1  厚邊 2  厚邊 3
+TB_BTN = {
+    'open':     ('g5', 'g4', 'g2', 'o_hi2', 'o_hi', 'o', 'o_md', 'o_dk', 'o_e1', 'o_e2', 'o_e3'),
+    'open-h':   ('wh', 'g5', 'g3', 'wh', 'o_hi2', 'o_hi', 'o', 'o_md', 'o_e1', 'o_e2', 'o_e3'),
+    'closed':   ('n_rim', 'n_rim2', 'n_e1', 'n_hi2', 'n_hi', 'n', 'n_md', 'n_dk', 'n_e1', 'n_e2', 'n_e3'),
+    'closed-h': ('n_rim_h', 'n_rim', 'n_e1', 'n_hi3', 'n_hi2', 'n_hi', 'n', 'n_md', 'n_e1', 'n_e2', 'n_e3'),
+    'set':      ('g4', 'g3', 'g1', 'c8', 'c7', 'c6', 'c5', 'c4', 'c3', 'c2', 'c1'),
+    'set-h':    ('g5', 'g4', 'g2', 'c9', 'c8', 'c7', 'c6', 'c5', 'c3', 'c2', 'c1'),
+    'off':      ('x_hi2', 'x_hi', 'x_e1', 'x_hi2', 'x_hi', 'x', 'x_md', 'x_dk', 'x_e1', 'x_e2', 'x_e3'),
+}
+
+
+def draw_tb_btn(kind, down=False):
+    """
+    工具列的立體小牌（30×36，slice 12/12/12/15）：外輪廓、兩圈邊（左上亮右下暗）、面板上淺下深
+    （每一欄都一樣，橫向拉長不出條紋）、底下 3 px 厚邊；四個角裡各一顆 2×2 小釘。
+    down：面板往下 3、厚邊收成 1 列（跟 btn-*-down 一樣，uss 那邊把圖示往下推 3）。
+    """
+    rim_hi, rim, rim_dk, fh2, fh, f, fm, fd, e1, e2, e3 = TB_BTN[kind]
+    W, H = TB_BTN_W, TB_BTN_H
+    px = _TbPx(W, H)
+    top = 3 if down else 0
+    body = _tb_rounded(W, H - top, 4, 0, top)
+    face_bot = H - 1 - (1 if down else 4)
+    for x, y in body:
+        px.put(x, y, e1 if y == face_bot + 1 else (e2 if y < H - 2 else e3))
+    face = {(x, y) for x, y in body if y <= face_bot}
+    L, inner = _tb_layers(face, 3)
+    n = face_bot - top
+    for x, y in inner | L[2]:
+        r = y - top
+        px.put(x, y, fh2 if r <= 2 else (fh if r <= 6 else (f if r <= n - 8 else (fm if r <= n - 4 else fd))))
+    for x, y in L[2]:
+        if x <= 2:
+            px.put(x, y, fh)
+        elif x >= W - 3:
+            px.put(x, y, fm if y < face_bot - 3 else fd)
+    for x, y in L[0]:
+        if (y >= face_bot - 1) or x >= W - 2:
+            px.put(x, y, rim_dk)
+        else:
+            px.put(x, y, rim_hi if (y <= top + 1 or x <= 1) else rim)
+    for x, y in L[1]:
+        px.put(x, y, rim_hi if (y <= top + 2 and x < W - 3) else (rim if (x <= 2 and y < face_bot - 2) else rim_dk))
+    for x, y in edge(body):
+        px.put(x, y, 'ol')
+    for cx, cy in ((4, top + 4), (W - 5, top + 4), (4, face_bot - 4), (W - 5, face_bot - 4)):
+        px.put(cx, cy, rim_hi); px.put(cx + 1, cy, rim)
+        px.put(cx, cy + 1, rim); px.put(cx + 1, cy + 1, rim_dk)
+    return px
+
+
+def draw_tb_tag(kind):
+    """
+    21×21 膠囊（slice 9）。'tag'：R 可按（亮紫浮起、亮金邊）；'tag-off'：上鎖（暗紫凹槽：上左暗下右亮、暗金邊）；
+    'plate'：時鐘的時刻／日期牌（深紫面、金邊、下方 2 列落地陰影）。中間 3×3 是單色。
+    """
+    N = 21
+    px = _TbPx(N, N)
+    H = N - 2 if kind == 'plate' else N
+    m = _tb_rounded(N, H, 5)
+    rim_hi, rim, rim_dk, f_hi, f = {'tag': ('g5', 'g4', 'g2', 'c7', 'c6'),
+                                     'tag-off': ('g2', 'g1', 'g0', 'c1', 'c2'),
+                                     'plate': ('g4', 'g3', 'g1', 'c4', 'c3')}[kind]
+    for x, y in m:
+        px.put(x, y, f)
+    L, _ = _tb_layers(m, 3)
+    for x, y in L[0]:
+        px.put(x, y, 'ol')
+    for x, y in L[1]:
+        lt = (y <= 2 and x < N - 3) or (x <= 2 and y < H - 3)
+        px.put(x, y, rim_hi if (lt and y <= 2) else (rim if lt else rim_dk))
+    for x, y in L[2]:
+        if kind == 'tag-off':
+            px.put(x, y, 'c1' if (y <= 3 or x <= 3) else 'c3')
+        else:
+            px.put(x, y, f_hi if ((y <= 3 and x < N - 4) or (x <= 3 and y < H - 4)) else f)
+    if kind == 'plate':
+        _tb_drop_shadow(px, m, (0.40, 0.16))
+    return px
+
+
+def draw_tb_gauge():
+    """名聲量表的槽（18×12，slice 6）：外輪廓、金邊（上亮下暗）、內陰影一圈（上左暗）、深紫槽。"""
+    W, H = 18, 12
+    px = _TbPx(W, H)
+    m = _tb_rounded(W, H, 3)
+    for x, y in m:
+        px.put(x, y, 'c2')
+    L, _ = _tb_layers(m, 3)
+    for x, y in L[0]:
+        px.put(x, y, 'ol')
+    for x, y in L[1]:
+        px.put(x, y, 'g4' if y <= 1 else ('g1' if y >= H - 2 else ('g3' if x <= 1 else 'g2')))
+    for x, y in L[2]:
+        px.put(x, y, 'c1' if (y <= 2 or x <= 2) else 'c3')
+    return px
+
+
+# ── 共用小圖（工具列也在用）：細畫版，尺寸不變 ──
+
+def draw_coin():
+    """金幣（21×21）：外輪廓、幣緣五階（左上亮）、壓下去的內環（反光）、幣面浮雕小星、左上高光。"""
+    N = 21
+    px = _TbPx(N, N)
+    for y in range(N):
+        for x in range(N):
+            dx, dy = x - 10.0, y - 10.0
+            d = math.hypot(dx, dy)
+            if d > 9.9:
+                continue
+            ang = (dx + dy) / max(d, 0.01)
+            if d > 8.9:
+                col = 'ol'
+            elif d > 7.7:
+                col = 'g5' if ang < -0.9 else ('g4' if ang < -0.2 else ('g3' if ang < 0.5 else ('g2' if ang < 1.1 else 'g1')))
+            elif d > 6.6:
+                col = 'g2' if ang < 0 else 'g4'
+            else:
+                col = 'g4' if ang < -0.5 else ('g3' if ang < 0.6 else 'g2')
+            px.put(x, y, col)
+    star = [(10, 5), (10, 6), (9, 7), (10, 7), (11, 7), (6, 9), (7, 9), (8, 8), (9, 8), (10, 8), (11, 8), (12, 8),
+            (13, 9), (14, 9), (8, 9), (9, 9), (10, 9), (11, 9), (12, 9), (9, 10), (10, 10), (11, 10), (8, 11), (12, 11),
+            (7, 12), (13, 12)]
+    for x, y in star:
+        if (x + 1, y + 1) not in star:
+            px.put(x + 1, y + 1, 'g1')
+    for x, y in star:
+        px.put(x, y, 'g5' if x + y <= 19 else 'g4')
+    for x, y, c in ((5, 4, 'wh'), (4, 5, 'wh'), (6, 4, 'g5'), (4, 6, 'g5'), (5, 5, 'g5')):
+        px.put(x, y, c)
+    return px
+
+
+def draw_star():
+    """名聲星（27×27）：五角星，每個尖角左右兩半各自朝一個方向受光（多面切光、四階金），1 px 外輪廓，中心兩點白。"""
+    N = 27
+    px = _TbPx(N, N)
+    cx, cy, R, r = 13.5, 14.5, 12.4, 5.2
+    pts = []
+    for i in range(10):
+        a = -math.pi / 2 + i * math.pi / 5
+        rr = R if i % 2 == 0 else r
+        pts.append((cx + rr * math.cos(a), cy + rr * math.sin(a)))
+
+    def inside(x, y):
+        ins, j = False, len(pts) - 1
+        for i in range(len(pts)):
+            (xi, yi), (xj, yj) = pts[i], pts[j]
+            if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi:
+                ins = not ins
+            j = i
+        return ins
+
+    m = {(x, y) for y in range(N) for x in range(N) if inside(x + 0.5, y + 0.5)}
+    for x, y in m:
+        dx, dy = x + 0.5 - cx, y + 0.5 - cy
+        a = math.atan2(dy, dx)
+        ta = -math.pi / 2 + round((a + math.pi / 2) / (2 * math.pi / 5)) * 2 * math.pi / 5   # 最近的尖角方向
+        na = ta + (0.6 if math.sin(a - ta) > 0 else -0.6)                                   # 這半邊的「面」朝向
+        lum = 0.6 * math.cos(na) + 0.8 * math.sin(na)
+        lum = -lum + (0.3 if math.hypot(dx, dy) < 2.2 else 0.0)
+        px.put(x, y, 'g5' if lum > 0.55 else ('g4' if lum > 0.05 else ('g3' if lum > -0.45 else 'g2')))
+    for x, y in m:
+        for ddx, ddy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if (x + ddx, y + ddy) not in m:
+                px.put(x + ddx, y + ddy, 'ol')
+    px.put(12, 12, 'wh'); px.put(13, 11, 'wh')
+    return px
+
+
+def draw_gear():
+    """設定齒輪（33×33）：黃銅 8 齒（圓頭）、輪緣、一道溝、輪面四個小孔、正中一顆紫寶石；光從左上。"""
+    N = 33
+    px = _TbPx(N, N)
+    m = {}
+    for y in range(N):
+        for x in range(N):
+            dx, dy = x - 16.0, y - 16.0
+            d = math.hypot(dx, dy)
+            tooth = (math.cos(8 * math.atan2(dy, dx)) + 1) / 2
+            if d <= 11.2 + 3.6 * min(1.0, tooth * 1.6):
+                m[(x, y)] = (d, (dx + dy) / max(d, 0.01))
+    for (x, y), (d, ang) in m.items():
+        if d > 11.4:
+            col = 'g4' if ang < -0.5 else ('g3' if ang < 0.5 else 'g2')
+        elif d > 10.2:
+            col = 'g5' if ang < -0.6 else ('g4' if ang < 0.2 else ('g3' if ang < 0.9 else 'g2'))
+        elif d > 8.8:
+            col = 'g1' if ang < 0 else 'g3'
+        elif d > 5.6:
+            col = 'g4' if ang < -0.4 else ('g3' if ang < 0.6 else 'g2')
+        elif d > 4.5:
+            col = 'g1'
+        else:
+            col = 'c8' if ang < -0.6 else ('c7' if ang < 0.2 else ('c5' if ang < 0.9 else 'c4'))
+        px.put(x, y, col)
+    for x, y in m:
+        for ddx, ddy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if (x + ddx, y + ddy) not in m:
+                px.put(x + ddx, y + ddy, 'ol')
+    px.put(14, 14, 'wh'); px.put(15, 14, 'gem_hi')
+    for ax, ay in ((16, 9), (23, 16), (16, 23), (9, 16)):
+        px.put(ax, ay, 'g1'); px.put(ax + 1, ay, 'g2'); px.put(ax, ay + 1, 'g2'); px.put(ax + 1, ay + 1, 'g3')
+    return px
+
+
+def draw_keycap():
+    """
+    鍵帽（24×27，slice 9/9/9/12）：象牙白頂面（上左亮兩圈、右下暗一階、最下一列暗）、前緣厚邊 5 列三階、圓角外輪廓。
+    中間 6 欄 × 6 列每欄／每列都一樣，橫向直向拉長都不出條紋。字由 uss（墨色 12）疊上去。
+    """
+    W, H = KEY_W * SCALE, KEY_H * SCALE
+    px = _TbPx(W, H)
+    body = _tb_rounded(W, H, 4)
+    face_bot = H - 7
+    for x, y in body:
+        if y > face_bot:
+            px.put(x, y, 'k_s1' if y == face_bot + 1 else ('k_s2' if y < H - 2 else 'k_s3'))
+        else:
+            px.put(x, y, 'k')
+    face = {(x, y) for x, y in body if y <= face_bot}
+    L, _ = _tb_layers(face, 2)
+    for x, y in L[0]:
+        px.put(x, y, 'k_hi' if ((y <= 1 or x <= 1) and x < W - 2) else ('k_dk' if y >= face_bot else 'k_md'))
+    for x, y in L[1]:
+        px.put(x, y, 'k_hi' if (y <= 2 and x < W - 3) else ('k' if x <= 2 else 'k_md'))
+    for x in range(2, W - 2):
+        px.put(x, face_bot, 'k_dk')
+    for x, y in edge(body):
+        px.put(x, y, 'ol')
+    for y in range(face_bot + 1, H - 1):
+        px.put(1, y, 'k_s1')
+        px.put(W - 2, y, 'k_s3' if y > face_bot + 1 else 'k_s2')
     return px
 
 
@@ -1212,6 +1830,21 @@ def _skins():
         ('belt-badge', draw_belt_badge, (BELT_BADGE_SLICE,) * 4),
         ('belt-spark', draw_belt_spark, None),
     ]
+    # ── 第四輪：上方工具列細畫版（只往尾巴加；上面的圖除了 coin／ico-star／ico-gear／keycap 重畫之外都不動）──
+    out.append(('tb-bar', draw_tb_bar, (6,) * 4))
+    out.append(('tb-sep', draw_tb_sep, None))
+    for k in ('open', 'closed', 'set'):
+        out.append((f'tb-{k}', lambda k=k: draw_tb_btn(k), BTN_SLICE))
+        out.append((f'tb-{k}-hover', lambda k=k: draw_tb_btn(k + '-h'), BTN_SLICE))
+        out.append((f'tb-{k}-down', lambda k=k: draw_tb_btn(k, down=True), BTN_SLICE))
+    out.append(('tb-off', lambda: draw_tb_btn('off'), BTN_SLICE))
+    for k in ('tag', 'tag-off', 'plate'):
+        out.append((f'tb-{k}', lambda k=k: draw_tb_tag(k), (3,) * 4))
+    out.append(('tb-gauge', draw_tb_gauge, (2,) * 4))
+    # ── 第五輪：清單翻頁鈕（2026-11-27，UI/Pager.cs；只往尾巴加，上面的圖一張都不動）──
+    for side in ('prev', 'next'):
+        for st, suf in (('n', ''), ('h', '-hover'), ('d', '-down'), ('x', '-off')):
+            out.append((f'page-{side}{suf}', lambda a=side, s=st: draw_page(a, s), None))
     return out
 
 

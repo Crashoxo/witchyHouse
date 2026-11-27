@@ -27,7 +27,6 @@ namespace WitchShop.Core
         bool footPivot;                // 新房間的圖：樞紐已經在落腳點，不用再往上推
         Sprite[] frames = System.Array.Empty<Sprite>();
         Transform player;
-        GameObject hint;
 
         bool brewing;
         Recipe pending;
@@ -75,7 +74,14 @@ namespace WitchShop.Core
         {
             var p = GameObject.Find("Player");
             player = p != null ? p.transform : null;
-            BuildHint();
+            // 提示與按 E 交給共用的互動系統（範圍重疊時最近的贏）：[E][藥水]；熬煮中 [暗 E][沙漏]，按了不做事（同以前）
+            var it = Interactable.Attach(gameObject, interactRange,
+                () => { if (!brewing) UI.BrewPanel.Ensure().Open(this); },
+                () => brewing
+                    ? HintLook.E(HintIcons.Ui("act_brewing"), "熬煮中…", dim: true)
+                    : HintLook.E(HintIcons.Items8("potion_pink"), "按 E 調配藥水"));
+            it.point = () => (Vector2)transform.position;
+            it.range = interactRange;
         }
 
         void ShowFrame(int i)
@@ -88,17 +94,8 @@ namespace WitchShop.Core
                 art.localPosition = footPivot ? Vector3.zero : new Vector3(0f, f.rect.height * 0.5f * artScale, 0f);
         }
 
-        bool InRange =>
-            player != null && Vector2.Distance(player.position, transform.position) <= interactRange;
-
         void Update()
         {
-            bool canOpen = InRange && !UIState.ModalOpen && !brewing;
-            if (hint != null) hint.SetActive(canOpen);
-
-            if (canOpen && Input.GetKeyDown(KeyCode.E))
-                UI.BrewPanel.Ensure().Open(this);
-
             if (!brewing) return;
 
             timer += Time.deltaTime;
@@ -115,7 +112,7 @@ namespace WitchShop.Core
                 DailyLog.RecordBrew(pendingQty);
                 QuestLog.Record(ObjKind.Brew, pending.Name, pendingQty);
                 Sfx.Play("brew");
-                Popup($"＋{pending.Name} ×{pendingQty}");
+                Popup(HintIcons.Item(pending.Name), $"×{pendingQty}", null, $"＋{pending.Name} ×{pendingQty}");
                 pending = null;
             }
         }
@@ -129,48 +126,17 @@ namespace WitchShop.Core
             pending = r;
             pendingQty = qty;
             timer = 0f;
-            Popup($"開始熬煮 {r.Name}…");
+            Popup(HintIcons.Ui("act_brewing"), null, HintIcons.Item(r.Name), $"開始熬煮 {r.Name}…");
         }
 
         public bool IsBrewing => brewing;
 
-        // ──────────── 提示與冒字 ────────────
+        // ──────────── 冒字 ────────────
 
-        void BuildHint()
+        /// <summary>做完事冒出來的圖示（沙漏＋藥水、藥水 ×N）；InteractHint 開關關掉時是舊的一行字。</summary>
+        void Popup(Sprite icon, string count, Sprite icon2, string legacy)
         {
-            hint = MakeText(transform, "按 E 調配藥水", new Vector3(0f, 120f, 0f),
-                            new Color32(255, 244, 214, 255));
-            hint.SetActive(false);
-        }
-
-        void Popup(string msg)
-        {
-            var go = MakeText(null, msg, transform.position + new Vector3(0f, 140f, 0f),
-                              new Color32(214, 236, 255, 255));
-            go.AddComponent<FloatAway>().Begin(new Vector3(0f, 42f, 0f), 1.2f, 0.5f);
-        }
-
-        static GameObject MakeText(Transform parent, string str, Vector3 pos, Color32 color)
-        {
-            var go = new GameObject("text");
-            if (parent != null) { go.transform.SetParent(parent, false); go.transform.localPosition = pos; }
-            else go.transform.position = pos;
-
-            var tm = go.AddComponent<TextMesh>();
-            tm.text = str;
-            tm.fontSize = 36;
-            tm.characterSize = 4.5f;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.color = color;
-
-            var font = UI.CjkFont.Get();
-            if (font != null)
-            {
-                tm.font = font;
-                go.GetComponent<MeshRenderer>().material = font.material;
-            }
-            go.GetComponent<MeshRenderer>().sortingOrder = 9400;
-            return go;
+            IconPopup.Show(transform.position + new Vector3(0f, 140f, 0f), icon, count, icon2, legacy);
         }
     }
 }

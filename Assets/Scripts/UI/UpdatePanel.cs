@@ -33,7 +33,8 @@ namespace WitchShop.UI
     ///
     /// ── 像素外觀（<see cref="UiSkin.On"/>）──────────────────────────
     /// 不用那張厚塗風的底圖：改成跟其他面板同一套木框＋羊皮紙（skin8/panel）＋紫布緞帶標題「更新」，
-    /// 每條前面一顆小金菱形、底下一顆**真的** OK 鈕（skin 的綠鈕）。尺寸交給 USS（寬 600、高度照內容），
+    /// 每條前面一顆小金菱形、底下一顆**真的** OK 鈕（skin 的綠鈕）。寬 600（USS）；條目區固定高
+    /// （2026-11-27：<see cref="NotesPerPage"/> 條一頁、超過就翻頁，見 <see cref="Pager"/>；按條目切頁，不會切在一條的中間），
     /// 所以 <see cref="OnGeometry"/>／<see cref="FitBody"/> 那套「照底圖比例算字級」在這個外觀下不跑。
     /// 外觀關著時照舊用底圖（update-frame.png 保留不刪）。滑入滑出、按鍵關閉、Modal 都是同一套。
     /// </summary>
@@ -69,9 +70,18 @@ namespace WitchShop.UI
         /// <summary>內文縮到這個字級就不再縮了（再小也讀不了，寧可讓 overflow 切掉）。</summary>
         const float MinBodyFont = 11f;
 
+        /// <summary>
+        /// 像素外觀：一頁幾條、條目區固定高。一條單行 ≈ 26（字 15 的一行 ≈ 20 ＋ margin-bottom 6），8 條 208；
+        /// 留 20 給「其中一條折成兩行」→ 228。條目區之外：標題列 5 ＋ 日期 30 ＋ 分隔線 18 ＋ OK 列 6＋36 ＋ padding 54
+        /// → 面板高 377，不管幾條都一樣。
+        /// </summary>
+        const int NotesPerPage = 8;
+        const float NotesH = 228f;
+
         UIDocument doc;
         VisualElement root, panel, inner;
         Label dateLabel, bodyLabel;
+        Pager pager;       // 像素外觀的條目翻頁（舊外觀是整張底圖、字縮到塞得下，沒有翻頁）
         float openedAt;
         bool closing;
         bool skin;         // 這次用的是不是像素外觀（Build 時決定）
@@ -151,16 +161,10 @@ namespace WitchShop.UI
             dateLabel.AddToClassList("sk-upd-date");
             panel.Add(dateLabel);
 
-            foreach (var raw in UpdateNotes.Lines)
-            {
-                var line = new VisualElement();
-                line.AddToClassList("sk-upd-line");
-                line.Add(UiSkin.Ico("bullet"));
-                var t = new Label(raw.TrimStart('·', ' ', '　'));
-                t.AddToClassList("sk-upd-text");
-                line.Add(t);
-                panel.Add(line);
-            }
+            // 條目：固定高的一塊，一頁 NotesPerPage 條（以條為單位切頁）
+            pager = new Pager(NotesPerPage, NotesH, RenderNotes);
+            panel.Add(pager.Body);
+            RenderNotes();
 
             var div = new VisualElement();
             div.AddToClassList("sk-divider");
@@ -173,7 +177,25 @@ namespace WitchShop.UI
             ok.AddToClassList("btn-list");
             ok.AddToClassList("sk-upd-ok");
             okRow.Add(ok);
+            pager.Bar.AddToClassList("pg-bar--right");       // 翻頁鈕擺在 OK 那列的最右邊（OK 照舊置中）
+            okRow.Add(pager.Bar);
             panel.Add(okRow);
+        }
+
+        /// <summary>像素外觀：把目前這頁的條目畫進條目區（[◆][一行字]）。</summary>
+        void RenderNotes()
+        {
+            var lines = UpdateNotes.Lines;
+            pager.Render(lines.Length, i =>
+            {
+                var line = new VisualElement();
+                line.AddToClassList("sk-upd-line");
+                line.Add(UiSkin.Ico("bullet"));
+                var t = new Label(lines[i].TrimStart('·', ' ', '　'));
+                t.AddToClassList("sk-upd-text");
+                line.Add(t);
+                return line;
+            });
         }
 
         /// <summary>舊外觀：整張底圖（木框＋UPDATE 招牌＋畫好的 OK 鈕），內文照底圖比例擺。</summary>
@@ -272,6 +294,7 @@ namespace WitchShop.UI
                 || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space)
                 || Input.GetKeyDown(KeyCode.E))
                 Close();
+            else pager?.HandleKeys();    // ←／→、A／D 翻頁（只有像素外觀有翻頁）
         }
 
         /// <summary>往上滑回去，動畫跑完才銷毀。</summary>

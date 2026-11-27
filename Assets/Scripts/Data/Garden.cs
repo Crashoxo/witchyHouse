@@ -91,10 +91,25 @@ namespace WitchShop.Data
         /// <summary>枯萎超過這一階就救不回來了。</summary>
         public const int WiltRescuable = 3;
 
-        /// <summary>土壤磚原圖 153x100 → 約 84x55。</summary>
-        public const float PlotScale = 0.55f;
-        /// <summary>花畫在磚上的縮放（原圖一株盛開約 68px，跟主角一樣高，縮一點才像庭園花草）。</summary>
-        public const float FlowerScale = 0.78f;
+        /// <summary>
+        /// 土壤磚的縮放。像素新圖（garden8，見 GameArt.UsePixelPlants）頂面菱形剛好 88×44 ＝ 等距格子一格 → 1；
+        /// 舊圖 153x100 → 約 84x55（0.55）。
+        /// </summary>
+        public static float PlotScale => Core.GameArt.PixelSoil ? 1f : 0.55f;
+        /// <summary>
+        /// 花畫在磚上的縮放。像素新圖是 1px 原生像素、跟女巫同一個倍數（GameArt.WitchScale ＝ 1.6）→
+        /// 每格 39×48 顯示成約 62×77、盛開約 66px 高、寬不超過約 59px（女巫可見約 93px）；
+        /// 舊圖一株盛開約 68px，跟主角一樣高，縮一點才像庭園花草（0.78）。
+        /// </summary>
+        public static float FlowerScale => Core.GameArt.PixelFlowers ? Core.GameArt.WitchScale : 0.78f;
+        /// <summary>
+        /// 花的格子底邊在花圃中心的上下幾 px（縮放後）。
+        /// 新圖：莖的入土點在格子底邊往上 <see cref="Core.GameArt.PixelFlowerFootPadPx"/>（縮放前），
+        /// 底邊放在它的負值 × 縮放 → 入土點剛好落在花圃（土壤磚頂面菱形）的正中心。舊圖沿用原版的 -6。
+        /// </summary>
+        public static float PlantBottomY => Core.GameArt.PixelFlowers ? -Core.GameArt.PixelFlowerFootPadPx * FlowerScale : -6f;
+        /// <summary>「缺水」提醒字的高度（花圃座標往上）：要高過最高的盛開花頂（新圖約 70px、舊圖約 53px）。</summary>
+        public static float ThirstyLabelY => Core.GameArt.PixelFlowers ? 84f : 46f;
 
         // 花圃的位置（garden 場景的世界座標，錨點在磚的中心）。
         // 底圖的草地是等距菱形，所以花圃也照等距排：往右下一格 (+HalfW, -HalfH)、
@@ -138,7 +153,12 @@ namespace WitchShop.Data
 
         /// <summary>從店裡進花園的門（裝在 shop 場景）。</summary>
         public static readonly Vector2 ShopToGarden = new(600f, -150f);
-        /// <summary>從花園回店裡的門（裝在 garden 場景）。</summary>
-        public static readonly Vector2 GardenToShop = new(250f, 130f);
+        /// <summary>
+        /// 從花園回店裡的門（裝在 garden 場景）。8-bit 圍牆花園（Core.GardenRoom.UsePixelGarden）的門在小屋後牆上，
+        /// 位置跟著 GardenRoomData（tools/gen_garden_art.py 產生）；舊花園是 <see cref="LegacyGardenToShop"/>。
+        /// </summary>
+        public static Vector2 GardenToShop => Core.GardenRoom.UsePixelGarden ? GardenRoomData.DoorAt : LegacyGardenToShop;
+        /// <summary>舊花園（整張圖 rooms/garden）的回店門。</summary>
+        public static readonly Vector2 LegacyGardenToShop = new(250f, 130f);
     }
 }

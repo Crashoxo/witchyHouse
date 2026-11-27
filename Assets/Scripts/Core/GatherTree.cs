@@ -49,6 +49,12 @@ namespace WitchShop.Core
         {
             var p = GameObject.Find("Player");
             player = p != null ? p.transform : null;
+
+            // 提示與按 E 交給共用的互動系統（2026-11-28）：頭上 [E][會採到的材料圖]；採光了（冷卻中）不顯示、不吃 E。
+            // ⚠️ 以前每一棵樹各自看 E —— 兩棵樹都在範圍內時一下 E 兩棵一起採；現在只有最近的那棵。
+            var it = Interactable.Attach(gameObject, gatherRange, Gather,
+                () => HintLook.E(HintIcons.Item(itemName) ?? HintIcons.Ui("act_done"), null));   // 以前沒有文字提示 → 開關關掉時也不顯示
+            it.available = () => ready;
         }
 
         void Update()
@@ -64,11 +70,7 @@ namespace WitchShop.Core
                 return;
             }
 
-            if (UIState.ModalOpen) return;                       // 開著視窗時不採集
-            if (player == null) return;
-            if (!Input.GetKeyDown(KeyCode.E)) return;
-            if (Vector2.Distance(player.position, transform.position) > gatherRange) return;
-            Gather();
+            // 按 E 採集改由 Interact 處理（開著視窗時不採集、範圍重疊時最近的那棵）
         }
 
         /// <summary>

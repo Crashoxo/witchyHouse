@@ -32,9 +32,20 @@ namespace WitchShop.UI
 
         enum Tab { Quests, Items, Villagers, Calendar }
 
+        /// <summary>
+        /// 清單區固定高（2026-11-27 改成固定高度＋翻頁，見 <see cref="Pager"/>）：6 × 60 ＝ 360。
+        /// 任務／物品一頁 6 列（`.sk .row` 57 ＋ 3）；村民列比較高（`.sk .vil-row` 63 ＋ 3 ＝ 66）一頁 5 列；
+        /// 日曆不是清單，整張（標題 ≈30 ＋ 4 × 60 ＋ 下一個節日 ≈30～50）放在同一塊裡，不翻頁。
+        /// 面板高（像素外觀）＝ padding 30 ＋ 標題列 5 ＋ 分頁 48 ＋ 360 ＋ 分隔線 18 ＋ 底列 30 ＋ padding 24 ＝ 515。
+        /// </summary>
+        const int ListH = 360;
+        const int RowsPerPage = 6;
+        const int VillagersPerPage = 5;
+
         UIDocument doc;
         VisualElement root, tabsBox;
-        ScrollView rowsBox;
+        VisualElement rowsBox;       // ＝ pager.Body
+        Pager pager;
         Label titleLabel, hintLabel;
         Tab tab = Tab.Quests;
         bool built;
@@ -65,6 +76,7 @@ namespace WitchShop.UI
             if (anim.OpenedThisFrame) return;
             if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Tab)
                 || Input.GetKeyDown(KeyCode.I)) Close();
+            else pager.HandleKeys();     // ←／→、A／D 翻頁
         }
 
         public void Open()
@@ -74,6 +86,7 @@ namespace WitchShop.UI
             if (anim.ClosedThisFrame) return;     // 這一幀才用 Tab/I 關掉的，別被同一下又打開（同 QuestPanel）
             anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
+            pager.Reset();               // 每次打開都從第 1 頁看
             Sfx.Play("ui-open");                                    // 音效：面板打開
             GameArt.OnReady(Refresh);
         }
@@ -128,17 +141,21 @@ namespace WitchShop.UI
                      })
             {
                 var tt = t;
-                var b = new Button(() => { tab = tt; Sfx.Play("ui-tab"); Refresh(); }) { text = label };
+                var b = new Button(() => { tab = tt; pager.Reset(); Sfx.Play("ui-tab"); Refresh(); }) { text = label };
                 b.AddToClassList("tab");
                 b.userData = tt;
                 tabsBox.Add(b);
             }
 
-            rowsBox = new ScrollView();
+            // 清單：固定高、超過就翻頁（不捲動）
+            pager = new Pager(RowsPerPage, ListH, Refresh);
+            rowsBox = pager.Body;
             rowsBox.AddToClassList("rows");
             panel.Add(rowsBox);
 
             hintLabel = UiSkin.Footer(panel, "關閉", "Tab", "Esc");   // [Tab][Esc] 關閉 ……… 右邊放短資訊
+            pager.Bar.AddToClassList("pg-bar--center");                // 翻頁鈕擺在底列正中間
+            hintLabel.parent.Add(pager.Bar);
 
             root.style.display = DisplayStyle.None;
             anim = UIAnim.Pop(root, panel, dim);              // 淡入＋輕微放大，暗幕只淡入
@@ -148,7 +165,7 @@ namespace WitchShop.UI
         void Refresh()
         {
             foreach (var b in tabsBox.Children()) b.EnableInClassList("active", (Tab)b.userData == tab);
-            rowsBox.Clear();
+            pager.SetPerPage(tab == Tab.Villagers ? VillagersPerPage : RowsPerPage);
 
             switch (tab)
             {
@@ -169,22 +186,17 @@ namespace WitchShop.UI
             // 排序：可回報 → 進行中 → 可接 → 已完成。鎖住的不列（玩家還不知道它存在）
             var order = new[] { QuestStatus.Ready, QuestStatus.Active,
                                 QuestStatus.Available, QuestStatus.Claimed };
-            bool any = false;
+            var list = new System.Collections.Generic.List<(QuestDef def, QuestStatus st)>();
 
             foreach (var want in order)
                 foreach (var d in QuestLog.Defs())
                 {
                     if (QuestLog.StatusOf(d.Id) != want) continue;
-                    any = true;
-                    rowsBox.Add(QuestRow(d, want));
+                    list.Add((d, want));
                 }
 
-            if (!any)
-            {
-                var msg = new Label("還沒有任務 —— 去城鎮找頭頂有「？」的人聊聊吧");
-                msg.AddToClassList("empty-msg");
-                rowsBox.Add(msg);
-            }
+            pager.Render(list.Count, i => QuestRow(list[i].def, list[i].st),
+                "還沒有任務 —— 去城鎮找頭頂有「？」的人聊聊吧");
         }
 
         VisualElement QuestRow(QuestDef d, QuestStatus st)
@@ -241,47 +253,44 @@ namespace WitchShop.UI
         {
             hintLabel.text = "拿過的才會列出來";
 
-            int shown = 0;
+            var names = new System.Collections.Generic.List<string>();
             foreach (var name in AllItemNames())
             {
                 // 沒拿過的不劇透 —— 圖鑑要靠玩才會慢慢長出來
                 if (Storage.AvailableOf(name) <= 0 && ShopStock.CountOf(name) <= 0) continue;
-                shown++;
-
-                var row = new VisualElement();
-                row.AddToClassList("row");
-                row.AddToClassList("info-row");
-
-                var icon = new VisualElement();
-                icon.AddToClassList("stock-icon");
-                var sp = GameArt.Item(name);
-                if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
-                row.Add(icon);
-
-                var n = new Label(name);
-                n.AddToClassList("col-name");
-                n.AddToClassList("info-name");
-                row.Add(n);
-
-                // 數量：小徽章（舊外觀就是一個「×3」）
-                var haveBox = new VisualElement();
-                haveBox.AddToClassList("info-have");
-                haveBox.Add(UiSkin.Badge($"×{Storage.AvailableOf(name)}"));
-                row.Add(haveBox);
-
-                var desc = new Label(Items.DescOf(name));
-                desc.AddToClassList("up-desc");
-                row.Add(desc);
-
-                rowsBox.Add(row);
+                names.Add(name);
             }
+            pager.Render(names.Count, i => ItemRow(names[i]), "還沒有任何東西 —— 去森林採集看看吧");
+        }
 
-            if (shown == 0)
-            {
-                var msg = new Label("還沒有任何東西 —— 去森林採集看看吧");
-                msg.AddToClassList("empty-msg");
-                rowsBox.Add(msg);
-            }
+        static VisualElement ItemRow(string name)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("row");
+            row.AddToClassList("info-row");
+
+            var icon = new VisualElement();
+            icon.AddToClassList("stock-icon");
+            var sp = GameArt.Item(name);
+            if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
+            row.Add(icon);
+
+            var n = new Label(name);
+            n.AddToClassList("col-name");
+            n.AddToClassList("info-name");
+            row.Add(n);
+
+            // 數量：小徽章（舊外觀就是一個「×3」）
+            var haveBox = new VisualElement();
+            haveBox.AddToClassList("info-have");
+            haveBox.Add(UiSkin.Badge($"×{Storage.AvailableOf(name)}"));
+            row.Add(haveBox);
+
+            var desc = new Label(Items.DescOf(name));
+            desc.AddToClassList("up-desc");
+            row.Add(desc);
+
+            return row;
         }
 
         /// <summary>圖鑑的排列順序：材料 → 花與種子 → 藥水 → 糖果鎮的貨。</summary>
@@ -300,37 +309,40 @@ namespace WitchShop.UI
         {
             hintLabel.text = $"每天第一次聊天 +{Villagers.TalkPoints} 友誼";
 
-            foreach (var v in Villagers.All)
-            {
-                var row = new VisualElement();
-                row.AddToClassList("row");
-                row.AddToClassList("vil-row");
+            var all = Villagers.All;
+            pager.Render(all.Length, i => VillagerRow(all[i]));
+        }
 
-                var icon = new VisualElement();
-                icon.AddToClassList("vil-portrait");
-                var sp = string.IsNullOrEmpty(v.Portrait) ? null : GameArt.Portrait(v.Portrait);
-                if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
-                row.Add(icon);
+        static VisualElement VillagerRow(VillagerDef v)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("row");
+            row.AddToClassList("vil-row");
 
-                var n = new Label(v.Name);
-                n.AddToClassList("col-name");
-                n.AddToClassList("vil-name");
-                row.Add(n);
+            var icon = new VisualElement();
+            icon.AddToClassList("vil-portrait");
+            var sp = string.IsNullOrEmpty(v.Portrait) ? null : GameArt.Portrait(v.Portrait);
+            if (sp != null) icon.style.backgroundImage = new StyleBackground(sp);
+            row.Add(icon);
 
-                var place = new Label(v.Place);
-                place.AddToClassList("up-effect");
-                place.AddToClassList("vil-place");
-                row.Add(place);
+            var n = new Label(v.Name);
+            n.AddToClassList("col-name");
+            n.AddToClassList("vil-name");
+            row.Add(n);
 
-                var desc = new Label(v.Desc);
-                desc.AddToClassList("up-desc");
-                row.Add(desc);
+            var place = new Label(v.Place);
+            place.AddToClassList("up-effect");
+            place.AddToClassList("vil-place");
+            row.Add(place);
 
-                // 友誼度：實心/空心愛心（外觀開著是小圖，關著退回 ♥♡ 文字）
-                row.Add(UiSkin.Hearts(Friendship.Hearts(v.Name), Villagers.MaxHearts));
+            var desc = new Label(v.Desc);
+            desc.AddToClassList("up-desc");
+            row.Add(desc);
 
-                rowsBox.Add(row);
-            }
+            // 友誼度：實心/空心愛心（外觀開著是小圖，關著退回 ♥♡ 文字）
+            row.Add(UiSkin.Hearts(Friendship.Hearts(v.Name), Villagers.MaxHearts));
+
+            return row;
         }
 
         // ──────────── 日曆 ────────────
@@ -342,11 +354,18 @@ namespace WitchShop.UI
                 ? $"今天是「{f.Name}」"
                 : "節日客人特別多";
 
+            // 日曆不是清單：整張包成一塊交給翻頁器（永遠 1 頁 → 翻頁鈕藏起來）
+            pager.Render(1, _ => CalendarSheet());
+        }
+
+        static VisualElement CalendarSheet()
+        {
+            var sheet = new VisualElement();
             var head = new Label(
                 $"{TimeSystem.DateTextFull()}　·　{TimeSystem.SeasonDef.Desc}");
             head.AddToClassList("up-desc");
             head.AddToClassList("cal-head");
-            rowsBox.Add(head);
+            sheet.Add(head);
 
             // 一個月 28 天，排成 4 列 × 7 格
             int today = TimeSystem.Day, month = TimeSystem.Month;
@@ -381,7 +400,7 @@ namespace WitchShop.UI
 
                     line.Add(cell);
                 }
-                rowsBox.Add(line);
+                sheet.Add(line);
             }
 
             // 下一個節日
@@ -391,8 +410,9 @@ namespace WitchShop.UI
                 var nl = new Label($"下一個節日：{next.Name}（{next.Month} 月 {next.Day} 日）—— {next.Desc}");
                 nl.AddToClassList("up-desc");
                 nl.AddToClassList("cal-next");
-                rowsBox.Add(nl);
+                sheet.Add(nl);
             }
+            return sheet;
         }
     }
 }

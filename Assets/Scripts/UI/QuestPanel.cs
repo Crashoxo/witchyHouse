@@ -21,7 +21,7 @@ namespace WitchShop.UI
     /// 底換成 skin8 的羊皮紙卷軸（scroll-paper 九宮格：上下兩根木軸），標題是紫布緞帶、關閉是 skin 的紅鈕。
     /// 每條任務是一張清單列卡片，能用圖的不用句子：
     ///   [勾選框][任務名]　／　[動詞][目標道具圖][進度條][2/5]　／　[→ 發任務的人]……[金幣 30][獎勵道具 ×1]
-    /// 可回報＝金框卡＋打勾＋金色進度條。底下 [Q][Esc] 關閉 …… 頁數。
+    /// 可回報＝金框卡＋打勾＋金色進度條。底下 [Q][Esc] 關閉 …… [◀ 1/2 ▶]（見 <see cref="Pager"/>）。
     /// 外觀關著時照舊（quest-scroll.png 底圖＋整句文字）。
     /// </summary>
     public class QuestPanel : MonoBehaviour
@@ -36,13 +36,17 @@ namespace WitchShop.UI
             return go.AddComponent<QuestPanel>();
         }
 
-        /// <summary>一頁列幾條（超過就翻頁）。</summary>
-        const int PerPage = 5;
+        /// <summary>
+        /// 一頁列幾條（超過就翻頁）。2026-11-27 從 5 改 4：像素外觀一條任務卡 ≈ 99 高（三行 24＋3＋24＋3＋24、padding 6＋9、
+        /// 下邊距 6），清單區只有 576 − 51 − 27 − 底列 48 ＝ 450，5 條（495）本來就塞不下；4 條 396，標題折成兩行也還有餘。
+        /// 清單區的高由捲軸固定（.sk .quest-scroll 312×576、.quest-list flex-grow 1），超出的一律隱藏，不捲動。
+        /// </summary>
+        const int PerPage = 4;
 
         UIDocument doc;
         VisualElement root, scroll, listBox;
         Label footLabel;
-        int page;
+        Pager pager;
         bool built;
         bool skin;        // 這次用的是不是像素外觀（Build 時決定）
         UIAnim anim;      // 開關動效；「開著沒」看 anim.IsOpen，不看 display（見 UIAnim）
@@ -72,6 +76,7 @@ namespace WitchShop.UI
             //    PlayerController 先跑的話，開的那一幀這裡又讀到同一下 Q → 開了立刻關。
             if (anim.OpenedThisFrame) return;
             if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Q)) Close();
+            else pager.HandleKeys();     // ←／→、A／D 翻頁（以前寫在 Refresh 裡，只有打開那一下會讀，等於沒作用）
         }
 
         public bool IsOpen => built && anim != null && anim.IsOpen;   // ⚠️ 不看 display：關閉動畫期間它還是 Flex
@@ -83,7 +88,7 @@ namespace WitchShop.UI
             // ⚠️ 反方向的同一個問題：這裡先跑、按 Q 關掉並解除 ModalOpen，同一幀
             //    PlayerController 又讀到那一下 Q 來開 → 關了立刻重開。關掉的那一幀不重開。
             if (anim.ClosedThisFrame) return;
-            page = 0;
+            pager.Reset();               // 每次打開都從第 1 頁看
             anim.Show();                 // 淡入（邏輯上這一行就算開著，見 UIAnim）
             UIState.ModalOpen = true;
             Sfx.Play("ui-open");                                    // 音效：面板打開
@@ -143,14 +148,21 @@ namespace WitchShop.UI
             listBox = new VisualElement();
             listBox.AddToClassList("quest-list");
             scroll.Add(listBox);
+            // 高度交給捲軸（flex-grow 撐滿），翻頁器只鎖 overflow：一頁 PerPage 條，不捲動
+            pager = new Pager(PerPage, 0f, Refresh, listBox);
 
             if (skin)
-                footLabel = UiSkin.Footer(scroll, "關閉", "Q", "Esc");   // [Q][Esc] 關閉 …… 頁數
+            {
+                footLabel = UiSkin.Footer(scroll, "關閉", "Q", "Esc");   // [Q][Esc] 關閉 …… [◀ 1/2 ▶]
+                footLabel.parent.Add(pager.Bar);                          // 底列最右邊（左邊是鍵帽）
+            }
             else
             {
                 footLabel = new Label();
                 footLabel.AddToClassList("quest-foot");
                 scroll.Add(footLabel);
+                pager.Bar.style.alignSelf = Align.Center;
+                scroll.Add(pager.Bar);
             }
 
             var close = new Button(Close) { text = "×", focusable = false };
@@ -164,37 +176,12 @@ namespace WitchShop.UI
 
         void Refresh()
         {
-            listBox.Clear();
             var ids = QuestLog.AcceptedIds();
-
-            if (ids.Count == 0)
-            {
-                var msg = new Label("目前沒有\n進行中的任務。\n\n去城鎮找頭頂\n有「！」的\nNPC 聊聊吧！");
-                msg.AddToClassList("quest-empty");
-                listBox.Add(msg);
-                footLabel.text = skin ? "" : "Q / Esc 關閉";
-                return;
-            }
-
-            int pages = Mathf.Max(1, Mathf.CeilToInt(ids.Count / (float)PerPage));
-            page = Mathf.Clamp(page, 0, pages - 1);
-
-            for (int i = page * PerPage; i < ids.Count && i < (page + 1) * PerPage; i++)
-                listBox.Add(skin ? SkinEntry(ids[i]) : Entry(ids[i]));
-
-            if (skin)
-                footLabel.text = pages > 1 ? $"‹ {page + 1}/{pages} ›" : "";   // 關閉的鍵帽已經在左邊
-            else
-                footLabel.text = pages > 1
-                    ? $"‹ {page + 1} / {pages} ›　（← → 翻頁）　Q / Esc 關閉"
-                    : "Q / Esc 關閉";
-
-            // 多頁時用左右鍵翻
-            if (pages > 1)
-            {
-                if (Input.GetKeyDown(KeyCode.LeftArrow) && page > 0) { page--; Refresh(); }
-                if (Input.GetKeyDown(KeyCode.RightArrow) && page < pages - 1) { page++; Refresh(); }
-            }
+            // 空的時候那句話（quest-empty 的字樣）置中在清單區
+            pager.Render(ids.Count, i => skin ? SkinEntry(ids[i]) : Entry(ids[i]),
+                "目前沒有\n進行中的任務。\n\n去城鎮找頭頂\n有「！」的\nNPC 聊聊吧！", "quest-empty");
+            // 頁數改由翻頁鈕 [◀ n/m ▶] 表示；像素外觀的關閉鍵帽已經在左邊（舊外觀照舊寫一句）
+            footLabel.text = skin ? "" : "Q / Esc 關閉";
         }
 
         /// <summary>一條任務：名稱／目標＋進度／狀態＋獎勵＋去找誰。</summary>

@@ -3,61 +3,44 @@ using UnityEngine;
 namespace WitchShop.Core
 {
     /// <summary>
-    /// 「走近按 E」的簡單互動點基底：床、倉庫木箱、衣櫃都是同一個模式 ——
+    /// 「走近按 E」的簡單互動點基底：床、倉庫木箱、衣櫃、城鎮的商店都是同一個模式 ——
     /// 進範圍就冒提示，按 E 做一件事。
     ///
-    /// ⚠️ 各互動點的感應半徑要彼此拉開。原專案的註解特別提過：藥水室的木箱、鍋爐、
-    ///    出口的感應圈若重疊，一顆 E 會同時觸發兩件事（例如想開倉庫卻被門送去別的場景）。
-    ///    木箱擺 (-360,-125)、鍋爐 (59,-135)、出口 (0,-330)，彼此都超過 410px。
+    /// 2026-11-28 起提示與按 E 都交給共用的互動系統（<see cref="Interactable"/>／<see cref="Interact"/>）：
+    /// 頭上是 [E 鍵帽][動作圖]（<see cref="HintIcon"/>），範圍重疊時只有最近的那個會冒提示、吃 E。
+    /// <see cref="hintText"/> 只在 InteractHint.Enabled＝false（退回舊的文字提示）時用。
     /// </summary>
     public abstract class InteractPoint : MonoBehaviour
     {
         public float interactRange = 150f;
         public string hintText = "按 E";
+        /// <summary>動作圖（icons8 的名字；空字串＝用子類別的預設 <see cref="DefaultIcon"/>）。</summary>
+        public string hintIcon = "";
+        /// <summary>動作圖直接給一張圖（優先於 hintIcon；例如花店用花的道具圖）。</summary>
+        public Sprite hintSprite;
+        /// <summary>提示底邊放哪（世界座標；null ＝ 互動點往上 70，跟以前的文字一樣高 —— 這些點本身是隱形的）。</summary>
+        public System.Func<Vector3> hintAnchor;
 
         protected Transform player;
-        GameObject hint;
+        protected Interactable interactable;
+
+        protected virtual string DefaultIcon => "act_done";
 
         protected virtual void Start()
         {
             var p = GameObject.Find("Player");
             player = p != null ? p.transform : null;
-            BuildHint();
+            interactable = Interactable.Attach(gameObject, interactRange, Activate, Look);
+            interactable.anchor = hintAnchor;
         }
 
-        void Update()
+        protected virtual HintLook Look()
         {
-            bool near = player != null
-                        && Vector2.Distance(player.position, transform.position) <= interactRange;
-            bool usable = near && !UIState.ModalOpen;
-            if (hint != null) hint.SetActive(usable);
-            if (usable && Input.GetKeyDown(KeyCode.E)) Activate();
+            var icon = hintSprite != null ? hintSprite : HintIcons.Ui(string.IsNullOrEmpty(hintIcon) ? DefaultIcon : hintIcon);
+            return HintLook.E(icon, hintText);
         }
 
         protected abstract void Activate();
-
-        void BuildHint()
-        {
-            hint = new GameObject("hint");
-            hint.transform.SetParent(transform, false);
-            hint.transform.localPosition = new Vector3(0f, 70f, 0f);
-
-            var tm = hint.AddComponent<TextMesh>();
-            tm.text = hintText;
-            tm.fontSize = 36;
-            tm.characterSize = 4.5f;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.color = new Color32(255, 244, 214, 255);
-
-            var font = UI.CjkFont.Get();
-            if (font != null)
-            {
-                tm.font = font;
-                hint.GetComponent<MeshRenderer>().material = font.material;
-            }
-            hint.GetComponent<MeshRenderer>().sortingOrder = 9400;
-            hint.SetActive(false);
-        }
     }
 
     /// <summary>
@@ -75,6 +58,7 @@ namespace WitchShop.Core
     /// <summary>房間左邊背景畫好的那口木箱 ＝ 倉庫。按 E 開背包的倉庫模式。</summary>
     public class StorageCabinet : InteractPoint
     {
+        protected override string DefaultIcon => "act_chest";
         protected override void Activate() => UI.BagPanel.Ensure().OpenStorage();
     }
 
@@ -84,6 +68,7 @@ namespace WitchShop.Core
     /// </summary>
     public class Wardrobe : InteractPoint
     {
+        protected override string DefaultIcon => "act_wardrobe";
         protected override void Activate() => UI.WardrobePanel.Ensure().Open();
     }
 
@@ -92,6 +77,7 @@ namespace WitchShop.Core
     /// </summary>
     public class Bed : InteractPoint
     {
+        protected override string DefaultIcon => "act_sleep";
         protected override void Activate()
         {
             // 過場自己會推進時間（畫面全黑之後才動，玩家看不到跳動）
